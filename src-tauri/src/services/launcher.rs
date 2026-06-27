@@ -91,7 +91,7 @@ arch -x86_64 env \
   DOORSTOP_TARGET_ASSEMBLY='{preloader}' \
   DYLD_LIBRARY_PATH='{game_root}/' \
   DYLD_INSERT_LIBRARIES='{doorstop}' \
-  '{executable}'
+  '{executable}' -console
 "#,
         game_root = game_root.display(),
         preloader = preloader.display(),
