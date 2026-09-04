@@ -6,7 +6,7 @@ import type {
   InstalledMod,
   Profile,
   ConfigFile,
-  ConfigEntry,
+  ConfigFileSummary,
   BackupInfo,
 } from "./types";
 
@@ -104,19 +104,16 @@ export async function deleteProfile(name: string): Promise<void> {
 
 // ── Config Editor ───────────────────────────────────────────────
 
-export async function getConfigFiles(): Promise<ConfigFile[]> {
-  return invoke<ConfigFile[]>("get_config_files");
+export async function getConfigFiles(): Promise<ConfigFileSummary[]> {
+  return invoke<ConfigFileSummary[]>("get_config_files");
 }
 
-export async function getConfig(filename: string): Promise<ConfigFile> {
-  return invoke<ConfigFile>("get_config", { filename });
+export async function getConfig(path: string): Promise<ConfigFile> {
+  return invoke<ConfigFile>("get_config", { path });
 }
 
-export async function saveConfig(
-  filename: string,
-  entries: ConfigEntry[]
-): Promise<void> {
-  return invoke("save_config", { filename, entries });
+export async function saveConfig(config: ConfigFile): Promise<void> {
+  return invoke("save_config", { config });
 }
 
 // ── Backups ─────────────────────────────────────────────────────

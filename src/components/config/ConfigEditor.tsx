@@ -6,18 +6,25 @@ import {
   Loader2,
   ChevronRight,
   Settings,
+  AlertTriangle,
 } from "lucide-react";
 import { useAppStore } from "../../store/appStore";
 import { getConfigFiles, getConfig, saveConfig } from "../../lib/tauri";
-import type { ConfigFile, ConfigEntry, ConfigSection } from "../../lib/types";
+import type {
+  ConfigFile,
+  ConfigFileSummary,
+  ConfigEntry,
+  ConfigSection,
+} from "../../lib/types";
 
 export default function ConfigEditor() {
   const addToast = useAppStore((s) => s.addToast);
 
-  const [configFiles, setConfigFiles] = useState<ConfigFile[]>([]);
+  const [configFiles, setConfigFiles] = useState<ConfigFileSummary[]>([]);
   const [selectedFile, setSelectedFile] = useState<ConfigFile | null>(null);
   const [isLoadingFiles, setIsLoadingFiles] = useState(true);
   const [isLoadingConfig, setIsLoadingConfig] = useState(false);
+  const [configError, setConfigError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [editedEntries, setEditedEntries] = useState<Map<string, string>>(
     new Map()
@@ -41,20 +48,26 @@ export default function ConfigEditor() {
   }, []);
 
   const handleSelectFile = useCallback(
-    async (file: ConfigFile) => {
+    async (file: ConfigFileSummary) => {
       setIsLoadingConfig(true);
+      setSelectedFile(null);
+      setConfigError(null);
       setEditedEntries(new Map());
       try {
-        const detail = await getConfig(file.filename);
+        const detail = await getConfig(file.path);
         setSelectedFile(detail);
-      } catch {
-        // Fallback: show what we already have
-        setSelectedFile(file);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        setConfigError(message);
+        addToast({
+          type: "error",
+          message: `Failed to load config: ${message}`,
+        });
       } finally {
         setIsLoadingConfig(false);
       }
     },
-    []
+    [addToast]
   );
 
   const handleEntryChange = (
@@ -83,18 +96,23 @@ export default function ConfigEditor() {
 
     setIsSaving(true);
     try {
-      const allEntries: ConfigEntry[] = [];
-      for (const section of selectedFile.sections) {
-        for (const entry of section.entries) {
-          const key = `${section.name}::${entry.key}`;
-          const newVal = editedEntries.get(key);
-          allEntries.push({
-            ...entry,
-            value: newVal ?? entry.value,
-          });
-        }
-      }
-      await saveConfig(selectedFile.filename, allEntries);
+      const updatedConfig: ConfigFile = {
+        ...selectedFile,
+        sections: selectedFile.sections.map((section) => ({
+          ...section,
+          entries: section.entries.map((entry) => {
+            const key = `${section.name}::${entry.key}`;
+            const newVal = editedEntries.get(key);
+            return {
+              ...entry,
+              value: newVal ?? entry.value,
+            };
+          }),
+        })),
+      };
+
+      await saveConfig(updatedConfig);
+      setSelectedFile(updatedConfig);
       setEditedEntries(new Map());
       addToast({ type: "success", message: "Config saved." });
     } catch (err) {
@@ -118,12 +136,20 @@ export default function ConfigEditor() {
     entry: ConfigEntry
   ) => {
     const value = getEntryValue(section.name, entry);
+    const settingType = entry.setting_type?.toLowerCase() ?? "";
+    const acceptableValues = entry.acceptable_values
+      ?.split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const rangeMatch = entry.acceptable_value_range?.match(
+      /^from\s+(.+?)\s+to\s+(.+)$/i
+    );
+    const acceptableRange = rangeMatch
+      ? ([rangeMatch[1].trim(), rangeMatch[2].trim()] as const)
+      : null;
 
     // Boolean toggle
-    if (
-      entry.setting_type.toLowerCase() === "boolean" ||
-      entry.setting_type.toLowerCase() === "bool"
-    ) {
+    if (settingType === "boolean" || settingType === "bool") {
       const isTrue = value.toLowerCase() === "true";
       return (
         <button
@@ -144,7 +170,7 @@ export default function ConfigEditor() {
     }
 
     // Dropdown for acceptable values
-    if (entry.acceptable_values && entry.acceptable_values.length > 0) {
+    if (acceptableValues && acceptableValues.length > 0) {
       return (
         <select
           value={value}
@@ -154,7 +180,7 @@ export default function ConfigEditor() {
           className="px-2.5 py-1.5 rounded-md text-sm bg-[var(--color-bg-input)] border border-[var(--color-border-default)]
             text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-primary)]"
         >
-          {entry.acceptable_values.map((av) => (
+          {acceptableValues.map((av) => (
             <option key={av} value={av}>
               {av}
             </option>
@@ -165,10 +191,10 @@ export default function ConfigEditor() {
 
     // Number input for int/float with range
     if (
-      entry.setting_type.toLowerCase().includes("int") ||
-      entry.setting_type.toLowerCase().includes("float") ||
-      entry.setting_type.toLowerCase().includes("single") ||
-      entry.setting_type.toLowerCase().includes("double")
+      settingType.includes("int") ||
+      settingType.includes("float") ||
+      settingType.includes("single") ||
+      settingType.includes("double")
     ) {
       return (
         <div className="flex items-center gap-2">
@@ -178,14 +204,14 @@ export default function ConfigEditor() {
             onChange={(e) =>
               handleEntryChange(section.name, entry.key, e.target.value)
             }
-            min={entry.acceptable_range?.[0]}
-            max={entry.acceptable_range?.[1]}
+            min={acceptableRange?.[0]}
+            max={acceptableRange?.[1]}
             className="w-28 px-2.5 py-1.5 rounded-md text-sm bg-[var(--color-bg-input)] border border-[var(--color-border-default)]
               text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-primary)]"
           />
-          {entry.acceptable_range && (
+          {acceptableRange && (
             <span className="text-xs text-[var(--color-text-muted)]">
-              [{entry.acceptable_range[0]} - {entry.acceptable_range[1]}]
+              [{acceptableRange[0]} - {acceptableRange[1]}]
             </span>
           )}
         </div>
@@ -247,7 +273,7 @@ export default function ConfigEditor() {
                 `}
               >
                 <FileText size={14} className="shrink-0" />
-                <span className="truncate">{file.mod_name || file.filename}</span>
+                <span className="truncate">{file.filename}</span>
                 <ChevronRight size={12} className="ml-auto shrink-0 opacity-40" />
               </button>
             ))
@@ -257,7 +283,27 @@ export default function ConfigEditor() {
 
       {/* Editor */}
       <div className="flex-1 rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-card)] overflow-hidden flex flex-col">
-        {!selectedFile ? (
+        {isLoadingConfig ? (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2
+              size={24}
+              className="animate-spin text-[var(--color-text-muted)]"
+            />
+          </div>
+        ) : configError ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
+            <AlertTriangle
+              size={40}
+              className="text-[var(--color-accent-amber)] mb-3"
+            />
+            <h3 className="text-base font-semibold text-[var(--color-text-secondary)] mb-1">
+              Could not load config file
+            </h3>
+            <p className="text-sm text-[var(--color-text-muted)] max-w-md break-words">
+              {configError}
+            </p>
+          </div>
+        ) : !selectedFile ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center">
             <Settings
               size={40}
@@ -276,7 +322,7 @@ export default function ConfigEditor() {
             <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border-subtle)]">
               <div>
                 <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-                  {selectedFile.mod_name || selectedFile.filename}
+                  {selectedFile.filename.replace(/\.cfg$/i, "")}
                 </h3>
                 <p className="text-xs text-[var(--color-text-muted)]">
                   {selectedFile.filename}
@@ -312,12 +358,15 @@ export default function ConfigEditor() {
 
             {/* Config entries */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
-              {isLoadingConfig ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2
-                    size={20}
-                    className="animate-spin text-[var(--color-text-muted)]"
+              {selectedFile.sections.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <FileText
+                    size={28}
+                    className="text-[var(--color-text-muted)] mb-2"
                   />
+                  <p className="text-sm text-[var(--color-text-muted)]">
+                    No editable settings found in this file.
+                  </p>
                 </div>
               ) : (
                 selectedFile.sections.map((section) => (

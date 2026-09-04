@@ -121,12 +121,8 @@ fn parse_cfg_content(content: &str) -> Vec<ConfigSection> {
                 entries: Vec::new(),
             });
 
-            // Reset pending metadata
-            pending_description.clear();
-            pending_type = None;
-            pending_default = None;
-            pending_acceptable = None;
-            pending_range = None;
+            // BepInEx writes the first entry's metadata immediately before the
+            // section header, so carry it forward to the next key/value pair.
             continue;
         }
 
@@ -285,4 +281,72 @@ pub fn save_config_file(path: &Path, config: &ConfigFile) -> AppResult<()> {
     std::fs::write(path, output)?;
     debug!("Config saved: {}", path.display());
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const SAMPLE_CONFIG: &str = r#"## Enables the feature.
+# Setting type: Boolean
+# Default value: true
+[General]
+Enabled = true
+
+## Controls the effect strength.
+# Setting type: Single
+# Default value: 1
+# Acceptable value range: From 0.25 to 4
+Strength = 1
+
+## Selects a mode.
+# Setting type: Mode
+# Default value: Normal
+# Acceptable values: Off, Normal, Strong
+Mode = Normal
+"#;
+
+    #[test]
+    fn parses_bepinex_metadata() {
+        let sections = parse_cfg_content(SAMPLE_CONFIG);
+
+        assert_eq!(sections.len(), 1);
+        assert_eq!(sections[0].name, "General");
+        assert_eq!(sections[0].entries.len(), 3);
+
+        let enabled = &sections[0].entries[0];
+        assert_eq!(enabled.key, "Enabled");
+        assert_eq!(enabled.setting_type.as_deref(), Some("Boolean"));
+        assert_eq!(enabled.description.as_deref(), Some("Enables the feature."));
+
+        let strength = &sections[0].entries[1];
+        assert_eq!(
+            strength.acceptable_value_range.as_deref(),
+            Some("From 0.25 to 4")
+        );
+
+        let mode = &sections[0].entries[2];
+        assert_eq!(
+            mode.acceptable_values.as_deref(),
+            Some("Off, Normal, Strong")
+        );
+    }
+
+    #[test]
+    fn saves_changed_values_without_rewriting_metadata() {
+        let temp_dir = tempfile::tempdir().expect("create temp directory");
+        let path = temp_dir.path().join("sample.cfg");
+        std::fs::write(&path, SAMPLE_CONFIG).expect("write sample config");
+
+        let mut config = parse_config_file(&path).expect("parse sample config");
+        config.sections[0].entries[0].value = "false".to_string();
+        config.sections[0].entries[2].value = "Strong".to_string();
+
+        save_config_file(&path, &config).expect("save sample config");
+        let saved = std::fs::read_to_string(&path).expect("read saved config");
+
+        assert!(saved.contains("# Setting type: Boolean"));
+        assert!(saved.contains("Enabled = false"));
+        assert!(saved.contains("Mode = Strong"));
+    }
 }

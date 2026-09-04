@@ -61,9 +61,15 @@ export interface GameStatus {
   active_profile: string;
 }
 
-export interface ConfigFile {
+export interface ConfigFileSummary {
+  path: string;
   filename: string;
-  mod_name: string;
+  size: number;
+}
+
+export interface ConfigFile {
+  path: string;
+  filename: string;
   sections: ConfigSection[];
 }
 
@@ -75,11 +81,11 @@ export interface ConfigSection {
 export interface ConfigEntry {
   key: string;
   value: string;
-  setting_type: string;
-  default_value: string;
-  description: string;
-  acceptable_values: string[] | null;
-  acceptable_range: [string, string] | null;
+  setting_type: string | null;
+  default_value: string | null;
+  description: string | null;
+  acceptable_values: string | null;
+  acceptable_value_range: string | null;
 }
 
 export interface BackupInfo {
