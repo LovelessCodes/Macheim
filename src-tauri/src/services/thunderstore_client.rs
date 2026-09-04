@@ -82,7 +82,7 @@ pub async fn fetch_packages(force_refresh: bool) -> AppResult<Vec<ThunderstorePa
 
     info!("Fetching packages from Thunderstore API...");
     let client = reqwest::Client::builder()
-        .user_agent("Macheim/1.0.0")
+        .user_agent("Macheim/1.0.1")
         .timeout(std::time::Duration::from_secs(60))
         .build()
         .map_err(|e| AppError::Network(format!("Failed to create HTTP client: {}", e)))?;
@@ -174,7 +174,7 @@ pub async fn download_mod_with_progress(
     info!("Downloading mod from: {}", download_url);
 
     let client = reqwest::Client::builder()
-        .user_agent("Macheim/1.0.0")
+        .user_agent("Macheim/1.0.1")
         .connect_timeout(std::time::Duration::from_secs(30))
         // No overall timeout - large mods can be 200MB+
         .build()

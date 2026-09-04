@@ -1,6 +1,6 @@
 [package]
 name = "macheim"
-version = "1.0.0"
+version = "1.0.1"
 description = "Valheim Mod Manager for macOS"
 authors = ["iyeonsang"]
 license = "MIT"
@@ -41,4 +41,3 @@ tempfile = "3"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 futures-util = "0.3"
-
