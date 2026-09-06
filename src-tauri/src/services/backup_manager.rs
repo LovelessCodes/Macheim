@@ -29,6 +29,7 @@ fn get_backups_dir() -> PathBuf {
 /// Create a backup of a profile.
 /// The backup ZIP contains: profile.json + BepInEx/config/ directory.
 pub fn create_backup(profile_name: &str) -> AppResult<BackupInfo> {
+    profile_manager::validate_name(profile_name)?;
     info!("Creating backup of profile: {}", profile_name);
 
     let profile_dir = profile_manager::get_profile_dir(profile_name);
@@ -48,8 +49,7 @@ pub fn create_backup(profile_name: &str) -> AppResult<BackupInfo> {
 
     let file = std::fs::File::create(&backup_path)?;
     let mut zip_writer = zip::ZipWriter::new(file);
-    let options = SimpleFileOptions::default()
-        .compression_method(zip::CompressionMethod::Deflated);
+    let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
     // Add profile.json
     let profile_json = profile_dir.join("profile.json");
@@ -146,6 +146,7 @@ pub fn list_backups() -> AppResult<Vec<BackupInfo>> {
 /// Restore a backup: extract it, create a profile, copy configs.
 /// Mods listed in profile.json will need to be re-downloaded by the caller.
 pub fn restore_backup(backup_filename: &str) -> AppResult<Profile> {
+    profile_manager::validate_name(backup_filename)?;
     let backup_path = get_backups_dir().join(backup_filename);
 
     if !backup_path.exists() {
@@ -162,9 +163,9 @@ pub fn restore_backup(backup_filename: &str) -> AppResult<Profile> {
 
     // Extract profile.json first to get the profile metadata
     let profile: Profile = {
-        let mut profile_file = archive.by_name("profile.json").map_err(|_| {
-            AppError::Profile("Backup does not contain profile.json".to_string())
-        })?;
+        let mut profile_file = archive
+            .by_name("profile.json")
+            .map_err(|_| AppError::Profile("Backup does not contain profile.json".to_string()))?;
         let mut content = String::new();
         profile_file.read_to_string(&mut content)?;
         serde_json::from_str(&content)?
@@ -173,6 +174,10 @@ pub fn restore_backup(backup_filename: &str) -> AppResult<Profile> {
     // Check if profile already exists, generate new name if so
     let profile_name = {
         let base_name = profile.name.clone();
+        profile_manager::validate_name(&base_name)?;
+        for m in &profile.mods {
+            profile_manager::validate_name(&m.full_name)?;
+        }
         let mut name = base_name.clone();
         let mut counter = 1;
         while profile_manager::get_profile_dir(&name).exists() {

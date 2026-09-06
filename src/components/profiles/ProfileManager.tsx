@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { confirm } from "@tauri-apps/plugin-dialog";
 import {
   Plus,
   Trash2,
@@ -85,6 +86,7 @@ export default function ProfileManager() {
   };
 
   const handleDelete = async (name: string) => {
+    if (!await confirm(`Remove profile "${name}"? Its files will be preserved in Macheim's deleted-profiles folder.`, { title: "Remove profile", kind: "warning" })) return;
     if (name === activeProfile) {
       addToast({
         type: "warning",
@@ -97,7 +99,7 @@ export default function ProfileManager() {
     try {
       await deleteProfile(name);
       setProfiles(profiles.filter((p) => p.name !== name));
-      addToast({ type: "info", message: `Deleted profile "${name}"` });
+      addToast({ type: "info", message: `Removed "${name}". Recoverable from the deleted-profiles data folder.` });
     } catch (err) {
       addToast({
         type: "error",
@@ -222,11 +224,11 @@ export default function ProfileManager() {
                 <div className="flex items-center gap-3 mt-0.5 text-xs text-[var(--color-text-muted)]">
                   <span className="flex items-center gap-1">
                     <Package size={11} />
-                    {profile.mod_count} mods
+                    {profile.mods.length} mods
                   </span>
                   <span className="flex items-center gap-1">
                     <Clock size={11} />
-                    Last used {formatDate(profile.last_used)}
+                    Updated {formatDate(profile.updated_at)}
                   </span>
                 </div>
               </div>

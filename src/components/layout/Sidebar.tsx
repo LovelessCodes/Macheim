@@ -25,6 +25,7 @@ const navItems: NavItem[] = [
   { page: "installed", label: "Installed Mods", icon: Download },
   { page: "modpacks", label: "Modpacks", icon: Layers },
   { page: "config", label: "Config Editor", icon: FileText },
+  { page: "compatibility", label: "Mac Compatibility", icon: Shield },
   { page: "profiles", label: "Profiles", icon: User },
   { page: "settings", label: "Settings", icon: Settings },
 ];

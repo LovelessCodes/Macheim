@@ -5,6 +5,33 @@ use tracing::info;
 
 use crate::error::{AppError, AppResult};
 
+pub fn is_game_running() -> AppResult<bool> {
+    #[cfg(target_os = "macos")]
+    {
+        let output = Command::new("pgrep").args(["-x", "Valheim"]).output()?;
+        match output.status.code() {
+            Some(0) => Ok(true),
+            Some(1) => Ok(false),
+            _ => Err(AppError::Mod(
+                "Could not check whether Valheim is running.".into(),
+            )),
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Ok(false)
+    }
+}
+
+pub fn ensure_game_stopped() -> AppResult<()> {
+    if is_game_running()? {
+        return Err(AppError::Mod(
+            "Quit Valheim before changing mods, profiles or compatibility patches.".into(),
+        ));
+    }
+    Ok(())
+}
+
 /// Check if running on Apple Silicon.
 pub fn is_apple_silicon() -> bool {
     let output = Command::new("sysctl")
@@ -58,7 +85,9 @@ pub fn launch_modded(_app_path: &Path, game_root: &Path) -> AppResult<()> {
     let doorstop = find_doorstop_lib(game_root)
         .or_else(|| find_doorstop_lib(&game_root.join("doorstop_libs")))
         .ok_or_else(|| {
-            AppError::GameNotFound("doorstop library not found. Please reinstall BepInEx.".to_string())
+            AppError::GameNotFound(
+                "doorstop library not found. Please reinstall BepInEx.".to_string(),
+            )
         })?;
 
     // Remove quarantine from doorstop library
@@ -70,34 +99,22 @@ pub fn launch_modded(_app_path: &Path, game_root: &Path) -> AppResult<()> {
     // Verified working method: arch -x86_64 + env + direct DYLD injection
     // This bypasses run_bepinex.sh (which has arm64 conflict) and injects directly.
     let executable_name = get_bundle_executable(&game_root.join("valheim.app"))?;
-    let executable = game_root.join("valheim.app/Contents/MacOS").join(&executable_name);
+    let executable = game_root
+        .join("valheim.app/Contents/MacOS")
+        .join(&executable_name);
     let preloader = game_root.join("BepInEx/core/BepInEx.Preloader.dll");
 
     if !executable.exists() || !preloader.exists() {
         return Err(AppError::GameNotFound(format!(
             "Missing files: exec={} preloader={}",
-            executable.exists(), preloader.exists()
+            executable.exists(),
+            preloader.exists()
         )));
     }
 
     // Write launcher script for Terminal.app (completely independent process)
     let launcher_script = game_root.join(".vmm_launch.sh");
-    let script_content = format!(
-        r#"#!/bin/bash
-cd '{game_root}'
-open /Applications/Steam.app
-arch -x86_64 env \
-  DOORSTOP_ENABLED=1 \
-  DOORSTOP_TARGET_ASSEMBLY='{preloader}' \
-  DYLD_LIBRARY_PATH='{game_root}/' \
-  DYLD_INSERT_LIBRARIES='{doorstop}' \
-  '{executable}' -console
-"#,
-        game_root = game_root.display(),
-        preloader = preloader.display(),
-        doorstop = doorstop.display(),
-        executable = executable.display(),
-    );
+    let script_content = build_launch_script(game_root, &preloader, &doorstop, &executable);
     std::fs::write(&launcher_script, &script_content)?;
 
     #[cfg(unix)]
@@ -108,17 +125,56 @@ arch -x86_64 env \
         std::fs::set_permissions(&launcher_script, perms)?;
     }
 
-    info!("Launching via Terminal.app with direct DYLD injection (x86_64)");
-
     Command::new("open")
         .arg("-a")
         .arg("Terminal")
         .arg(&launcher_script)
         .spawn()
         .map_err(|e| AppError::GameNotFound(format!("Failed to launch game: {}", e)))?;
-
-    info!("Valheim launched with BepInEx via x86_64 Rosetta");
     Ok(())
+}
+
+fn shell_quote(path: &Path) -> String {
+    format!("'{}'", path.to_string_lossy().replace('\'', "'\\''"))
+}
+
+fn build_launch_script(
+    game_root: &Path,
+    preloader: &Path,
+    doorstop: &Path,
+    executable: &Path,
+) -> String {
+    format!(
+        r#"#!/bin/bash
+set -e
+cd {game_root}
+open /Applications/Steam.app
+arch -x86_64 env \
+  DOORSTOP_ENABLED=1 \
+  DOORSTOP_TARGET_ASSEMBLY={preloader} \
+  DYLD_LIBRARY_PATH={game_root} \
+  DYLD_INSERT_LIBRARIES={doorstop} \
+  {executable} -console
+"#,
+        game_root = shell_quote(game_root),
+        preloader = shell_quote(preloader),
+        doorstop = shell_quote(doorstop),
+        executable = shell_quote(executable),
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn console_flag_and_apostrophe_paths_survive_script_generation() {
+        let p = Path::new("/Volumes/Alice's Games/Valheim");
+        let script = build_launch_script(p, p, p, p);
+        assert!(script.contains("'\\''"));
+        assert!(script.contains(" -console\n"));
+        assert!(script.contains("arch -x86_64 env"));
+        assert_eq!(shell_quote(Path::new("/tmp/$value")), "'/tmp/$value'");
+    }
 }
 
 /// Launch Valheim vanilla (without mods) via Steam.

@@ -50,9 +50,11 @@ export interface InstalledMod {
 
 export interface Profile {
   name: string;
-  mod_count: number;
+  description: string;
+  mods: InstalledMod[];
+  compatibility: CompatibilitySettings;
   created_at: string;
-  last_used: string;
+  updated_at: string;
 }
 
 export interface GameStatus {
@@ -93,7 +95,24 @@ export interface BackupInfo {
   filename: string;
   profile_name: string;
   created_at: string;
-  mod_count: number;
+  size: number;
+  path: string;
+}
+
+export interface CompatibilitySettings { automatic: boolean; disabled_rules: string[]; }
+export interface CompatibilityRule {
+  id: string; package: string; version: string; title: string;
+  prefabs: string[]; reason: string; validation: string;
+}
+export interface CompatibilityStatus {
+  profile_name: string;
+  settings: CompatibilitySettings;
+  catalog: {
+    revision: number; plugin_version: string; game_version: string; unity_version: string;
+    requirements: { package: string; version: string }[]; rules: CompatibilityRule[];
+  };
+  rules: { rule: CompatibilityRule; eligible: boolean; reason: string }[];
+  installed: boolean; up_to_date: boolean; game_running: boolean; recent_log: string[];
 }
 
 export type Page =
@@ -103,6 +122,7 @@ export type Page =
   | "modpacks"
   | "config"
   | "profiles"
+  | "compatibility"
   | "settings";
 
 export interface Toast {

@@ -26,10 +26,11 @@ A native macOS mod manager for [Valheim](https://store.steampowered.com/app/8929
 - **Thunderstore mod browser** - Browse, search, and filter thousands of mods (Popular / Newest / Top Rated / A-Z)
 - **One-click mod install** - Automatic dependency resolution using topological sort
 - **Modpack support** - Install entire modpacks with all dependencies in one click
-- **Profile management** - Create, switch, clone, import, and export mod profiles
+- **Profile management** - Create and switch profiles; remember the active profile across restarts and preserve manual mods
+- **Mac Compatibility** - Automatically apply version-pinned visual workarounds for tested item effects, with per-profile and per-rule opt-out
 - **BepInEx config editor** - Edit mod configuration files directly in the app
-- **Backup & restore** - Create and restore full mod backups
-- **Sync & Clean** - Re-download missing mod files and clean up orphaned files
+- **Backup & restore** - Back up profile metadata and configs (not mod binaries or worlds); restore into a separate profile
+- **Sync & Clean** - Re-download missing enabled mod files; confirm before moving unmanaged folders to recoverable storage
 - **Play Modded** - Launch Valheim with mods, automatically handles Rosetta for Apple Silicon
 - **Dark viking-themed UI** - Built for the Valheim aesthetic
 - **Lightweight** - 5.7MB DMG, 16MB app (vs Electron-based alternatives at ~1.3GB)
@@ -55,16 +56,61 @@ A native macOS mod manager for [Valheim](https://store.steampowered.com/app/8929
 
 ### Build from Source
 
-Prerequisites: [Node.js](https://nodejs.org/) 18+, [Rust](https://rustup.rs/) 1.70+, [Tauri CLI](https://tauri.app/start/)
+Prerequisites: [Node.js](https://nodejs.org/) 24 LTS, current stable [Rust/Cargo](https://rustup.rs/), and Xcode Command Line Tools. The Tauri CLI is a project dependency. If the build says `cargo metadata` cannot be found, install Rust with rustup and restart your terminal.
 
 ```bash
 git clone https://github.com/lofcgi/macheim.git
 cd macheim
-npm install
+npm ci
+npm test
+npm run verify:release
 npm run tauri build
 ```
 
 The built DMG will be in `src-tauri/target/release/bundle/dmg/`.
+
+The application embeds only Macheim's own compatibility DLL, alongside its source
+and a SHA-256/source manifest. Building the manager does not require Valheim or
+.NET. To rebuild the plugin itself, install .NET 9 and Valheim/BepInEx locally,
+then run `sh scripts/build-compatibility.sh`. No game or third-party reference DLLs
+are redistributed. See [compatibility details](tools/item-material-compat/README.md).
+
+## Mac Compatibility (1.1.0)
+
+Open **Mac Compatibility → Check support** to inspect the bundled catalog and the
+active profile. This is a mod/version check, not a visual scan of every shader.
+Eligible rules are reconciled after mod changes and before **Play Modded**.
+Quit Valheim before applying or disabling them.
+
+The initial catalog covers four tested dropped items: VES F weapon and blessed F
+weapon scrolls (Valheim Enchantment System 1.9.12), and the Wizardry 1.1.8 Black
+Forest scroll and Bonemass shard. ShaderHelperForMac **3.3.0** must already be
+enabled; Macheim does not silently install or reset it. Runtime checks restrict the
+patch to Valheim **0.221.12**, Unity **6000.0.61f1**, and macOS Metal.
+
+- Disable **Automatically apply verified compatibility rules** to unload Macheim's
+  patch on the next launch, or disable an individual rule. Other shader mods remain active.
+- Updates outside the verified mod versions are skipped; a previously managed patch
+  is removed when no rules remain eligible.
+- The plugin clones runtime materials/textures; upstream mod assets are unchanged.
+- No universal repair, all-mod scanner, creature/building/UI fixes, or Windows visual parity is promised.
+- Logs are shown locally, never uploaded. A missing log entry is not a compatibility pass.
+
+See [the 1.1.0 release audit](RELEASE-1.1.0.md) for issue/PR coverage and remaining limitations.
+
+### Profile and recovery notes
+
+When upgrading an older installation with multiple profiles and no active-profile
+record, the live mod files are preserved in a new `Recovered-…` profile. Existing
+profiles are not overwritten. Switch to your preferred profile after reviewing it.
+Symlinked mod/profile paths are refused during replacement; back them up and resolve
+the links first. Do not change profiles while Valheim is running.
+
+Saved profiles: `~/Library/Application Support/com.macheim/profiles`.
+Removed profiles: `~/Library/Application Support/com.macheim/deleted-profiles`.
+Cleaned mod folders: `<Valheim>/BepInEx/.macheim-clean-backups`.
+Managed compatibility backups: `<Valheim>/BepInEx/.macheim-compat-backups`.
+These are local recovery copies; keep your own backup of worlds and manual mods.
 
 ## Getting Started
 
@@ -78,13 +124,22 @@ The built DMG will be in `src-tauri/target/release/bundle/dmg/`.
 
 ### Pink/Magenta Objects
 
-Some mod-added objects (buildings, creatures, effects) may render as pink/magenta. This happens because mods ship DirectX-only shaders without Metal variants, and macOS uses Metal for rendering.
+Some mod-added objects (buildings, creatures, effects) may render as pink/magenta or with incorrect transparency. Causes include missing Metal shader variants and incompatible material/shader settings. A shader reported as supported can still render incorrectly.
 
-**This is a known limitation of modding Valheim on macOS.** Mod functionality is completely unaffected - only the visual appearance of some mod-added objects is impacted. Vanilla game objects are never affected.
+**The 1.1.0 workarounds cover only the objects listed above.** Visual errors can make items or effects hard to see; other shader helpers can also affect shared materials or UI. Report the mod version, affected object and a screenshot. Do not assume that every pink object has the same cause.
 
 ### BepInEx Requires Rosetta
 
-On Apple Silicon Macs, BepInEx's Harmony/MonoMod only works under x86_64 emulation. Macheim handles this automatically by launching the game via `arch -x86_64`. Rosetta will be installed automatically if not already present.
+Macheim's supported modded launch path uses `arch -x86_64` and requires Rosetta on Apple Silicon. The manager app itself has a native Apple Silicon build; that does **not** mean the modded game runs natively on ARM. Experimental native-ARM BepInEx builds are not integrated or supported here.
+
+### Multiplayer and other mod managers
+
+Macheim does not translate mods or synchronize a server's mod requirements. Use the
+required compatible mod versions on every client/server. This release's visual patch
+does not change item stats or network behavior, but cross-platform multiplayer was
+not an end-to-end validation of this release. Future Valheim 1.0 compatibility is not
+guaranteed. r2modman/Thunderstore profile-code import is not supported; Macheim's
+metadata import/export backend is a different format and is not a PC profile importer.
 
 ### macOS Gatekeeper
 
@@ -107,7 +162,7 @@ Macheim uses Tauri v2 to bridge a Rust backend with a React frontend:
 - **Game detection**: Parses Steam's `libraryfolders.vdf` to locate Valheim
 - **BepInEx management**: Downloads from Thunderstore, patches config for macOS (`Type = GameObject`), removes Gatekeeper quarantine from dylibs
 - **Mod installation**: Downloads mod ZIPs, extracts to the correct profile directory, resolves dependencies via Kahn's algorithm (topological sort)
-- **Game launch**: Uses `arch -x86_64 env DYLD_INSERT_LIBRARIES=libdoorstop.dylib` to bypass macOS SIP restrictions and force Rosetta on Apple Silicon
+- **Game launch**: Uses `arch -x86_64 env DYLD_INSERT_LIBRARIES=libdoorstop.dylib` to load BepInEx into the game under Rosetta on Apple Silicon; SIP is not disabled
 
 ## Contributing
 

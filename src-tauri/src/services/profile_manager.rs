@@ -1,450 +1,432 @@
-use std::path::{Path, PathBuf};
-
-use tracing::{debug, info, warn};
-
+use super::{
+    compatibility::{atomic_write, reject_symlink_ancestors, MANAGED_DIR},
+    thunderstore_client,
+};
 use crate::error::{AppError, AppResult};
 use crate::models::{InstalledMod, Profile};
-use crate::services::thunderstore_client;
+use std::collections::HashSet;
+use std::path::{Path, PathBuf};
+use tracing::warn;
 
-const DEFAULT_PROFILE_NAME: &str = "Default";
+const SYNC_DIRS: [&str; 4] = ["plugins", "patchers", "config", "plugins_disabled"];
+const ACTIVE_MARKER: &str = ".macheim-active-profile";
 
-/// Get the profiles base directory.
+pub fn validate_name(name: &str) -> AppResult<()> {
+    if name.is_empty()
+        || name.len() > 120
+        || name.starts_with('.')
+        || name.trim() != name
+        || name
+            .chars()
+            .any(|c| c.is_control() || matches!(c, '/' | '\\' | ':'))
+    {
+        return Err(AppError::Profile("Use a nonempty name without path separators, a leading dot or surrounding spaces (max 120 bytes).".into()));
+    }
+    Ok(())
+}
 pub fn get_profiles_dir() -> PathBuf {
     thunderstore_client::get_app_data_dir().join("profiles")
 }
-
-/// Get a specific profile's directory.
 pub fn get_profile_dir(name: &str) -> PathBuf {
     get_profiles_dir().join(name)
 }
-
-/// Get the path to a profile's metadata file.
-fn get_profile_file(name: &str) -> PathBuf {
-    get_profile_dir(name).join("profile.json")
-}
-
-/// Ensure the default profile exists.
 pub fn ensure_default_profile() -> AppResult<()> {
-    let default_dir = get_profile_dir(DEFAULT_PROFILE_NAME);
-    if !default_dir.exists() {
-        create_profile(DEFAULT_PROFILE_NAME, "Default mod profile")?;
+    if !get_profile_dir("Default").exists() {
+        create_profile("Default", "Default mod profile")?;
     }
     Ok(())
 }
-
-/// Create a new profile.
 pub fn create_profile(name: &str, description: &str) -> AppResult<Profile> {
-    let profile_dir = get_profile_dir(name);
-
-    if profile_dir.exists() {
-        return Err(AppError::Profile(format!(
-            "Profile '{}' already exists",
-            name
-        )));
+    validate_name(name)?;
+    let dir = get_profile_dir(name);
+    reject_symlink_ancestors(&dir)?;
+    std::fs::create_dir_all(get_profiles_dir())?;
+    std::fs::create_dir(&dir)?;
+    for sub in SYNC_DIRS {
+        std::fs::create_dir_all(dir.join("BepInEx").join(sub))?;
     }
-
-    // Create directory structure
-    std::fs::create_dir_all(&profile_dir)?;
-    std::fs::create_dir_all(profile_dir.join("BepInEx/plugins"))?;
-    std::fs::create_dir_all(profile_dir.join("BepInEx/config"))?;
-    std::fs::create_dir_all(profile_dir.join("BepInEx/patchers"))?;
-
-    let profile = Profile::new(name.to_string(), description.to_string());
+    let profile = Profile::new(name.into(), description.into());
     save_profile(&profile)?;
-
-    info!("Created profile: {}", name);
     Ok(profile)
 }
-
-/// Load a profile's metadata.
 pub fn load_profile(name: &str) -> AppResult<Profile> {
-    let profile_file = get_profile_file(name);
-
-    if !profile_file.exists() {
-        return Err(AppError::Profile(format!(
-            "Profile '{}' not found",
-            name
-        )));
+    validate_name(name)?;
+    let path = get_profile_dir(name).join("profile.json");
+    reject_symlink_ancestors(&path)?;
+    let profile: Profile = serde_json::from_slice(&std::fs::read(path)?)?;
+    if profile.name != name {
+        return Err(AppError::Profile(
+            "Profile metadata name does not match its directory.".into(),
+        ));
     }
-
-    let content = std::fs::read_to_string(&profile_file)?;
-    let profile: Profile = serde_json::from_str(&content)?;
+    for m in &profile.mods {
+        validate_name(&m.full_name)?;
+    }
     Ok(profile)
 }
-
-/// Save a profile's metadata.
 pub fn save_profile(profile: &Profile) -> AppResult<()> {
-    let profile_file = get_profile_file(&profile.name);
-    let profile_dir = get_profile_dir(&profile.name);
-    std::fs::create_dir_all(&profile_dir)?;
-
-    let content = serde_json::to_string_pretty(profile)?;
-    std::fs::write(&profile_file, content)?;
-    debug!("Saved profile: {}", profile.name);
-    Ok(())
-}
-
-/// List all profiles.
-pub fn list_profiles() -> AppResult<Vec<Profile>> {
-    let profiles_dir = get_profiles_dir();
-    let mut profiles = Vec::new();
-
-    if !profiles_dir.exists() {
-        // Create default profile
-        ensure_default_profile()?;
+    validate_name(&profile.name)?;
+    for m in &profile.mods {
+        validate_name(&m.full_name)?;
     }
-
-    if profiles_dir.exists() {
-        for entry in std::fs::read_dir(&profiles_dir)? {
-            let entry = entry?;
-            if entry.path().is_dir() {
-                let name = entry.file_name().to_string_lossy().to_string();
-                match load_profile(&name) {
-                    Ok(profile) => profiles.push(profile),
-                    Err(e) => {
-                        warn!("Failed to load profile '{}': {}", name, e);
-                    }
-                }
+    atomic_write(
+        &get_profile_dir(&profile.name).join("profile.json"),
+        &serde_json::to_vec_pretty(profile)?,
+    )
+}
+pub fn list_profiles() -> AppResult<Vec<Profile>> {
+    ensure_default_profile()?;
+    let mut profiles = Vec::new();
+    for entry in std::fs::read_dir(get_profiles_dir())? {
+        let entry = entry?;
+        if entry.file_type()?.is_dir() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            match load_profile(&name) {
+                Ok(p) => profiles.push(p),
+                Err(e) => warn!("Cannot load profile {}: {}", name, e),
             }
         }
     }
-
-    // Sort by name, with Default first
-    profiles.sort_by(|a, b| {
-        if a.name == DEFAULT_PROFILE_NAME {
-            std::cmp::Ordering::Less
-        } else if b.name == DEFAULT_PROFILE_NAME {
-            std::cmp::Ordering::Greater
-        } else {
-            a.name.cmp(&b.name)
-        }
-    });
-
+    profiles.sort_by_key(|p| (p.name != "Default", p.name.clone()));
     Ok(profiles)
 }
-
-/// Delete a profile.
 pub fn delete_profile(name: &str) -> AppResult<()> {
-    if name == DEFAULT_PROFILE_NAME {
+    validate_name(name)?;
+    if name == "Default" {
         return Err(AppError::Profile(
-            "Cannot delete the default profile".to_string(),
+            "Cannot delete the default profile".into(),
         ));
     }
-
-    let profile_dir = get_profile_dir(name);
-    if !profile_dir.exists() {
-        return Err(AppError::Profile(format!(
-            "Profile '{}' not found",
-            name
-        )));
-    }
-
-    std::fs::remove_dir_all(&profile_dir)?;
-    info!("Deleted profile: {}", name);
+    load_profile(name)?;
+    let archive = thunderstore_client::get_app_data_dir().join("deleted-profiles");
+    std::fs::create_dir_all(&archive)?;
+    std::fs::rename(
+        get_profile_dir(name),
+        archive.join(format!(
+            "{}-{}",
+            name,
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or_default()
+        )),
+    )?;
     Ok(())
 }
-
-/// Clone a profile.
 pub fn clone_profile(source_name: &str, new_name: &str) -> AppResult<Profile> {
-    let source_dir = get_profile_dir(source_name);
-    let new_dir = get_profile_dir(new_name);
-
-    if !source_dir.exists() {
-        return Err(AppError::Profile(format!(
-            "Source profile '{}' not found",
-            source_name
-        )));
+    let mut profile = load_profile(source_name)?;
+    validate_name(new_name)?;
+    let target = get_profile_dir(new_name);
+    if target.exists() {
+        return Err(AppError::Profile("Profile already exists".into()));
     }
-
-    if new_dir.exists() {
-        return Err(AppError::Profile(format!(
-            "Profile '{}' already exists",
-            new_name
-        )));
-    }
-
-    // Copy directory
-    copy_dir_recursive(&source_dir, &new_dir)?;
-
-    // Update the profile metadata
-    let mut profile = load_profile(new_name).unwrap_or_else(|_| {
-        Profile::new(new_name.to_string(), format!("Cloned from {}", source_name))
-    });
-    profile.name = new_name.to_string();
+    copy_dir_recursive(&get_profile_dir(source_name), &target)?;
+    profile.name = new_name.into();
     profile.description = format!("Cloned from {}", source_name);
     profile.touch();
     save_profile(&profile)?;
-
-    info!("Cloned profile '{}' to '{}'", source_name, new_name);
     Ok(profile)
 }
-
-/// Switch active profile: copy profile's BepInEx content to the game directory.
-pub fn switch_profile(profile_name: &str, game_root: &Path) -> AppResult<()> {
-    let profile_dir = get_profile_dir(profile_name);
-
-    if !profile_dir.exists() {
-        return Err(AppError::Profile(format!(
-            "Profile '{}' not found",
-            profile_name
-        )));
-    }
-
-    info!("Switching to profile: {}", profile_name);
-
-    let game_bepinex = game_root.join("BepInEx");
-    let profile_bepinex = profile_dir.join("BepInEx");
-
-    // Save current game state to outgoing profile would require knowing
-    // the current profile -- handled by the command layer.
-
-    // Clear current BepInEx plugins, patchers, config
-    let dirs_to_sync = ["plugins", "patchers", "config"];
-    for dir_name in &dirs_to_sync {
-        let game_sub = game_bepinex.join(dir_name);
-        let profile_sub = profile_bepinex.join(dir_name);
-
-        // Remove current game content
-        if game_sub.exists() {
-            std::fs::remove_dir_all(&game_sub)?;
-        }
-
-        // Copy profile content to game
-        if profile_sub.exists() {
-            copy_dir_recursive(&profile_sub, &game_sub)?;
-        } else {
-            std::fs::create_dir_all(&game_sub)?;
-        }
-    }
-
-    // Also copy plugins_disabled if it exists
-    let game_disabled = game_bepinex.join("plugins_disabled");
-    let profile_disabled = profile_bepinex.join("plugins_disabled");
-    if game_disabled.exists() {
-        std::fs::remove_dir_all(&game_disabled)?;
-    }
-    if profile_disabled.exists() {
-        copy_dir_recursive(&profile_disabled, &game_disabled)?;
-    }
-
-    info!("Switched to profile: {}", profile_name);
-    Ok(())
+pub fn set_active_profile(name: &str, root: &Path) -> AppResult<()> {
+    validate_name(name)?;
+    atomic_write(&root.join(ACTIVE_MARKER), name.as_bytes())
 }
-
-/// Save the current game BepInEx state back to a profile.
-/// Also detects untracked mods (manually installed) and adds them to profile metadata.
-pub fn save_game_state_to_profile(profile_name: &str, game_root: &Path) -> AppResult<()> {
-    let profile_dir = get_profile_dir(profile_name);
-    let game_bepinex = game_root.join("BepInEx");
-    let profile_bepinex = profile_dir.join("BepInEx");
-
-    if !game_bepinex.exists() {
+/// Legacy releases had no active marker. Preserve ambiguous live files in a new
+/// recovery profile instead of importing another profile's contents into Default.
+pub fn initialize_game_profile(root: &Path) -> AppResult<String> {
+    if let Ok(name) = std::fs::read_to_string(root.join(ACTIVE_MARKER)) {
+        let name = name.trim();
+        if load_profile(name).is_ok() {
+            import_existing_mods(name, root)?;
+            return Ok(name.into());
+        }
+        return Err(AppError::Profile("The saved active profile is missing or invalid. Restore that profile before continuing; game files were not changed.".into()));
+    }
+    let profiles = list_profiles()?;
+    let has_live_data = SYNC_DIRS.iter().any(|s| {
+        std::fs::read_dir(root.join("BepInEx").join(s)).is_ok_and(|mut e| e.next().is_some())
+    });
+    let name = if has_live_data && profiles.len() > 1 {
+        let name = format!(
+            "Recovered-{}",
+            chrono::Utc::now().format("%Y%m%d-%H%M%S-%f")
+        );
+        create_profile(&name, "Preserved live installation from an older release with no saved active profile. Existing profiles were not overwritten.")?;
+        name
+    } else {
+        "Default".into()
+    };
+    import_existing_mods(&name, root)?;
+    set_active_profile(&name, root)?;
+    Ok(name)
+}
+pub fn switch_profile(name: &str, root: &Path) -> AppResult<()> {
+    load_profile(name)?;
+    replace_bepinex_dirs(
+        &get_profile_dir(name).join("BepInEx"),
+        &root.join("BepInEx"),
+    )
+}
+pub fn save_game_state_to_profile(name: &str, root: &Path) -> AppResult<()> {
+    let mut profile = load_profile(name)?;
+    let source = root.join("BepInEx");
+    if !source.exists() {
         return Ok(());
     }
-
-    // Detect and register untracked mods before copying files
-    let plugins_dir = game_bepinex.join("plugins");
-    if plugins_dir.exists() {
-        if let Ok(mut profile) = load_profile(profile_name) {
-            let tracked: std::collections::HashSet<String> =
-                profile.mods.iter().map(|m| m.full_name.clone()).collect();
-
-            if let Ok(entries) = std::fs::read_dir(&plugins_dir) {
-                let mut added = false;
-                for entry in entries.flatten() {
-                    let name = entry.file_name().to_string_lossy().to_string();
-                    if entry.path().is_dir() && !name.starts_with('.') && !tracked.contains(&name) {
-                        info!("Registering untracked mod in profile '{}': {}", profile_name, name);
-                        let parts: Vec<&str> = name.splitn(2, '-').collect();
-                        let (author, mod_name) = if parts.len() == 2 {
-                            (parts[0].to_string(), parts[1].to_string())
-                        } else {
-                            ("Unknown".to_string(), name.clone())
-                        };
-                        profile.mods.push(InstalledMod {
-                            full_name: name,
-                            author,
-                            name: mod_name,
-                            version: "0.0.0".to_string(),
-                            description: "Manually installed".to_string(),
-                            enabled: true,
-                            dependencies: Vec::new(),
-                            installed_at: chrono::Utc::now().to_rfc3339(),
-                            icon: String::new(),
-                        });
-                        added = true;
-                    }
-                }
-                if added {
-                    profile.touch();
-                    let _ = save_profile(&profile);
-                }
-            }
-        }
-    }
-
-    let dirs_to_sync = ["plugins", "patchers", "config", "plugins_disabled"];
-    for dir_name in &dirs_to_sync {
-        let game_sub = game_bepinex.join(dir_name);
-        let profile_sub = profile_bepinex.join(dir_name);
-
-        if game_sub.exists() {
-            if profile_sub.exists() {
-                std::fs::remove_dir_all(&profile_sub)?;
-            }
-            copy_dir_recursive(&game_sub, &profile_sub)?;
-        }
-    }
-
-    debug!("Saved game state to profile: {}", profile_name);
-    Ok(())
+    register_manual_mods(&mut profile, &source)?;
+    replace_bepinex_dirs(&source, &get_profile_dir(name).join("BepInEx"))?;
+    profile.touch();
+    save_profile(&profile)
 }
-
-/// Import existing mods from the game directory into a profile.
-/// Called on first launch when user already has manually installed mods.
-pub fn import_existing_mods(profile_name: &str, game_root: &Path) -> AppResult<Vec<String>> {
-    let game_plugins = game_root.join("BepInEx/plugins");
-    if !game_plugins.exists() {
-        return Ok(Vec::new());
+pub fn import_existing_mods(name: &str, root: &Path) -> AppResult<Vec<String>> {
+    let mut profile = load_profile(name)?;
+    let added = register_manual_mods(&mut profile, &root.join("BepInEx"))?;
+    if root.join("BepInEx").exists() {
+        replace_bepinex_dirs(
+            &root.join("BepInEx"),
+            &get_profile_dir(name).join("BepInEx"),
+        )?;
     }
-
-    let mut profile = load_profile(profile_name)?;
-    let tracked: std::collections::HashSet<String> =
-        profile.mods.iter().map(|m| m.full_name.clone()).collect();
-
-    let mut imported = Vec::new();
-
-    if let Ok(entries) = std::fs::read_dir(&game_plugins) {
-        for entry in entries.flatten() {
-            let name = entry.file_name().to_string_lossy().to_string();
-            if entry.path().is_dir() && !name.starts_with('.') && !tracked.contains(&name) {
-                let parts: Vec<&str> = name.splitn(2, '-').collect();
-                let (author, mod_name) = if parts.len() == 2 {
-                    (parts[0].to_string(), parts[1].to_string())
-                } else {
-                    ("Unknown".to_string(), name.clone())
-                };
-                profile.mods.push(InstalledMod {
-                    full_name: name.clone(),
-                    author,
-                    name: mod_name,
-                    version: "0.0.0".to_string(),
-                    description: "Manually installed".to_string(),
-                    enabled: true,
-                    dependencies: Vec::new(),
-                    installed_at: chrono::Utc::now().to_rfc3339(),
-                    icon: String::new(),
-                });
-                imported.push(name);
-            }
-        }
-    }
-
-    if !imported.is_empty() {
-        info!("Imported {} existing mods into profile '{}'", imported.len(), profile_name);
-        // Also copy game BepInEx state to the profile directory
-        save_game_state_to_profile(profile_name, game_root)?;
-        profile.touch();
-        save_profile(&profile)?;
-    }
-
-    Ok(imported)
-}
-
-/// Add a mod to a profile's metadata.
-pub fn add_mod_to_profile(profile_name: &str, installed_mod: InstalledMod) -> AppResult<()> {
-    let mut profile = load_profile(profile_name)?;
-
-    // Remove existing entry if upgrading
-    profile
-        .mods
-        .retain(|m| m.full_name != installed_mod.full_name);
-
-    profile.mods.push(installed_mod);
     profile.touch();
     save_profile(&profile)?;
-
-    Ok(())
+    Ok(added)
 }
-
-/// Remove a mod from a profile's metadata.
-pub fn remove_mod_from_profile(profile_name: &str, mod_full_name: &str) -> AppResult<()> {
-    let mut profile = load_profile(profile_name)?;
-    profile.mods.retain(|m| m.full_name != mod_full_name);
-    profile.touch();
-    save_profile(&profile)?;
-    Ok(())
-}
-
-/// Update mod enabled status in profile metadata.
-pub fn update_mod_enabled(
-    profile_name: &str,
-    mod_full_name: &str,
-    enabled: bool,
-) -> AppResult<()> {
-    let mut profile = load_profile(profile_name)?;
-
-    if let Some(mod_entry) = profile.mods.iter_mut().find(|m| m.full_name == mod_full_name) {
-        mod_entry.enabled = enabled;
-        profile.touch();
-        save_profile(&profile)?;
+fn register_manual_mods(profile: &mut Profile, bepinex: &Path) -> AppResult<Vec<String>> {
+    let mut tracked: HashSet<_> = profile.mods.iter().map(|m| m.full_name.clone()).collect();
+    profile.mods.retain(|m| m.full_name != MANAGED_DIR);
+    let mut added = Vec::new();
+    for (dir, enabled) in [("plugins", true), ("plugins_disabled", false)] {
+        let path = bepinex.join(dir);
+        if !path.exists() {
+            continue;
+        }
+        for entry in std::fs::read_dir(path)? {
+            let entry = entry?;
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let ty = entry.file_type()?;
+            if name.starts_with('.') || name == MANAGED_DIR || tracked.contains(&name) {
+                continue;
+            }
+            if !(ty.is_dir()
+                || (ty.is_file()
+                    && entry
+                        .path()
+                        .extension()
+                        .is_some_and(|e| e.eq_ignore_ascii_case("dll"))))
+            {
+                continue;
+            }
+            validate_name(&name)?;
+            let (author, mod_name) = name.split_once('-').unwrap_or(("Unknown", &name));
+            profile.mods.push(InstalledMod {
+                full_name: name.clone(),
+                author: author.into(),
+                name: mod_name.into(),
+                version: "0.0.0".into(),
+                description: "Manually installed (version unverified)".into(),
+                enabled,
+                dependencies: vec![],
+                installed_at: chrono::Utc::now().to_rfc3339(),
+                icon: String::new(),
+            });
+            tracked.insert(name.clone());
+            added.push(name);
+        }
     }
-
-    Ok(())
+    Ok(added)
 }
-
-/// Export a profile to a JSON file (metadata only, mods can be re-downloaded).
-pub fn export_profile(profile_name: &str) -> AppResult<String> {
-    let profile = load_profile(profile_name)?;
-    let json = serde_json::to_string_pretty(&profile)?;
-    Ok(json)
+pub fn add_mod_to_profile(name: &str, installed: InstalledMod) -> AppResult<()> {
+    let mut p = load_profile(name)?;
+    p.mods.retain(|m| m.full_name != installed.full_name);
+    p.mods.push(installed);
+    p.touch();
+    save_profile(&p)
 }
-
-/// Import a profile from JSON.
+pub fn remove_mod_from_profile(name: &str, full_name: &str) -> AppResult<()> {
+    let mut p = load_profile(name)?;
+    p.mods.retain(|m| m.full_name != full_name);
+    p.touch();
+    save_profile(&p)
+}
+pub fn update_mod_enabled(name: &str, full_name: &str, enabled: bool) -> AppResult<()> {
+    let mut p = load_profile(name)?;
+    if let Some(m) = p.mods.iter_mut().find(|m| m.full_name == full_name) {
+        m.enabled = enabled;
+    }
+    p.touch();
+    save_profile(&p)
+}
+pub fn export_profile(name: &str) -> AppResult<String> {
+    Ok(serde_json::to_string_pretty(&load_profile(name)?)?)
+}
 pub fn import_profile(json: &str, new_name: Option<&str>) -> AppResult<Profile> {
-    let mut profile: Profile = serde_json::from_str(json)?;
-
+    let mut p: Profile = serde_json::from_str(json)?;
     if let Some(name) = new_name {
-        profile.name = name.to_string();
+        p.name = name.into();
     }
-
-    let profile_dir = get_profile_dir(&profile.name);
-    if profile_dir.exists() {
-        return Err(AppError::Profile(format!(
-            "Profile '{}' already exists",
-            profile.name
-        )));
+    validate_name(&p.name)?;
+    for m in &p.mods {
+        validate_name(&m.full_name)?;
     }
-
-    // Create directory structure
-    std::fs::create_dir_all(&profile_dir)?;
-    std::fs::create_dir_all(profile_dir.join("BepInEx/plugins"))?;
-    std::fs::create_dir_all(profile_dir.join("BepInEx/config"))?;
-    std::fs::create_dir_all(profile_dir.join("BepInEx/patchers"))?;
-
-    profile.touch();
-    save_profile(&profile)?;
-
-    info!("Imported profile: {}", profile.name);
-    Ok(profile)
+    create_profile(&p.name, &p.description)?;
+    p.touch();
+    save_profile(&p)?;
+    Ok(p)
 }
-
-// --- Helpers ---
-
-fn copy_dir_recursive(src: &Path, dst: &Path) -> AppResult<()> {
-    std::fs::create_dir_all(dst)?;
-
-    for entry in std::fs::read_dir(src)? {
-        let entry = entry?;
-        let src_path = entry.path();
-        let dst_path = dst.join(entry.file_name());
-
-        if src_path.is_dir() {
-            copy_dir_recursive(&src_path, &dst_path)?;
+/// Stage every directory before replacing any data. Restore outgoing directories
+/// on rename failure; retain recovery files if rollback itself cannot complete.
+fn replace_bepinex_dirs(source: &Path, target: &Path) -> AppResult<()> {
+    reject_symlink_ancestors(source)?;
+    reject_symlink_ancestors(target)?;
+    std::fs::create_dir_all(target)?;
+    let stage = tempfile::Builder::new()
+        .prefix(".macheim-stage-")
+        .tempdir_in(target)?;
+    for sub in SYNC_DIRS {
+        reject_symlink_ancestors(&target.join(sub))?;
+        let incoming = stage.path().join(format!("new-{}", sub));
+        if source.join(sub).exists() {
+            copy_dir_recursive(&source.join(sub), &incoming)?;
         } else {
-            std::fs::copy(&src_path, &dst_path)?;
+            std::fs::create_dir(&incoming)?;
         }
     }
-
+    let mut moved = Vec::new();
+    let result: AppResult<()> = (|| {
+        for sub in SYNC_DIRS {
+            let dest = target.join(sub);
+            let old = stage.path().join(format!("old-{}", sub));
+            if dest.exists() {
+                std::fs::rename(&dest, &old)?;
+            }
+            moved.push(sub);
+            std::fs::rename(stage.path().join(format!("new-{}", sub)), &dest)?;
+        }
+        Ok(())
+    })();
+    if let Err(error) = result {
+        let mut rollback_failed = false;
+        for sub in moved.into_iter().rev() {
+            let dest = target.join(sub);
+            if dest.exists()
+                && std::fs::rename(&dest, stage.path().join(format!("failed-{}", sub))).is_err()
+            {
+                rollback_failed = true;
+                continue;
+            }
+            let old = stage.path().join(format!("old-{}", sub));
+            if old.exists() && std::fs::rename(old, dest).is_err() {
+                rollback_failed = true;
+            }
+        }
+        if rollback_failed {
+            let recovery = stage.keep();
+            return Err(AppError::Profile(format!(
+                "{}; recovery files retained at {}",
+                error,
+                recovery.display()
+            )));
+        }
+        return Err(error);
+    }
     Ok(())
+}
+fn copy_dir_recursive(source: &Path, target: &Path) -> AppResult<()> {
+    reject_symlink_ancestors(source)?;
+    reject_symlink_ancestors(target)?;
+    std::fs::create_dir_all(target)?;
+    for entry in std::fs::read_dir(source)? {
+        let entry = entry?;
+        let src = entry.path();
+        if entry.file_type()?.is_symlink() {
+            return Err(AppError::Profile(format!(
+                "Back up or resolve this symlink before switching profiles: {}",
+                src.display()
+            )));
+        }
+        let dst = target.join(entry.file_name());
+        if entry.file_type()?.is_dir() {
+            copy_dir_recursive(&src, &dst)?;
+        } else {
+            std::fs::copy(src, dst)?;
+        }
+    }
+    Ok(())
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn rejects_paths_and_empty_profile_names() {
+        for name in [
+            "",
+            "..",
+            "../Default",
+            "/tmp/data",
+            "a/b",
+            "a\\b",
+            ".hidden",
+            " Default ",
+        ] {
+            assert!(validate_name(name).is_err());
+        }
+        assert!(validate_name("RelicHeim-Mac-Test").is_ok());
+    }
+    #[test]
+    fn round_trip_preserves_loose_disabled_and_config_files() {
+        let game = tempfile::tempdir().unwrap();
+        let saved = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(game.path().join("plugins/Manual")).unwrap();
+        std::fs::write(game.path().join("plugins/Manual/mod.dll"), b"manual").unwrap();
+        std::fs::write(game.path().join("plugins/Loose.dll"), b"loose").unwrap();
+        std::fs::create_dir_all(game.path().join("plugins_disabled/Disabled")).unwrap();
+        std::fs::write(
+            game.path().join("plugins_disabled/Disabled/mod.dll"),
+            b"disabled",
+        )
+        .unwrap();
+        std::fs::create_dir_all(game.path().join("config")).unwrap();
+        std::fs::write(game.path().join("config/custom.cfg"), b"custom").unwrap();
+        let mut p = Profile::new("Test".into(), "".into());
+        assert_eq!(register_manual_mods(&mut p, game.path()).unwrap().len(), 3);
+        assert!(
+            !p.mods
+                .iter()
+                .find(|m| m.full_name == "Disabled")
+                .unwrap()
+                .enabled
+        );
+        replace_bepinex_dirs(game.path(), saved.path()).unwrap();
+        let restored = tempfile::tempdir().unwrap();
+        replace_bepinex_dirs(saved.path(), restored.path()).unwrap();
+        assert_eq!(
+            std::fs::read(restored.path().join("plugins/Loose.dll")).unwrap(),
+            b"loose"
+        );
+        assert_eq!(
+            std::fs::read(restored.path().join("config/custom.cfg")).unwrap(),
+            b"custom"
+        );
+    }
+    #[test]
+    fn missing_disabled_folder_does_not_resurrect_mods() {
+        let game = tempfile::tempdir().unwrap();
+        let saved = tempfile::tempdir().unwrap();
+        std::fs::create_dir(saved.path().join("plugins_disabled")).unwrap();
+        std::fs::write(saved.path().join("plugins_disabled/Old.dll"), b"old").unwrap();
+        replace_bepinex_dirs(game.path(), saved.path()).unwrap();
+        assert!(!saved.path().join("plugins_disabled/Old.dll").exists());
+    }
+    #[cfg(unix)]
+    #[test]
+    fn failed_staging_leaves_live_data_intact() {
+        let source = tempfile::tempdir().unwrap();
+        let live = tempfile::tempdir().unwrap();
+        std::fs::create_dir(source.path().join("plugins")).unwrap();
+        std::os::unix::fs::symlink("/missing", source.path().join("plugins/Unsafe")).unwrap();
+        std::fs::create_dir(live.path().join("plugins")).unwrap();
+        std::fs::write(live.path().join("plugins/Original.dll"), b"preserve").unwrap();
+        assert!(replace_bepinex_dirs(source.path(), live.path()).is_err());
+        assert_eq!(
+            std::fs::read(live.path().join("plugins/Original.dll")).unwrap(),
+            b"preserve"
+        );
+    }
 }

@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 pub mod commands;
 pub mod error;
@@ -27,6 +27,7 @@ fn migrate_app_data_dir() {
 
 /// Global application state shared across Tauri commands.
 pub struct AppState {
+    pub operation_lock: Arc<tokio::sync::Mutex<()>>,
     /// Path to the Valheim app bundle (e.g., .../Valheim/valheim.app)
     pub game_path: Option<PathBuf>,
     /// Whether BepInEx is currently installed
@@ -42,6 +43,7 @@ pub struct AppState {
 impl Default for AppState {
     fn default() -> Self {
         Self {
+            operation_lock: Arc::new(tokio::sync::Mutex::new(())),
             game_path: None,
             bepinex_installed: false,
             active_profile: "Default".to_string(),
@@ -49,6 +51,22 @@ impl Default for AppState {
             cache_updated_at: None,
         }
     }
+}
+
+/// Serialize filesystem mutations across async commands; never hold the state lock over I/O awaits.
+pub fn lock_operation(
+    state: &Mutex<AppState>,
+) -> error::AppResult<tokio::sync::OwnedMutexGuard<()>> {
+    let lock = state
+        .lock()
+        .map_err(|e| error::AppError::Mod(e.to_string()))?
+        .operation_lock
+        .clone();
+    lock.try_lock_owned().map_err(|_| {
+        error::AppError::Mod(
+            "Another operation is in progress. Please wait for it to finish.".into(),
+        )
+    })
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -117,6 +135,8 @@ pub fn run() {
             // Launch
             commands::launch::launch_modded,
             commands::launch::launch_vanilla,
+            commands::compatibility::get_compatibility,
+            commands::compatibility::apply_compatibility,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

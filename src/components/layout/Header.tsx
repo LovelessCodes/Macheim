@@ -6,6 +6,7 @@ const pageTitles: Record<string, string> = {
   installed: "Installed Mods",
   modpacks: "Modpacks",
   config: "Config Editor",
+  compatibility: "Mac Compatibility",
   profiles: "Profiles",
   settings: "Settings",
   setup: "Setup",

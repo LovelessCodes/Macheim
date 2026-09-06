@@ -13,22 +13,31 @@ pub async fn create_backup(
     profile_name: Option<String>,
     state: tauri::State<'_, Mutex<AppState>>,
 ) -> AppResult<BackupInfo> {
+    let _operation = crate::lock_operation(&state)?;
+    crate::services::launcher::ensure_game_stopped()?;
     let name = {
-        let state = state.lock().map_err(|e| {
-            AppError::Profile(format!("Failed to lock state: {}", e))
-        })?;
+        let state = state
+            .lock()
+            .map_err(|e| AppError::Profile(format!("Failed to lock state: {}", e)))?;
         profile_name.unwrap_or_else(|| state.active_profile.clone())
     };
 
     info!("Command: create_backup({})", name);
+    let s = state.lock().map_err(|e| AppError::Profile(e.to_string()))?;
+    if s.active_profile == name {
+        if let Some(game) = &s.game_path {
+            crate::services::profile_manager::save_game_state_to_profile(
+                &name,
+                &crate::services::game_detector::get_valheim_root(game),
+            )?;
+        }
+    }
     backup_manager::create_backup(&name)
 }
 
 /// List all available backups.
 #[tauri::command]
-pub async fn list_backups(
-    _state: tauri::State<'_, Mutex<AppState>>,
-) -> AppResult<Vec<BackupInfo>> {
+pub async fn list_backups(_state: tauri::State<'_, Mutex<AppState>>) -> AppResult<Vec<BackupInfo>> {
     backup_manager::list_backups()
 }
 

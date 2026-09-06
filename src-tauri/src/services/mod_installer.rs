@@ -50,6 +50,8 @@ pub fn install_mod_from_bytes(
     game_root: &Path,
 ) -> AppResult<InstalledMod> {
     let full_name = format!("{}-{}", author, name);
+    crate::services::profile_manager::validate_name(&full_name)?;
+    crate::services::compatibility::reject_symlink_ancestors(&game_root.join("BepInEx"))?;
 
     // Extract ZIP to temp directory for analysis
     let temp_dir = tempfile::tempdir()?;
@@ -77,7 +79,10 @@ pub fn install_mod_from_bytes(
         icon: icon.to_string(),
     };
 
-    info!("Mod installed: {} v{}", installed.full_name, installed.version);
+    info!(
+        "Mod installed: {} v{}",
+        installed.full_name, installed.version
+    );
     Ok(installed)
 }
 
@@ -108,29 +113,31 @@ fn install_mod_files(extracted_dir: &Path, mod_name: &str, bepinex_dir: &Path) -
 
         if has_config {
             std::fs::create_dir_all(&config_dir)?;
-            copy_dir_contents(&extracted_dir.join("config"), &config_dir)?;
+            copy_config_defaults(&extracted_dir.join("config"), &config_dir)?;
             debug!("Copied config/ to {}", config_dir.display());
         }
-    } else {
-        // No standard structure -- check for DLLs at root level
-        let has_root_dlls = has_dll_files(extracted_dir);
-
-        if has_root_dlls {
-            // Treat root DLLs as plugins
-            std::fs::create_dir_all(&plugins_dir)?;
-            copy_files_by_extension(extracted_dir, &plugins_dir, &["dll", "dylib", "so"])?;
-            debug!("Copied root DLLs to {}", plugins_dir.display());
-        }
-
-        // Also copy any remaining asset files
-        copy_non_metadata_files(extracted_dir, &plugins_dir)?;
     }
+
+    // Some packages (including Therzie's mods) combine config/ with root DLLs.
+    // Route those files independently of the standard directories above.
+    let has_root_dlls = has_dll_files(extracted_dir);
+
+    if has_root_dlls {
+        // Treat root DLLs as plugins
+        std::fs::create_dir_all(&plugins_dir)?;
+        copy_files_by_extension(extracted_dir, &plugins_dir, &["dll", "dylib", "so"])?;
+        debug!("Copied root DLLs to {}", plugins_dir.display());
+    }
+
+    // Standard directories are excluded by this helper; keep root assets too.
+    copy_non_metadata_files(extracted_dir, &plugins_dir)?;
 
     Ok(())
 }
 
 /// Uninstall a mod by removing its files.
 pub fn uninstall_mod(mod_full_name: &str, game_root: &Path) -> AppResult<()> {
+    crate::services::profile_manager::validate_name(mod_full_name)?;
     info!("Uninstalling mod: {}", mod_full_name);
 
     let bepinex_dir = game_root.join("BepInEx");
@@ -138,14 +145,24 @@ pub fn uninstall_mod(mod_full_name: &str, game_root: &Path) -> AppResult<()> {
     // Remove from plugins
     let plugins_dir = bepinex_dir.join("plugins").join(mod_full_name);
     if plugins_dir.exists() {
-        std::fs::remove_dir_all(&plugins_dir)?;
+        crate::services::compatibility::reject_symlink_ancestors(&plugins_dir)?;
+        if plugins_dir.is_file() {
+            std::fs::remove_file(&plugins_dir)?;
+        } else {
+            std::fs::remove_dir_all(&plugins_dir)?;
+        }
         debug!("Removed plugins: {}", plugins_dir.display());
     }
 
     // Also check plugins_disabled
     let disabled_dir = bepinex_dir.join("plugins_disabled").join(mod_full_name);
     if disabled_dir.exists() {
-        std::fs::remove_dir_all(&disabled_dir)?;
+        crate::services::compatibility::reject_symlink_ancestors(&disabled_dir)?;
+        if disabled_dir.is_file() {
+            std::fs::remove_file(&disabled_dir)?;
+        } else {
+            std::fs::remove_dir_all(&disabled_dir)?;
+        }
         debug!("Removed disabled plugins: {}", disabled_dir.display());
     }
 
@@ -155,6 +172,7 @@ pub fn uninstall_mod(mod_full_name: &str, game_root: &Path) -> AppResult<()> {
 
 /// Enable or disable a mod by moving it between plugins/ and plugins_disabled/.
 pub fn toggle_mod(mod_full_name: &str, enable: bool, game_root: &Path) -> AppResult<bool> {
+    crate::services::profile_manager::validate_name(mod_full_name)?;
     let bepinex_dir = game_root.join("BepInEx");
     let plugins_dir = bepinex_dir.join("plugins").join(mod_full_name);
     let disabled_dir = bepinex_dir.join("plugins_disabled").join(mod_full_name);
@@ -240,6 +258,7 @@ fn extract_zip(zip_bytes: &[u8], target: &Path) -> AppResult<()> {
 }
 
 fn copy_dir_contents(src: &Path, dst: &Path) -> AppResult<()> {
+    crate::services::compatibility::reject_symlink_ancestors(dst)?;
     if !src.is_dir() {
         return Ok(());
     }
@@ -250,6 +269,7 @@ fn copy_dir_contents(src: &Path, dst: &Path) -> AppResult<()> {
         let entry = entry?;
         let src_path = entry.path();
         let dst_path = dst.join(entry.file_name());
+        crate::services::compatibility::reject_symlink_ancestors(&dst_path)?;
 
         if src_path.is_dir() {
             copy_dir_contents(&src_path, &dst_path)?;
@@ -262,14 +282,43 @@ fn copy_dir_contents(src: &Path, dst: &Path) -> AppResult<()> {
 }
 
 fn move_dir(src: &Path, dst: &Path) -> AppResult<()> {
+    crate::services::compatibility::reject_symlink_ancestors(src)?;
+    crate::services::compatibility::reject_symlink_ancestors(dst)?;
+    if dst.exists() {
+        return Err(AppError::Mod(
+            "Both enabled and disabled copies exist. Back them up and resolve the conflict first."
+                .into(),
+        ));
+    }
     // Try rename first (fast, same filesystem)
     if std::fs::rename(src, dst).is_ok() {
         return Ok(());
     }
 
     // Fallback: copy then remove
-    copy_dir_contents(src, dst)?;
-    std::fs::remove_dir_all(src)?;
+    if src.is_file() {
+        std::fs::copy(src, dst)?;
+        std::fs::remove_file(src)?;
+    } else {
+        copy_dir_contents(src, dst)?;
+        std::fs::remove_dir_all(src)?;
+    }
+    Ok(())
+}
+
+fn copy_config_defaults(src: &Path, dst: &Path) -> AppResult<()> {
+    crate::services::compatibility::reject_symlink_ancestors(dst)?;
+    std::fs::create_dir_all(dst)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let dest = dst.join(entry.file_name());
+        crate::services::compatibility::reject_symlink_ancestors(&dest)?;
+        if entry.path().is_dir() {
+            copy_config_defaults(&entry.path(), &dest)?;
+        } else if !dest.exists() {
+            std::fs::copy(entry.path(), dest)?;
+        }
+    }
     Ok(())
 }
 
@@ -296,6 +345,7 @@ fn copy_files_by_extension(src: &Path, dst: &Path, extensions: &[&str]) -> AppRe
             if let Some(ext) = path.extension() {
                 if extensions.iter().any(|e| ext == *e) {
                     let dst_file = dst.join(entry.file_name());
+                    crate::services::compatibility::reject_symlink_ancestors(&dst_file)?;
                     std::fs::copy(&path, &dst_file)?;
                 }
             }
@@ -306,7 +356,13 @@ fn copy_files_by_extension(src: &Path, dst: &Path, extensions: &[&str]) -> AppRe
 }
 
 fn copy_non_metadata_files(src: &Path, dst: &Path) -> AppResult<()> {
-    let skip_files = ["manifest.json", "icon.png", "README.md", "CHANGELOG.md", "LICENSE"];
+    let skip_files = [
+        "manifest.json",
+        "icon.png",
+        "README.md",
+        "CHANGELOG.md",
+        "LICENSE",
+    ];
 
     std::fs::create_dir_all(dst)?;
 
@@ -331,4 +387,100 @@ fn copy_non_metadata_files(src: &Path, dst: &Path) -> AppResult<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reinstall_preserves_existing_config_values() {
+        let source = tempfile::tempdir().unwrap();
+        let game = tempfile::tempdir().unwrap();
+        std::fs::create_dir(source.path().join("config")).unwrap();
+        std::fs::write(source.path().join("config/custom.cfg"), b"new defaults").unwrap();
+        std::fs::create_dir(game.path().join("config")).unwrap();
+        std::fs::write(game.path().join("config/custom.cfg"), b"user edits").unwrap();
+        install_mod_files(source.path(), "Test-Mod", game.path()).unwrap();
+        assert_eq!(
+            std::fs::read(game.path().join("config/custom.cfg")).unwrap(),
+            b"user edits"
+        );
+    }
+
+    #[test]
+    fn toggles_loose_manual_dll_without_overwriting_conflicts() {
+        let game = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(game.path().join("BepInEx/plugins")).unwrap();
+        std::fs::write(game.path().join("BepInEx/plugins/Loose.dll"), b"manual").unwrap();
+        assert!(!toggle_mod("Loose.dll", false, game.path()).unwrap());
+        assert!(toggle_mod("Loose.dll", true, game.path()).unwrap());
+        std::fs::write(
+            game.path().join("BepInEx/plugins_disabled/Loose.dll"),
+            b"conflict",
+        )
+        .unwrap();
+        assert!(toggle_mod("Loose.dll", false, game.path()).is_err());
+        assert_eq!(
+            std::fs::read(game.path().join("BepInEx/plugins/Loose.dll")).unwrap(),
+            b"manual"
+        );
+    }
+
+    #[test]
+    fn installs_root_plugin_and_assets_alongside_config() {
+        let source = tempfile::tempdir().unwrap();
+        let destination = tempfile::tempdir().unwrap();
+        let source = source.path();
+        std::fs::create_dir(source.join("config")).unwrap();
+        std::fs::write(source.join("config/translation.yml"), "name: test").unwrap();
+        std::fs::write(source.join("Wizardry.dll"), b"plugin").unwrap();
+        std::fs::write(source.join("wizardry.bundle"), b"assets").unwrap();
+        std::fs::write(source.join("manifest.json"), "{}").unwrap();
+
+        install_mod_files(source, "Therzie-Wizardry", destination.path()).unwrap();
+
+        let plugin = destination.path().join("plugins/Therzie-Wizardry");
+        assert_eq!(
+            std::fs::read(plugin.join("Wizardry.dll")).unwrap(),
+            b"plugin"
+        );
+        assert_eq!(
+            std::fs::read(plugin.join("wizardry.bundle")).unwrap(),
+            b"assets"
+        );
+        assert!(destination.path().join("config/translation.yml").is_file());
+        assert!(!plugin.join("config").exists());
+        assert!(!plugin.join("manifest.json").exists());
+    }
+
+    #[test]
+    fn keeps_standard_plugin_and_patcher_routes() {
+        let source = tempfile::tempdir().unwrap();
+        let destination = tempfile::tempdir().unwrap();
+        for dir in ["plugins", "patchers", "config"] {
+            std::fs::create_dir(source.path().join(dir)).unwrap();
+        }
+        std::fs::write(source.path().join("plugins/Main.dll"), b"main").unwrap();
+        std::fs::write(source.path().join("patchers/Patcher.dll"), b"patcher").unwrap();
+        std::fs::write(source.path().join("config/test.cfg"), b"config").unwrap();
+        std::fs::write(source.path().join("Helper.dll"), b"helper").unwrap();
+
+        install_mod_files(source.path(), "Test-Mod", destination.path()).unwrap();
+
+        assert!(destination
+            .path()
+            .join("plugins/Test-Mod/Main.dll")
+            .is_file());
+        assert!(destination
+            .path()
+            .join("plugins/Test-Mod/Helper.dll")
+            .is_file());
+        assert!(destination.path().join("patchers/Patcher.dll").is_file());
+        assert!(destination.path().join("config/test.cfg").is_file());
+        assert!(!destination
+            .path()
+            .join("plugins/Test-Mod/patchers")
+            .exists());
+    }
 }

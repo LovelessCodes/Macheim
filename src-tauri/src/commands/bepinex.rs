@@ -12,11 +12,13 @@ use crate::AppState;
 #[tauri::command]
 pub async fn install_bepinex(state: tauri::State<'_, Mutex<AppState>>) -> AppResult<BepInExStatus> {
     info!("Command: install_bepinex");
+    let _operation = crate::lock_operation(&state)?;
+    crate::services::launcher::ensure_game_stopped()?;
 
     let game_path = {
-        let s = state.lock().map_err(|e| {
-            AppError::BepInEx(format!("Failed to lock state: {}", e))
-        })?;
+        let s = state
+            .lock()
+            .map_err(|e| AppError::BepInEx(format!("Failed to lock state: {}", e)))?;
         s.game_path
             .clone()
             .ok_or_else(|| AppError::BepInEx("Game path not set. Detect game first.".to_string()))?
@@ -24,9 +26,9 @@ pub async fn install_bepinex(state: tauri::State<'_, Mutex<AppState>>) -> AppRes
 
     // Auto-fetch packages if cache is not loaded
     let packages = {
-        let s = state.lock().map_err(|e| {
-            AppError::BepInEx(format!("Failed to lock state: {}", e))
-        })?;
+        let s = state
+            .lock()
+            .map_err(|e| AppError::BepInEx(format!("Failed to lock state: {}", e)))?;
         s.thunderstore_cache.clone()
     };
 
@@ -36,9 +38,9 @@ pub async fn install_bepinex(state: tauri::State<'_, Mutex<AppState>>) -> AppRes
             info!("Thunderstore cache not loaded, fetching packages first...");
             let pkgs = thunderstore_client::fetch_packages(false).await?;
             // Update cache in state
-            let mut s = state.lock().map_err(|e| {
-                AppError::BepInEx(format!("Failed to lock state: {}", e))
-            })?;
+            let mut s = state
+                .lock()
+                .map_err(|e| AppError::BepInEx(format!("Failed to lock state: {}", e)))?;
             s.thunderstore_cache = Some(pkgs.clone());
             s.cache_updated_at = Some(chrono::Utc::now());
             pkgs
@@ -52,9 +54,9 @@ pub async fn install_bepinex(state: tauri::State<'_, Mutex<AppState>>) -> AppRes
     let status = bepinex_installer::check_bepinex_status(&game_root);
 
     // Update state
-    let mut s = state.lock().map_err(|e| {
-        AppError::BepInEx(format!("Failed to lock state: {}", e))
-    })?;
+    let mut s = state
+        .lock()
+        .map_err(|e| AppError::BepInEx(format!("Failed to lock state: {}", e)))?;
     s.bepinex_installed = status.installed;
 
     Ok(status)
@@ -65,9 +67,9 @@ pub async fn install_bepinex(state: tauri::State<'_, Mutex<AppState>>) -> AppRes
 pub async fn get_bepinex_status(
     state: tauri::State<'_, Mutex<AppState>>,
 ) -> AppResult<BepInExStatus> {
-    let state = state.lock().map_err(|e| {
-        AppError::BepInEx(format!("Failed to lock state: {}", e))
-    })?;
+    let state = state
+        .lock()
+        .map_err(|e| AppError::BepInEx(format!("Failed to lock state: {}", e)))?;
 
     let game_path = state
         .game_path
@@ -84,11 +86,13 @@ pub async fn uninstall_bepinex(
     state: tauri::State<'_, Mutex<AppState>>,
 ) -> AppResult<BepInExStatus> {
     info!("Command: uninstall_bepinex");
+    let _operation = crate::lock_operation(&state)?;
+    crate::services::launcher::ensure_game_stopped()?;
 
     let game_path = {
-        let state = state.lock().map_err(|e| {
-            AppError::BepInEx(format!("Failed to lock state: {}", e))
-        })?;
+        let state = state
+            .lock()
+            .map_err(|e| AppError::BepInEx(format!("Failed to lock state: {}", e)))?;
         state
             .game_path
             .clone()
@@ -100,9 +104,9 @@ pub async fn uninstall_bepinex(
 
     let status = bepinex_installer::check_bepinex_status(&game_root);
 
-    let mut state = state.lock().map_err(|e| {
-        AppError::BepInEx(format!("Failed to lock state: {}", e))
-    })?;
+    let mut state = state
+        .lock()
+        .map_err(|e| AppError::BepInEx(format!("Failed to lock state: {}", e)))?;
     state.bepinex_installed = status.installed;
 
     Ok(status)

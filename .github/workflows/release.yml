@@ -27,7 +27,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version: '24'
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -40,7 +40,23 @@ jobs:
           workspaces: './src-tauri -> target'
 
       - name: Install frontend dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Verify release metadata and bundled plugin
+        run: npm run verify:release
+
+      - name: Regression tests
+        run: |
+          npm test
+          cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
+
+      - name: Setup .NET for pure shader policy tests
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Shader policy and pixel tests (no game assets required)
+        run: dotnet run --project tools/item-material-compat/tests/PolicyTests.csproj -c Release
 
       - name: Build and release
         uses: tauri-apps/tauri-action@v1
@@ -53,6 +69,18 @@ jobs:
             ## Macheim ${{ github.ref_name }}
 
             Valheim Mod Manager for macOS.
+
+            ### What's new in 1.1.0
+            - Mac Compatibility: version-pinned rules for four tested VES/Wizardry item effects, with profile-level and per-rule opt-out.
+            - Config editor and installed-mod search blank-screen fixes.
+            - Native Sync & Clean confirmation and recoverable cleanup; disabled mods stay disabled.
+            - Safer profile preservation and persistent active profile; console enabled when launching modded.
+
+            ### Compatibility limits
+            The bundled visual patch targets Valheim 0.221.12 / Unity 6000.0.61f1 / Metal and requires ShaderHelperForMac 3.3.0.
+            It does not fix every mod, monster, building or UI icon. Unknown versions are skipped.
+            Macheim's Apple Silicon app still launches the modded game through Rosetta.
+            See the repository's RELEASE-1.1.0.md for the issue/PR audit and known limitations.
 
             ### Installation
             1. Download the `.dmg` file for your Mac
@@ -70,7 +98,7 @@ jobs:
             downloaded the app from this repository's Releases page.
 
             **Apple Silicon (M1/M2/M3/M4):** Download `aarch64.dmg`
-            **Intel Mac:** Download `x86_64.dmg`
+            **Intel Mac:** Download the DMG ending in `_x64.dmg`
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}

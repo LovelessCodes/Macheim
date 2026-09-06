@@ -1,8 +1,9 @@
-pub mod game;
+pub mod backup;
 pub mod bepinex;
-pub mod thunderstore;
+pub mod compatibility;
+pub mod config;
+pub mod game;
+pub mod launch;
 pub mod mods;
 pub mod profiles;
-pub mod config;
-pub mod backup;
-pub mod launch;
+pub mod thunderstore;

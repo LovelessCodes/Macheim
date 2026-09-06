@@ -1,0 +1,29 @@
+{
+  "revision": 1,
+  "plugin_version": "0.2.0",
+  "game_version": "0.221.12",
+  "unity_version": "6000.0.61f1",
+  "requirements": [
+    { "package": "DrummerCraig-ShaderHelperForMac", "version": "3.3.0" }
+  ],
+  "rules": [
+    {
+      "id": "ves-scroll-particles",
+      "package": "sighsorry-Valheim_Enchantment_System",
+      "version": "1.9.12",
+      "title": "VES scroll paper, sparks and aura",
+      "prefabs": ["kg_EnchantScroll_Weapon_F", "kg_EnchantScroll_Weapon_Blessed_F"],
+      "reason": "Replace known incompatible mesh/particle shaders and bridge additive texture alpha on these two tested weapon scrolls.",
+      "validation": "Limited visual smoke test in RelicHeim 6.0.0 on macOS Metal. Other scroll grades and Windows visual parity are not verified."
+    },
+    {
+      "id": "wizardry-drop-particles",
+      "package": "Therzie-Wizardry",
+      "version": "1.1.8",
+      "title": "Wizardry scroll and shard drop effects",
+      "prefabs": ["ArcaneScroll_BlackForest_TW", "ShardBonemass_TW"],
+      "reason": "Repair the shared drop particles on the tested Black Forest scroll and Bonemass shard without changing their item stats or original assets.",
+      "validation": "Limited visual smoke test in RelicHeim 6.0.0 on macOS Metal. Buildings, creatures, equipment and UI icons are outside this patch."
+    }
+  ]
+}

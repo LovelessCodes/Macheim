@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { ChevronDown, User, Check } from "lucide-react";
 import { useProfileStore } from "../../store/profileStore";
 import { useAppStore } from "../../store/appStore";
-import { listProfiles, switchProfile } from "../../lib/tauri";
+import { getActiveProfile, listProfiles, switchProfile } from "../../lib/tauri";
 
 export default function ProfileSelector() {
   const profiles = useProfileStore((s) => s.profiles);
@@ -20,20 +20,23 @@ export default function ProfileSelector() {
       try {
         const data = await listProfiles();
         setProfiles(data);
+        setActiveProfile(await getActiveProfile());
       } catch {
         // Backend may not be ready; use defaults
         setProfiles([
           {
             name: "Default",
-            mod_count: 0,
+            mods: [],
+            description: "",
+            compatibility: { automatic: true, disabled_rules: [] },
             created_at: new Date().toISOString(),
-            last_used: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           },
         ]);
       }
     }
     load();
-  }, [setProfiles]);
+  }, [setProfiles, setActiveProfile]);
 
   // Close on outside click
   useEffect(() => {
@@ -110,7 +113,7 @@ export default function ProfileSelector() {
                   <Check size={14} className="shrink-0" />
                 )}
                 <span className="text-xs text-[var(--color-text-muted)] shrink-0">
-                  {profile.mod_count} mods
+                  {profile.mods.length} mods
                 </span>
               </button>
             ))

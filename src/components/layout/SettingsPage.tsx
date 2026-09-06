@@ -110,7 +110,7 @@ export default function SettingsPage() {
         </h3>
         <div className="space-y-2 text-sm text-[var(--color-text-secondary)]">
           <p>
-            Profiles and mods are stored alongside your Valheim installation.
+            Active mod files are in the game's BepInEx folder. Saved profiles are in ~/Library/Application Support/com.macheim/profiles.
           </p>
           <p className="font-mono text-xs text-[var(--color-text-muted)] bg-[var(--color-bg-input)] px-3 py-2 rounded-md">
             {gameStatus?.game_path
@@ -120,6 +120,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      <p className="text-sm text-[var(--color-text-secondary)]">Backups contain profile metadata and configuration—not mod binaries or worlds. Restoring creates a separate profile. Thunderstore mods must be downloaded again; keep a separate copy of manual mods.</p>
       {/* Backups */}
       <section className="rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-card)] p-5">
         <div className="flex items-center justify-between mb-4">
@@ -164,7 +165,7 @@ export default function SettingsPage() {
                     {b.profile_name}
                   </p>
                   <p className="text-xs text-[var(--color-text-muted)]">
-                    {b.mod_count} mods &middot;{" "}
+                    {(b.size / 1024).toFixed(1)} KB &middot;{" "}
                     {new Date(b.created_at).toLocaleDateString()}
                   </p>
                 </div>
@@ -181,7 +182,7 @@ export default function SettingsPage() {
         )}
       </section>
 
-      {/* Danger Zone */}
+      {/* Reserved action: do not present an inert destructive control as working. */}
       <section className="rounded-lg border border-[var(--color-error)]/30 bg-[var(--color-error)]/5 p-5">
         <h3 className="text-base font-semibold text-[var(--color-error)] mb-3 flex items-center gap-2">
           <AlertTriangle size={18} />
@@ -192,6 +193,8 @@ export default function SettingsPage() {
           backup first.
         </p>
         <button
+          disabled
+          title="Not available; manage individual mods in Installed Mods"
           className="text-xs px-4 py-2 rounded-md border border-[var(--color-error)]/50 text-[var(--color-error)]
             hover:bg-[var(--color-error)]/10 transition-colors cursor-pointer flex items-center gap-2"
         >

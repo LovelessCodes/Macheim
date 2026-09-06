@@ -1,4 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
+import { useAppStore } from "../store/appStore";
+import { useModStore } from "../store/modStore";
+import { useProfileStore } from "../store/profileStore";
 import type {
   GameStatus,
   ThunderstorePackage,
@@ -8,6 +11,8 @@ import type {
   ConfigFile,
   ConfigFileSummary,
   BackupInfo,
+  CompatibilityStatus,
+  CompatibilitySettings,
 } from "./types";
 
 // ── Game Detection ──────────────────────────────────────────────
@@ -76,8 +81,8 @@ export interface SyncResult {
   cleaned: string[];
 }
 
-export async function syncMods(cleanUnmanaged?: boolean): Promise<SyncResult> {
-  return invoke<SyncResult>("sync_mods", { cleanUnmanaged: cleanUnmanaged ?? false });
+export async function syncMods(cleanUnmanaged = false, approvedUnmanaged: string[] = []): Promise<SyncResult> {
+  return invoke<SyncResult>("sync_mods", { cleanUnmanaged: cleanUnmanaged === true, approvedUnmanaged });
 }
 
 export async function listUnmanagedMods(): Promise<string[]> {
@@ -95,7 +100,17 @@ export async function createProfile(name: string): Promise<Profile> {
 }
 
 export async function switchProfile(name: string): Promise<void> {
-  return invoke("switch_profile", { name });
+  await invoke("switch_profile", { name });
+  useProfileStore.getState().setActiveProfile(name);
+  useAppStore.getState().setGameStatus(await getGameStatus());
+  useModStore.getState().setInstalledMods(await getInstalledMods());
+  useProfileStore.getState().setProfiles(await listProfiles());
+}
+
+export async function getActiveProfile(): Promise<string> { return invoke("get_active_profile"); }
+export async function getCompatibility(): Promise<CompatibilityStatus> { return invoke("get_compatibility"); }
+export async function applyCompatibility(profileName: string, settings: CompatibilitySettings): Promise<CompatibilityStatus> {
+  return invoke("apply_compatibility", { profileName, settings });
 }
 
 export async function deleteProfile(name: string): Promise<void> {

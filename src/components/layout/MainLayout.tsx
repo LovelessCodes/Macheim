@@ -7,12 +7,15 @@ import ModpackBrowser from "../mods/ModpackBrowser";
 import ConfigEditor from "../config/ConfigEditor";
 import ProfileManager from "../profiles/ProfileManager";
 import SettingsPage from "./SettingsPage";
+import CompatibilityPage from "../compatibility/CompatibilityPage";
+import { useProfileStore } from "../../store/profileStore";
 import ModDetail from "../mods/ModDetail";
 import { useAppStore } from "../../store/appStore";
 import { useModStore } from "../../store/modStore";
 import { fetchPackages, getInstalledMods } from "../../lib/tauri";
 
 export default function MainLayout() {
+  const activeProfile = useProfileStore(s => s.activeProfile);
   const currentPage = useAppStore((s) => s.currentPage);
   const addToast = useAppStore((s) => s.addToast);
   const setPackages = useModStore((s) => s.setPackages);
@@ -73,11 +76,13 @@ export default function MainLayout() {
       case "browse":
         return <ModGrid />;
       case "installed":
-        return <InstalledModList />;
+        return <InstalledModList key={activeProfile} />;
       case "modpacks":
         return <ModpackBrowser />;
       case "config":
-        return <ConfigEditor />;
+        return <ConfigEditor key={activeProfile} />;
+      case "compatibility":
+        return <CompatibilityPage key={activeProfile} />;
       case "profiles":
         return <ProfileManager />;
       case "settings":

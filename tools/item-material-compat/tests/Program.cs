@@ -1,0 +1,32 @@
+using System;
+using Macheim.ItemMaterialCompat;
+
+int count = 0;
+void Check(bool result, string name) { if (!result) throw new Exception(name); count++; }
+Check(ShaderPolicy.MatchesExact("kg_EnchantScroll_Weapon_F(Clone)", "kg_EnchantScroll_Weapon_F"), "exact tested clone");
+Check(!ShaderPolicy.MatchesExact("kg_EnchantScroll_Weapon_A", "kg_EnchantScroll_Weapon_F"), "untested grade excluded");
+Check(!ShaderPolicy.MatchesExact("Wood", " , "), "empty exact list safe");
+Check(!ShaderPolicy.MatchesExact("ShardBonemass_TW_extra", "ShardBonemass_TW"), "exact not prefix");
+Check(ShaderPolicy.Matches("kg_EnchantScroll_Weapon_F(Clone)", "kg_Enchant", "_TW"), "VES clone");
+Check(ShaderPolicy.Matches("ShardBonemass_TW(Clone)", "kg_Enchant", "_TW"), "Therzie clone");
+Check(!ShaderPolicy.Matches("SwordIron(Clone)", "kg_Enchant", "_TW"), "vanilla excluded");
+Check(!ShaderPolicy.Matches("anything", " , ", ","), "empty selectors excluded");
+Check(!ShaderPolicy.Matches("Sword_TW_other", "", "_TW"), "anchored suffix");
+Check(ShaderPolicy.NeedsParticleRepair("Particles/Standard Unlit", true, false), "false supported particle");
+Check(ShaderPolicy.NeedsParticleRepair("Particles/Standard Surface", true, true), "mesh particle");
+Check(ShaderPolicy.NeedsParticleRepair("Legacy Shaders/Particles/Additive", true, false), "additive");
+Check(ShaderPolicy.NeedsParticleRepair("Custom/Creature", true, false), "wrong billboard fallback");
+Check(!ShaderPolicy.NeedsParticleRepair("Custom/Creature", true, true), "working mesh fallback");
+Check(!ShaderPolicy.NeedsParticleRepair("Particles/Standard Unlit2", true, false), "native particle preserved");
+Check(!ShaderPolicy.NeedsParticleRepair("Custom/LitParticles", true, false), "native lit preserved");
+Check(ShaderPolicy.NeedsParticleRepair("anything", false, false), "unsupported");
+Check(ShaderPolicy.UsesOpaqueMeshFallback("Particles/Standard Surface", true), "opaque scroll mesh");
+Check(!ShaderPolicy.UsesOpaqueMeshFallback("Particles/Standard Unlit", true), "translucent aura mesh stays effect");
+Check(!ShaderPolicy.UsesOpaqueMeshFallback("Particles/Standard Surface", false), "billboard stays effect");
+Check(AdditiveAlpha.Convert(0, 0, 0, 255) == (0, 0, 0, 0), "additive black is transparent");
+Check(AdditiveAlpha.Convert(255, 255, 255, 255) == (255, 255, 255, 255), "white preserved");
+Check(AdditiveAlpha.Convert(128, 128, 128, 255) == (255, 255, 255, 128), "gray becomes alpha");
+Check(AdditiveAlpha.Convert(128, 64, 0, 255) == (255, 128, 0, 128), "hue and brightness preserved");
+Check(AdditiveAlpha.Convert(255, 0, 0, 0) == (0, 0, 0, 0), "already transparent stays transparent");
+Check(AdditiveAlpha.Convert(128, 128, 128, 128) == (255, 255, 255, 64), "source alpha retained");
+Console.WriteLine($"PASS: {count} policy checks");

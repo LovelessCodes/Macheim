@@ -1,0 +1,11 @@
+{
+  "plugin_version": "0.2.0",
+  "dll": "src-tauri/resources/compatibility/Macheim.ItemMaterialCompat.dll",
+  "sha256": "7be10c993d82ebc7896183c3d44a854b6b391c4cd93f3dcaeaf09b29c0bd0324",
+  "sources": {
+    "tools/item-material-compat/ItemMaterialCompat.cs": "d9e1908adcb8f28f3bc4a9fba46273c2540a4ce12de8c60e3aa786beff47593c",
+    "tools/item-material-compat/ShaderPolicy.cs": "fc2e6e61a6c7138ff00192473cba429180798ec3da609ec77b02ac809ca45120",
+    "tools/item-material-compat/AdditiveAlpha.cs": "893acf6f60906a076a0ea9b3cfe36d85ac99e0d5eb07320f902ea88ed8d47062",
+    "tools/item-material-compat/ItemMaterialCompat.csproj": "ad85b674d75e167e6b5794a597d85d8a540010b3e625b3a4926420c44d7bf66b"
+  }
+}

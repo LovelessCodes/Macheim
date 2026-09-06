@@ -173,13 +173,14 @@ export default function InstalledModList() {
                 let doClean = false;
                 if (unmanaged.length > 0) {
                   doClean = await confirm(
-                    `The following ${unmanaged.length} mod(s) are not managed by Macheim and will be removed:\n\n` +
+                    `The following ${unmanaged.length} mod(s) will be moved to BepInEx/.macheim-clean-backups (recoverable):\n\n` +
                     unmanaged.join("\n") +
                     "\n\nProceed with cleanup?",
                     { title: "Remove Unmanaged Mods?", kind: "warning" }
                   );
+                  if (!doClean) return;
                 }
-                const result = await syncMods(doClean);
+                const result = await syncMods(doClean, doClean ? unmanaged : []);
                 const msgs: string[] = [];
                 if (result.reinstalled.length > 0) msgs.push(`${result.reinstalled.length} reinstalled`);
                 if (result.cleaned.length > 0) msgs.push(`${result.cleaned.length} cleaned`);

@@ -9,6 +9,8 @@ pub struct Profile {
     pub description: String,
     #[serde(default)]
     pub mods: Vec<InstalledMod>,
+    #[serde(default)]
+    pub compatibility: crate::services::compatibility::CompatibilitySettings,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -20,6 +22,7 @@ impl Profile {
             name,
             description,
             mods: Vec::new(),
+            compatibility: Default::default(),
             created_at: now.clone(),
             updated_at: now,
         }
