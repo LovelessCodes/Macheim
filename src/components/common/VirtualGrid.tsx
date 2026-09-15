@@ -47,6 +47,7 @@ export default function VirtualGrid<T>({
     estimateSize: () => estimateRowHeight,
     overscan: 4,
     gap: ROW_GAP,
+    initialRect: { width: 1280, height: 800 },
   });
 
   return (

@@ -95,7 +95,9 @@ export default function MainLayout() {
 
   const page = renderPage();
   const managesOwnScroll =
-    currentPage === "browse" || currentPage === "modpacks";
+    currentPage === "browse" ||
+    currentPage === "modpacks" ||
+    currentPage === "installed";
 
   return (
     <SidebarProvider className="h-svh overflow-hidden">

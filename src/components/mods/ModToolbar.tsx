@@ -1,23 +1,16 @@
-import { useRef, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import {
   ArrowDownAZ,
   ArrowDownNarrowWide,
   ArrowUpNarrowWide,
   Clock,
   Flame,
-  Search,
   Star,
 } from "lucide-react";
-import { useHotkey } from "@tanstack/react-hotkeys";
 import type { SortDirection, SortOption } from "../../lib/types";
 import { Button } from "../ui/button";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-  InputGroupText,
-} from "../ui/input-group";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
+import ModSearchInput from "./ModSearchInput";
 
 const sortTabs: { value: SortOption; label: string; icon: typeof Flame }[] = [
   { value: "downloads", label: "Popular", icon: Flame },
@@ -47,32 +40,14 @@ export default function ModToolbar({
   onSortDirectionChange,
   children,
 }: ModToolbarProps) {
-  const searchRef = useRef<HTMLInputElement>(null);
-
-  useHotkey("Mod+F", () => {
-    searchRef.current?.focus();
-    searchRef.current?.select();
-  });
-
   return (
     <div className="mb-4 flex shrink-0 flex-wrap items-center gap-3">
-      <InputGroup className="w-full sm:w-72">
-        <InputGroupAddon>
-          <Search />
-        </InputGroupAddon>
-        <InputGroupInput
-          ref={searchRef}
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder={placeholder}
-          aria-label={placeholder}
-        />
-        <InputGroupAddon align="inline-end">
-          <InputGroupText>
-            <kbd className="font-sans">⌘F</kbd>
-          </InputGroupText>
-        </InputGroupAddon>
-      </InputGroup>
+      <ModSearchInput
+        value={search}
+        onChange={onSearchChange}
+        placeholder={placeholder}
+        className="w-full sm:w-72"
+      />
 
       <ToggleGroup
         variant="outline"
