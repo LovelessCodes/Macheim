@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "../ui/sidebar";
+import { SidebarInset, SidebarProvider } from "../ui/sidebar";
 import { ScrollArea } from "../ui/scroll-area";
 import ModGrid from "../mods/ModGrid";
 import InstalledModList from "../mods/InstalledModList";

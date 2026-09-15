@@ -23,7 +23,7 @@ export default function Header({ onRefresh, isRefreshing }: HeaderProps) {
 
   return (
     <header
-      className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4"
+      className="flex h-10 shrink-0 items-center gap-2 border-b px-4"
       data-tauri-drag-region
     >
       <h2 className="text-base font-semibold text-foreground whitespace-nowrap">
