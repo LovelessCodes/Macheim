@@ -13,6 +13,7 @@ import { useAppStore } from "../../store/appStore";
 import type { Page } from "../../lib/types";
 import { launchModded, launchVanilla } from "../../lib/tauri";
 import ProfileSelector from "../profiles/ProfileSelector";
+import { toast } from "../ui/toast";
 
 interface NavItem {
   page: Page;
@@ -33,16 +34,15 @@ const navItems: NavItem[] = [
 export default function Sidebar() {
   const currentPage = useAppStore((s) => s.currentPage);
   const setCurrentPage = useAppStore((s) => s.setCurrentPage);
-  const addToast = useAppStore((s) => s.addToast);
 
   const handleLaunchModded = async () => {
     try {
       await launchModded();
-      addToast({ type: "success", message: "Launching Valheim (modded)..." });
+      toast.add({ type: "success", title: "Launching Valheim (modded)..." });
     } catch (err) {
-      addToast({
+      toast.add({
         type: "error",
-        message: `Failed to launch: ${err}`,
+        title: `Failed to launch: ${err}`,
       });
     }
   };
@@ -50,11 +50,11 @@ export default function Sidebar() {
   const handleLaunchVanilla = async () => {
     try {
       await launchVanilla();
-      addToast({ type: "success", message: "Launching Valheim (vanilla)..." });
+      toast.add({ type: "success", title: "Launching Valheim (vanilla)..." });
     } catch (err) {
-      addToast({
+      toast.add({
         type: "error",
-        message: `Failed to launch: ${err}`,
+        title: `Failed to launch: ${err}`,
       });
     }
   };

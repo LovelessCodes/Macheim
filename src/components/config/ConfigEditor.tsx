@@ -8,8 +8,8 @@ import {
   Settings,
   AlertTriangle,
 } from "lucide-react";
-import { useAppStore } from "../../store/appStore";
 import { getConfigFiles, getConfig, saveConfig } from "../../lib/tauri";
+import { toast } from "../ui/toast";
 import type {
   ConfigFile,
   ConfigFileSummary,
@@ -18,8 +18,6 @@ import type {
 } from "../../lib/types";
 
 export default function ConfigEditor() {
-  const addToast = useAppStore((s) => s.addToast);
-
   const [configFiles, setConfigFiles] = useState<ConfigFileSummary[]>([]);
   const [selectedFile, setSelectedFile] = useState<ConfigFile | null>(null);
   const [isLoadingFiles, setIsLoadingFiles] = useState(true);
@@ -59,15 +57,15 @@ export default function ConfigEditor() {
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setConfigError(message);
-        addToast({
+        toast.add({
           type: "error",
-          message: `Failed to load config: ${message}`,
+          title: `Failed to load config: ${message}`,
         });
       } finally {
         setIsLoadingConfig(false);
       }
     },
-    [addToast]
+    []
   );
 
   const handleEntryChange = (
@@ -114,11 +112,11 @@ export default function ConfigEditor() {
       await saveConfig(updatedConfig);
       setSelectedFile(updatedConfig);
       setEditedEntries(new Map());
-      addToast({ type: "success", message: "Config saved." });
+      toast.add({ type: "success", title: "Config saved." });
     } catch (err) {
-      addToast({
+      toast.add({
         type: "error",
-        message: `Failed to save config: ${err}`,
+        title: `Failed to save config: ${err}`,
       });
     } finally {
       setIsSaving(false);

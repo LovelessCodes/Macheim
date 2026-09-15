@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { ListSkeleton } from "../common/LoadingSkeleton";
 import { useModStore } from "../../store/modStore";
-import { useAppStore } from "../../store/appStore";
+import { toast } from "../ui/toast";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import {
   getInstalledMods,
@@ -25,7 +25,6 @@ export default function InstalledModList() {
   const setInstalledMods = useModStore((s) => s.setInstalledMods);
   const isLoading = useModStore((s) => s.isLoadingInstalled);
   const setLoading = useModStore((s) => s.setLoadingInstalled);
-  const addToast = useAppStore((s) => s.addToast);
   const [localSearch, setLocalSearch] = useState("");
   const [togglingMod, setTogglingMod] = useState<string | null>(null);
   const [uninstallingMod, setUninstallingMod] = useState<string | null>(null);
@@ -40,9 +39,9 @@ export default function InstalledModList() {
         if (!cancelled) setInstalledMods(mods);
       } catch (err) {
         if (!cancelled) {
-          addToast({
+          toast.add({
             type: "error",
-            message: `Failed to load installed mods: ${err}`,
+            title: `Failed to load installed mods: ${err}`,
           });
         }
       } finally {
@@ -53,7 +52,7 @@ export default function InstalledModList() {
     return () => {
       cancelled = true;
     };
-  }, [setInstalledMods, setLoading, addToast]);
+  }, [setInstalledMods, setLoading]);
 
   const handleToggle = async (fullName: string, currentEnabled: boolean) => {
     setTogglingMod(fullName);
@@ -65,9 +64,9 @@ export default function InstalledModList() {
         )
       );
     } catch (err) {
-      addToast({
+      toast.add({
         type: "error",
-        message: `Failed to toggle mod: ${err}`,
+        title: `Failed to toggle mod: ${err}`,
       });
     } finally {
       setTogglingMod(null);
@@ -79,11 +78,11 @@ export default function InstalledModList() {
     try {
       await uninstallMod(fullName);
       setInstalledMods(installedMods.filter((m) => m.full_name !== fullName));
-      addToast({ type: "info", message: `Uninstalled ${name}` });
+      toast.add({ type: "info", title: `Uninstalled ${name}` });
     } catch (err) {
-      addToast({
+      toast.add({
         type: "error",
-        message: `Failed to uninstall ${name}: ${err}`,
+        title: `Failed to uninstall ${name}: ${err}`,
       });
     } finally {
       setUninstallingMod(null);
@@ -185,14 +184,14 @@ export default function InstalledModList() {
                 if (result.reinstalled.length > 0) msgs.push(`${result.reinstalled.length} reinstalled`);
                 if (result.cleaned.length > 0) msgs.push(`${result.cleaned.length} cleaned`);
                 if (result.failed.length > 0) msgs.push(`${result.failed.length} failed`);
-                addToast({
+                toast.add({
                   type: result.failed.length > 0 ? "warning" : "success",
-                  message: `Sync complete: ${msgs.join(", ") || "all up to date"}`,
+                  title: `Sync complete: ${msgs.join(", ") || "all up to date"}`,
                 });
                 const mods = await getInstalledMods();
                 setInstalledMods(mods);
               } catch (err) {
-                addToast({ type: "error", message: `Sync failed: ${err}` });
+                toast.add({ type: "error", title: `Sync failed: ${err}` });
               } finally {
                 setSyncing(false);
               }

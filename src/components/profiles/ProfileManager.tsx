@@ -10,7 +10,7 @@ import {
   Package,
 } from "lucide-react";
 import { useProfileStore } from "../../store/profileStore";
-import { useAppStore } from "../../store/appStore";
+import { toast } from "../ui/toast";
 import {
   listProfiles,
   createProfile,
@@ -35,7 +35,6 @@ export default function ProfileManager() {
   const activeProfile = useProfileStore((s) => s.activeProfile);
   const setProfiles = useProfileStore((s) => s.setProfiles);
   const setActiveProfile = useProfileStore((s) => s.setActiveProfile);
-  const addToast = useAppStore((s) => s.addToast);
 
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -62,11 +61,11 @@ export default function ProfileManager() {
       setProfiles([...profiles, profile]);
       setNewName("");
       setIsCreating(false);
-      addToast({ type: "success", message: `Created profile "${name}"` });
+      toast.add({ type: "success", title: `Created profile "${name}"` });
     } catch (err) {
-      addToast({
+      toast.add({
         type: "error",
-        message: `Failed to create profile: ${err}`,
+        title: `Failed to create profile: ${err}`,
       });
     }
   };
@@ -76,11 +75,11 @@ export default function ProfileManager() {
     try {
       await switchProfile(name);
       setActiveProfile(name);
-      addToast({ type: "success", message: `Switched to "${name}"` });
+      toast.add({ type: "success", title: `Switched to "${name}"` });
     } catch (err) {
-      addToast({
+      toast.add({
         type: "error",
-        message: `Failed to switch profile: ${err}`,
+        title: `Failed to switch profile: ${err}`,
       });
     }
   };
@@ -88,9 +87,9 @@ export default function ProfileManager() {
   const handleDelete = async (name: string) => {
     if (!await confirm(`Remove profile "${name}"? Its files will be preserved in Macheim's deleted-profiles folder.`, { title: "Remove profile", kind: "warning" })) return;
     if (name === activeProfile) {
-      addToast({
+      toast.add({
         type: "warning",
-        message: "Cannot delete the active profile. Switch to another first.",
+        title: "Cannot delete the active profile. Switch to another first.",
       });
       return;
     }
@@ -99,11 +98,11 @@ export default function ProfileManager() {
     try {
       await deleteProfile(name);
       setProfiles(profiles.filter((p) => p.name !== name));
-      addToast({ type: "info", message: `Removed "${name}". Recoverable from the deleted-profiles data folder.` });
+      toast.add({ type: "info", title: `Removed "${name}". Recoverable from the deleted-profiles data folder.` });
     } catch (err) {
-      addToast({
+      toast.add({
         type: "error",
-        message: `Failed to delete profile: ${err}`,
+        title: `Failed to delete profile: ${err}`,
       });
     } finally {
       setDeletingProfile(null);

@@ -13,8 +13,8 @@ import {
 } from "lucide-react";
 import { GridSkeleton } from "../common/LoadingSkeleton";
 import { useModStore } from "../../store/modStore";
-import { useAppStore } from "../../store/appStore";
 import { fetchPackages, installModpack, getInstalledMods } from "../../lib/tauri";
+import { toast } from "../ui/toast";
 
 type ModpackSort = "popular" | "updated" | "rated" | "name";
 
@@ -53,7 +53,6 @@ export default function ModpackBrowser() {
   const setInstallingMod = useModStore((s) => s.setInstallingMod);
   const setInstalledMods = useModStore((s) => s.setInstalledMods);
   const setSelectedPackage = useModStore((s) => s.setSelectedPackage);
-  const addToast = useAppStore((s) => s.addToast);
 
   const [localSearch, setLocalSearch] = useState("");
   const [sortBy, setSortBy] = useState<ModpackSort>("popular");
@@ -68,9 +67,9 @@ export default function ModpackBrowser() {
         if (!cancelled) setPackages(pkgs);
       } catch (err) {
         if (!cancelled) {
-          addToast({
+          toast.add({
             type: "error",
-            message: `Failed to fetch packages: ${err}`,
+            title: `Failed to fetch packages: ${err}`,
           });
         }
       } finally {
@@ -81,7 +80,7 @@ export default function ModpackBrowser() {
     return () => {
       cancelled = true;
     };
-  }, [packages.length, setPackages, setLoading, addToast]);
+  }, [packages.length, setPackages, setLoading]);
 
   // Filter modpacks
   const modpacks = packages.filter((pkg) => {
@@ -131,11 +130,11 @@ export default function ModpackBrowser() {
       await installModpack(fullName, version);
       const mods = await getInstalledMods();
       setInstalledMods(mods);
-      addToast({ type: "success", message: `Installed modpack ${name}` });
+      toast.add({ type: "success", title: `Installed modpack ${name}` });
     } catch (err) {
-      addToast({
+      toast.add({
         type: "error",
-        message: `Failed to install ${name}: ${err}`,
+        title: `Failed to install ${name}: ${err}`,
       });
     } finally {
       setInstallingMod(null);

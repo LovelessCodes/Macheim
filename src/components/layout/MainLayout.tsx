@@ -13,11 +13,11 @@ import ModDetail from "../mods/ModDetail";
 import { useAppStore } from "../../store/appStore";
 import { useModStore } from "../../store/modStore";
 import { fetchPackages, getInstalledMods } from "../../lib/tauri";
+import { toast } from "../ui/toast";
 
 export default function MainLayout() {
   const activeProfile = useProfileStore(s => s.activeProfile);
   const currentPage = useAppStore((s) => s.currentPage);
-  const addToast = useAppStore((s) => s.addToast);
   const setPackages = useModStore((s) => s.setPackages);
   const setInstalledMods = useModStore((s) => s.setInstalledMods);
   const setLoadingPackages = useModStore((s) => s.setLoadingPackages);
@@ -34,9 +34,9 @@ export default function MainLayout() {
         const pkgs = await fetchPackages();
         setPackages(pkgs);
       } catch (err) {
-        addToast({
+        toast.add({
           type: "error",
-          message: `Failed to fetch packages: ${err}`,
+          title: `Failed to fetch packages: ${err}`,
         });
       } finally {
         setLoadingPackages(false);
@@ -47,9 +47,9 @@ export default function MainLayout() {
         const mods = await getInstalledMods();
         setInstalledMods(mods);
       } catch (err) {
-        addToast({
+        toast.add({
           type: "error",
-          message: `Failed to load installed mods: ${err}`,
+          title: `Failed to load installed mods: ${err}`,
         });
       } finally {
         setLoadingInstalled(false);
@@ -61,7 +61,6 @@ export default function MainLayout() {
     setPackages,
     setLoadingInstalled,
     setInstalledMods,
-    addToast,
   ]);
 
   const showRefresh =

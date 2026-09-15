@@ -3,7 +3,7 @@ import { useAppStore } from "./store/appStore";
 import { getGameStatus } from "./lib/tauri";
 import SetupWizard from "./components/setup/SetupWizard";
 import MainLayout from "./components/layout/MainLayout";
-import ToastContainer from "./components/common/Toast";
+import { Toaster } from "./components/ui/toast";
 import ProgressOverlay from "./components/common/ProgressOverlay";
 
 export default function App() {
@@ -35,7 +35,7 @@ export default function App() {
   return (
     <>
       {needsSetup ? <SetupWizard /> : <MainLayout />}
-      <ToastContainer />
+      <Toaster />
       <ProgressOverlay />
     </>
   );

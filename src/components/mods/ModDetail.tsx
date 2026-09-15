@@ -13,8 +13,8 @@ import {
 } from "lucide-react";
 import type { ThunderstorePackage, PackageDetail } from "../../lib/types";
 import { useModStore } from "../../store/modStore";
-import { useAppStore } from "../../store/appStore";
 import { installMod, uninstallMod, getInstalledMods, getPackageDetails } from "../../lib/tauri";
+import { toast } from "../ui/toast";
 
 interface ModDetailProps {
   pkg: ThunderstorePackage;
@@ -44,7 +44,6 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
   const isInstallingMod = useModStore((s) => s.isInstallingMod);
   const setInstallingMod = useModStore((s) => s.setInstallingMod);
   const setInstalledMods = useModStore((s) => s.setInstalledMods);
-  const addToast = useAppStore((s) => s.addToast);
 
   const [detail, setDetail] = useState<PackageDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(true);
@@ -86,11 +85,11 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
       await installMod(pkg.full_name, pkg.version_number);
       const mods = await getInstalledMods();
       setInstalledMods(mods);
-      addToast({ type: "success", message: `Installed ${pkg.name}` });
+      toast.add({ type: "success", title: `Installed ${pkg.name}` });
     } catch (err) {
-      addToast({
+      toast.add({
         type: "error",
-        message: `Failed to install ${pkg.name}: ${err}`,
+        title: `Failed to install ${pkg.name}: ${err}`,
       });
     } finally {
       setInstallingMod(null);
@@ -102,11 +101,11 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
       await uninstallMod(pkg.full_name);
       const mods = await getInstalledMods();
       setInstalledMods(mods);
-      addToast({ type: "info", message: `Uninstalled ${pkg.name}` });
+      toast.add({ type: "info", title: `Uninstalled ${pkg.name}` });
     } catch (err) {
-      addToast({
+      toast.add({
         type: "error",
-        message: `Failed to uninstall ${pkg.name}: ${err}`,
+        title: `Failed to uninstall ${pkg.name}: ${err}`,
       });
     }
   };

@@ -2,13 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { Shield, RefreshCw, AlertTriangle } from "lucide-react";
 import { getCompatibility, applyCompatibility } from "../../lib/tauri";
 import type { CompatibilitySettings, CompatibilityStatus } from "../../lib/types";
-import { useAppStore } from "../../store/appStore";
+import { toast } from "../ui/toast";
 
 export default function CompatibilityPage() {
   const [status, setStatus] = useState<CompatibilityStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const addToast = useAppStore(s => s.addToast);
   const load = useCallback(async () => {
     setBusy(true); setError("");
     try { setStatus(await getCompatibility()); }
@@ -21,7 +20,7 @@ export default function CompatibilityPage() {
     setBusy(true); setError("");
     try {
       setStatus(await applyCompatibility(status.profile_name, settings));
-      addToast({ type: "success", message: "Compatibility settings saved for the next game launch." });
+      toast.add({ type: "success", title: "Compatibility settings saved for the next game launch." });
     } catch (e) { setError(String(e)); }
     finally { setBusy(false); }
   }

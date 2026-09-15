@@ -4,8 +4,8 @@ import ModCard from "./ModCard";
 import ModSearch from "./ModSearch";
 import { GridSkeleton } from "../common/LoadingSkeleton";
 import { useModStore } from "../../store/modStore";
-import { useAppStore } from "../../store/appStore";
 import { fetchPackages } from "../../lib/tauri";
+import { toast } from "../ui/toast";
 
 const PAGE_SIZE = 48;
 
@@ -15,7 +15,6 @@ export default function ModGrid() {
   const setPackages = useModStore((s) => s.setPackages);
   const setLoading = useModStore((s) => s.setLoadingPackages);
   const getFilteredPackages = useModStore((s) => s.getFilteredPackages);
-  const addToast = useAppStore((s) => s.addToast);
   const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
 
   useEffect(() => {
@@ -29,9 +28,9 @@ export default function ModGrid() {
         if (!cancelled) setPackages(pkgs);
       } catch (err) {
         if (!cancelled) {
-          addToast({
+          toast.add({
             type: "error",
-            message: `Failed to fetch packages: ${err}`,
+            title: `Failed to fetch packages: ${err}`,
           });
         }
       } finally {
@@ -42,7 +41,7 @@ export default function ModGrid() {
     return () => {
       cancelled = true;
     };
-  }, [packages.length, setPackages, setLoading, addToast]);
+  }, [packages.length, setPackages, setLoading]);
 
   // Reset display count when search changes
   const searchQuery = useModStore((s) => s.searchQuery);

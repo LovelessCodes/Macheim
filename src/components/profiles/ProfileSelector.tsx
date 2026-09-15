@@ -1,15 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown, User, Check } from "lucide-react";
 import { useProfileStore } from "../../store/profileStore";
-import { useAppStore } from "../../store/appStore";
 import { getActiveProfile, listProfiles, switchProfile } from "../../lib/tauri";
+import { toast } from "../ui/toast";
 
 export default function ProfileSelector() {
   const profiles = useProfileStore((s) => s.profiles);
   const activeProfile = useProfileStore((s) => s.activeProfile);
   const setProfiles = useProfileStore((s) => s.setProfiles);
   const setActiveProfile = useProfileStore((s) => s.setActiveProfile);
-  const addToast = useAppStore((s) => s.addToast);
 
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -60,11 +59,11 @@ export default function ProfileSelector() {
     try {
       await switchProfile(name);
       setActiveProfile(name);
-      addToast({ type: "success", message: `Switched to profile "${name}"` });
+      toast.add({ type: "success", title: `Switched to profile "${name}"` });
     } catch (err) {
-      addToast({
+      toast.add({
         type: "error",
-        message: `Failed to switch profile: ${err}`,
+        title: `Failed to switch profile: ${err}`,
       });
     }
     setOpen(false);

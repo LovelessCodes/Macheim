@@ -1,8 +1,8 @@
 import { Download, CheckCircle, Loader2, Package } from "lucide-react";
 import type { ThunderstorePackage } from "../../lib/types";
 import { useModStore } from "../../store/modStore";
-import { useAppStore } from "../../store/appStore";
 import { installMod, getInstalledMods } from "../../lib/tauri";
+import { toast } from "../ui/toast";
 
 interface ModCardProps {
   pkg: ThunderstorePackage;
@@ -20,7 +20,6 @@ export default function ModCard({ pkg }: ModCardProps) {
   const setInstallingMod = useModStore((s) => s.setInstallingMod);
   const setInstalledMods = useModStore((s) => s.setInstalledMods);
   const setSelectedPackage = useModStore((s) => s.setSelectedPackage);
-  const addToast = useAppStore((s) => s.addToast);
 
   const isInstalled = installedMods.some(
     (m) => m.full_name === pkg.full_name
@@ -37,11 +36,11 @@ export default function ModCard({ pkg }: ModCardProps) {
       // Refresh installed mods list
       const mods = await getInstalledMods();
       setInstalledMods(mods);
-      addToast({ type: "success", message: `Installed ${pkg.name}` });
+      toast.add({ type: "success", title: `Installed ${pkg.name}` });
     } catch (err) {
-      addToast({
+      toast.add({
         type: "error",
-        message: `Failed to install ${pkg.name}: ${err}`,
+        title: `Failed to install ${pkg.name}: ${err}`,
       });
     } finally {
       setInstallingMod(null);

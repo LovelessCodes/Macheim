@@ -10,10 +10,10 @@ import {
 import { useAppStore } from "../../store/appStore";
 import { createBackup, listBackups, restoreBackup } from "../../lib/tauri";
 import type { BackupInfo } from "../../lib/types";
+import { toast } from "../ui/toast";
 
 export default function SettingsPage() {
   const gameStatus = useAppStore((s) => s.gameStatus);
-  const addToast = useAppStore((s) => s.addToast);
   const [backups, setBackups] = useState<BackupInfo[]>([]);
   const [backupsLoaded, setBackupsLoaded] = useState(false);
   const [isCreatingBackup, setIsCreatingBackup] = useState(false);
@@ -24,7 +24,7 @@ export default function SettingsPage() {
       setBackups(data);
       setBackupsLoaded(true);
     } catch {
-      addToast({ type: "error", message: "Could not load backups." });
+      toast.add({ type: "error", title: "Could not load backups." });
     }
   };
 
@@ -32,10 +32,10 @@ export default function SettingsPage() {
     setIsCreatingBackup(true);
     try {
       await createBackup();
-      addToast({ type: "success", message: "Backup created." });
+      toast.add({ type: "success", title: "Backup created." });
       await loadBackups();
     } catch (err) {
-      addToast({ type: "error", message: `Backup failed: ${err}` });
+      toast.add({ type: "error", title: `Backup failed: ${err}` });
     } finally {
       setIsCreatingBackup(false);
     }
@@ -44,9 +44,9 @@ export default function SettingsPage() {
   const handleRestore = async (filename: string) => {
     try {
       await restoreBackup(filename);
-      addToast({ type: "success", message: "Backup restored." });
+      toast.add({ type: "success", title: "Backup restored." });
     } catch (err) {
-      addToast({ type: "error", message: `Restore failed: ${err}` });
+      toast.add({ type: "error", title: `Restore failed: ${err}` });
     }
   };
 
