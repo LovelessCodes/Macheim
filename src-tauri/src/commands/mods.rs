@@ -31,6 +31,28 @@ pub async fn install_mod(
     state: tauri::State<'_, Mutex<AppState>>,
     app: tauri::AppHandle,
 ) -> AppResult<Vec<InstalledMod>> {
+    let result = install_mod_inner(full_name, version, state, app.clone()).await;
+    if let Err(err) = &result {
+        emit_progress(
+            &app,
+            "error",
+            "",
+            0,
+            0,
+            0,
+            None,
+            &format!("Install failed: {}", err),
+        );
+    }
+    result
+}
+
+async fn install_mod_inner(
+    full_name: String,
+    version: Option<String>,
+    state: tauri::State<'_, Mutex<AppState>>,
+    app: tauri::AppHandle,
+) -> AppResult<Vec<InstalledMod>> {
     info!("Command: install_mod({})", full_name);
     let _operation = crate::lock_operation(&state)?;
     crate::services::launcher::ensure_game_stopped()?;
@@ -379,6 +401,28 @@ pub async fn install_modpack(
 /// and clean up unmanaged mods.
 #[tauri::command]
 pub async fn sync_mods(
+    clean_unmanaged: Option<bool>,
+    approved_unmanaged: Option<Vec<String>>,
+    state: tauri::State<'_, Mutex<AppState>>,
+    app: tauri::AppHandle,
+) -> AppResult<SyncResult> {
+    let result = sync_mods_inner(clean_unmanaged, approved_unmanaged, state, app.clone()).await;
+    if let Err(err) = &result {
+        emit_progress(
+            &app,
+            "error",
+            "",
+            0,
+            0,
+            0,
+            None,
+            &format!("Sync failed: {}", err),
+        );
+    }
+    result
+}
+
+async fn sync_mods_inner(
     clean_unmanaged: Option<bool>,
     approved_unmanaged: Option<Vec<String>>,
     state: tauri::State<'_, Mutex<AppState>>,

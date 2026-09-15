@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "cn";
 import { Loader2, Download, CheckCircle, Package } from "lucide-react";
 import { listen } from "@tauri-apps/api/event";
@@ -25,17 +25,31 @@ function formatBytes(bytes: number): string {
 export default function ProgressOverlay() {
   const [progress, setProgress] = useState<ProgressEvent | null>(null);
   const [visible, setVisible] = useState(false);
+  const hideTimeout = useRef<number | null>(null);
 
   useEffect(() => {
+    function clearHideTimeout() {
+      if (hideTimeout.current !== null) {
+        window.clearTimeout(hideTimeout.current);
+        hideTimeout.current = null;
+      }
+    }
+
     const unlisten = listen<ProgressEvent>("mod-progress", (event) => {
       const p = event.payload;
+      clearHideTimeout();
       if (p.stage === "done") {
         // Show done briefly then hide
         setProgress(p);
-        setTimeout(() => {
+        hideTimeout.current = window.setTimeout(() => {
+          hideTimeout.current = null;
           setVisible(false);
           setProgress(null);
         }, 2000);
+      } else if (p.stage === "error") {
+        // The failing command reports the error itself; just clear the overlay
+        setVisible(false);
+        setProgress(null);
       } else {
         setProgress(p);
         setVisible(true);
@@ -44,6 +58,7 @@ export default function ProgressOverlay() {
 
     return () => {
       unlisten.then((fn) => fn());
+      clearHideTimeout();
     };
   }, []);
 
