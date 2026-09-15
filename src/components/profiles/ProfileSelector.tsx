@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from "react";
 import { ChevronDown, User, Check } from "lucide-react";
-import { useProfileStore } from "../../store/profileStore";
-import { useAppStore } from "../../store/appStore";
+import { useState, useRef, useEffect } from "react";
+
 import { getActiveProfile, listProfiles, switchProfile } from "../../lib/tauri";
+import { useAppStore } from "../../store/appStore";
+import { useProfileStore } from "../../store/profileStore";
 
 export default function ProfileSelector() {
   const profiles = useProfileStore((s) => s.profiles);
@@ -41,10 +42,7 @@ export default function ProfileSelector() {
   // Close on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node)
-      ) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     }
@@ -74,45 +72,36 @@ export default function ProfileSelector() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm
-          bg-[var(--color-bg-input)] border border-[var(--color-border-default)]
-          text-[var(--color-text-primary)] hover:border-[var(--color-border-accent)]
-          transition-colors cursor-pointer"
+        className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-border-accent)]"
       >
-        <User size={14} className="text-[var(--color-text-muted)] shrink-0" />
-        <span className="flex-1 text-left truncate">{activeProfile}</span>
+        <User size={14} className="shrink-0 text-[var(--color-text-muted)]" />
+        <span className="flex-1 truncate text-left">{activeProfile}</span>
         <ChevronDown
           size={14}
-          className={`text-[var(--color-text-muted)] shrink-0 transition-transform ${
+          className={`shrink-0 text-[var(--color-text-muted)] transition-transform ${
             open ? "rotate-180" : ""
           }`}
         />
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-1 z-30 rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-elevated)] shadow-xl shadow-black/40 overflow-hidden">
+        <div className="absolute top-full right-0 left-0 z-30 mt-1 overflow-hidden rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-elevated)] shadow-xl shadow-black/40">
           {profiles.length === 0 ? (
-            <div className="px-3 py-2 text-xs text-[var(--color-text-muted)]">
-              No profiles
-            </div>
+            <div className="px-3 py-2 text-xs text-[var(--color-text-muted)]">No profiles</div>
           ) : (
             profiles.map((profile) => (
               <button
                 key={profile.name}
                 onClick={() => handleSwitch(profile.name)}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors cursor-pointer
-                  ${
-                    profile.name === activeProfile
-                      ? "bg-[var(--color-accent-primary)]/10 text-[var(--color-accent-primary)]"
-                      : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-card-hover)] hover:text-[var(--color-text-primary)]"
-                  }
-                `}
+                className={`flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
+                  profile.name === activeProfile
+                    ? "bg-[var(--color-accent-primary)]/10 text-[var(--color-accent-primary)]"
+                    : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-card-hover)] hover:text-[var(--color-text-primary)]"
+                } `}
               >
                 <span className="flex-1 truncate">{profile.name}</span>
-                {profile.name === activeProfile && (
-                  <Check size={14} className="shrink-0" />
-                )}
-                <span className="text-xs text-[var(--color-text-muted)] shrink-0">
+                {profile.name === activeProfile && <Check size={14} className="shrink-0" />}
+                <span className="shrink-0 text-xs text-[var(--color-text-muted)]">
                   {profile.mods.length} mods
                 </span>
               </button>

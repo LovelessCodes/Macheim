@@ -1,17 +1,7 @@
-import { useEffect, useState } from "react";
-import {
-  Package,
-  Trash2,
-  Search,
-  Power,
-  PowerOff,
-  RefreshCw,
-  Loader2,
-} from "lucide-react";
-import { ListSkeleton } from "../common/LoadingSkeleton";
-import { useModStore } from "../../store/modStore";
-import { useAppStore } from "../../store/appStore";
 import { confirm } from "@tauri-apps/plugin-dialog";
+import { Package, Trash2, Search, Power, PowerOff, RefreshCw, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import {
   getInstalledMods,
   toggleMod,
@@ -19,6 +9,9 @@ import {
   syncMods,
   listUnmanagedMods,
 } from "../../lib/tauri";
+import { useAppStore } from "../../store/appStore";
+import { useModStore } from "../../store/modStore";
+import { ListSkeleton } from "../common/LoadingSkeleton";
 
 export default function InstalledModList() {
   const installedMods = useModStore((s) => s.installedMods);
@@ -61,8 +54,8 @@ export default function InstalledModList() {
       await toggleMod(fullName, !currentEnabled);
       setInstalledMods(
         installedMods.map((m) =>
-          m.full_name === fullName ? { ...m, enabled: !currentEnabled } : m
-        )
+          m.full_name === fullName ? { ...m, enabled: !currentEnabled } : m,
+        ),
       );
     } catch (err) {
       addToast({
@@ -111,11 +104,8 @@ export default function InstalledModList() {
   if (installedMods.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <Package
-          size={48}
-          className="text-[var(--color-text-muted)] mb-4"
-        />
-        <h3 className="text-lg font-semibold text-[var(--color-text-secondary)] mb-1">
+        <Package size={48} className="mb-4 text-[var(--color-text-muted)]" />
+        <h3 className="mb-1 text-lg font-semibold text-[var(--color-text-secondary)]">
           No mods installed
         </h3>
         <p className="text-sm text-[var(--color-text-muted)]">
@@ -128,22 +118,18 @@ export default function InstalledModList() {
   return (
     <div>
       {/* Search + Stats */}
-      <div className="flex flex-col gap-4 mb-6">
+      <div className="mb-6 flex flex-col gap-4">
         <div className="relative">
           <Search
             size={18}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none"
+            className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[var(--color-text-muted)]"
           />
           <input
             type="text"
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
             placeholder="Search installed mods..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm
-              bg-[var(--color-bg-input)] border border-[var(--color-border-default)]
-              text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]
-              focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]/30
-              transition-colors"
+            className="w-full rounded-xl border border-[var(--color-border-default)] bg-[var(--color-bg-input)] py-2.5 pr-4 pl-10 text-sm text-[var(--color-text-primary)] transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]/30 focus:outline-none"
           />
         </div>
 
@@ -174,15 +160,16 @@ export default function InstalledModList() {
                 if (unmanaged.length > 0) {
                   doClean = await confirm(
                     `The following ${unmanaged.length} mod(s) will be moved to BepInEx/.macheim-clean-backups (recoverable):\n\n` +
-                    unmanaged.join("\n") +
-                    "\n\nProceed with cleanup?",
-                    { title: "Remove Unmanaged Mods?", kind: "warning" }
+                      unmanaged.join("\n") +
+                      "\n\nProceed with cleanup?",
+                    { title: "Remove Unmanaged Mods?", kind: "warning" },
                   );
                   if (!doClean) return;
                 }
                 const result = await syncMods(doClean, doClean ? unmanaged : []);
                 const msgs: string[] = [];
-                if (result.reinstalled.length > 0) msgs.push(`${result.reinstalled.length} reinstalled`);
+                if (result.reinstalled.length > 0)
+                  msgs.push(`${result.reinstalled.length} reinstalled`);
                 if (result.cleaned.length > 0) msgs.push(`${result.cleaned.length} cleaned`);
                 if (result.failed.length > 0) msgs.push(`${result.failed.length} failed`);
                 addToast({
@@ -198,9 +185,7 @@ export default function InstalledModList() {
               }
             }}
             disabled={syncing}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-              bg-[var(--color-accent-amber)] text-white hover:bg-[var(--color-accent-amber-hover)]
-              transition-all cursor-pointer disabled:opacity-60"
+            className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[var(--color-accent-amber)] px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-[var(--color-accent-amber-hover)] disabled:opacity-60"
           >
             {syncing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
             {syncing ? "Syncing..." : "Sync & Clean"}
@@ -213,66 +198,53 @@ export default function InstalledModList() {
         {filtered.map((mod) => (
           <div
             key={mod.full_name}
-            className={`flex items-center gap-4 p-3.5 rounded-xl border transition-all
-              ${
-                mod.enabled
-                  ? "border-[var(--color-border-subtle)] bg-[var(--color-bg-card)]"
-                  : "border-[var(--color-border-subtle)] bg-[var(--color-bg-card)] opacity-50"
-              }
-            `}
+            className={`flex items-center gap-4 rounded-xl border p-3.5 transition-all ${
+              mod.enabled
+                ? "border-[var(--color-border-subtle)] bg-[var(--color-bg-card)]"
+                : "border-[var(--color-border-subtle)] bg-[var(--color-bg-card)] opacity-50"
+            } `}
           >
             {mod.icon ? (
               <img
                 src={mod.icon}
                 alt={mod.name}
-                className="w-10 h-10 rounded-lg shrink-0 bg-[var(--color-bg-input)] object-cover"
+                className="h-10 w-10 shrink-0 rounded-lg bg-[var(--color-bg-input)] object-cover"
                 loading="lazy"
               />
             ) : (
-              <div className="w-10 h-10 rounded-lg shrink-0 bg-[var(--color-bg-input)] flex items-center justify-center">
-                <Package
-                  size={18}
-                  className="text-[var(--color-text-muted)]"
-                />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--color-bg-input)]">
+                <Package size={18} className="text-[var(--color-text-muted)]" />
               </div>
             )}
 
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h4 className="text-sm font-semibold text-[var(--color-text-primary)] truncate">
+                <h4 className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
                   {mod.name}
                 </h4>
-                <span className="text-xs text-[var(--color-text-muted)] font-mono shrink-0">
+                <span className="shrink-0 font-mono text-xs text-[var(--color-text-muted)]">
                   v{mod.version}
                 </span>
                 {!mod.enabled && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-text-muted)]/15 text-[var(--color-text-muted)] font-medium">
+                  <span className="rounded bg-[var(--color-text-muted)]/15 px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-text-muted)]">
                     DISABLED
                   </span>
                 )}
               </div>
-              <p className="text-xs text-[var(--color-text-muted)] truncate">
-                by {mod.author}
-              </p>
+              <p className="truncate text-xs text-[var(--color-text-muted)]">by {mod.author}</p>
             </div>
 
             {/* Toggle */}
             <button
               onClick={() => handleToggle(mod.full_name, mod.enabled)}
               disabled={togglingMod === mod.full_name}
-              className={`relative w-11 h-6 rounded-full shrink-0 transition-colors cursor-pointer
-                ${
-                  mod.enabled
-                    ? "bg-[var(--color-success)]"
-                    : "bg-[var(--color-border-default)]"
-                }
-              `}
+              className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
+                mod.enabled ? "bg-[var(--color-success)]" : "bg-[var(--color-border-default)]"
+              } `}
               title={mod.enabled ? "Disable mod" : "Enable mod"}
             >
               <div
-                className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform
-                  ${mod.enabled ? "translate-x-[22px]" : "translate-x-0.5"}
-                `}
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${mod.enabled ? "translate-x-[22px]" : "translate-x-0.5"} `}
               />
             </button>
 
@@ -280,8 +252,7 @@ export default function InstalledModList() {
             <button
               onClick={() => handleUninstall(mod.full_name, mod.name)}
               disabled={uninstallingMod === mod.full_name}
-              className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-error)] hover:bg-[var(--color-error)]/10
-                transition-colors disabled:opacity-50 cursor-pointer"
+              className="cursor-pointer rounded-lg p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-error)]/10 hover:text-[var(--color-error)] disabled:opacity-50"
               title="Uninstall"
             >
               <Trash2 size={16} />
@@ -290,7 +261,7 @@ export default function InstalledModList() {
         ))}
 
         {filtered.length === 0 && localSearch.trim() && (
-          <div className="text-center py-10 text-sm text-[var(--color-text-muted)]">
+          <div className="py-10 text-center text-sm text-[var(--color-text-muted)]">
             No mods matching "{localSearch}"
           </div>
         )}

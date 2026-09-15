@@ -99,20 +99,35 @@ export interface BackupInfo {
   path: string;
 }
 
-export interface CompatibilitySettings { automatic: boolean; disabled_rules: string[]; }
+export interface CompatibilitySettings {
+  automatic: boolean;
+  disabled_rules: string[];
+}
 export interface CompatibilityRule {
-  id: string; package: string; version: string; title: string;
-  prefabs: string[]; reason: string; validation: string;
+  id: string;
+  package: string;
+  version: string;
+  title: string;
+  prefabs: string[];
+  reason: string;
+  validation: string;
 }
 export interface CompatibilityStatus {
   profile_name: string;
   settings: CompatibilitySettings;
   catalog: {
-    revision: number; plugin_version: string; game_version: string; unity_version: string;
-    requirements: { package: string; version: string }[]; rules: CompatibilityRule[];
+    revision: number;
+    plugin_version: string;
+    game_version: string;
+    unity_version: string;
+    requirements: { package: string; version: string }[];
+    rules: CompatibilityRule[];
   };
   rules: { rule: CompatibilityRule; eligible: boolean; reason: string }[];
-  installed: boolean; up_to_date: boolean; game_running: boolean; recent_log: string[];
+  installed: boolean;
+  up_to_date: boolean;
+  game_running: boolean;
+  recent_log: string[];
 }
 
 export type Page =

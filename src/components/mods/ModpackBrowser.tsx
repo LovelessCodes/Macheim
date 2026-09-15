@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   Layers,
   Download,
@@ -11,10 +10,12 @@ import {
   Star,
   ArrowDownAZ,
 } from "lucide-react";
-import { GridSkeleton } from "../common/LoadingSkeleton";
-import { useModStore } from "../../store/modStore";
-import { useAppStore } from "../../store/appStore";
+import { useEffect, useState } from "react";
+
 import { fetchPackages, installModpack, getInstalledMods } from "../../lib/tauri";
+import { useAppStore } from "../../store/appStore";
+import { useModStore } from "../../store/modStore";
+import { GridSkeleton } from "../common/LoadingSkeleton";
 
 type ModpackSort = "popular" | "updated" | "rated" | "name";
 
@@ -149,23 +150,19 @@ export default function ModpackBrowser() {
   return (
     <div>
       {/* Search + Sort Bar */}
-      <div className="flex flex-col gap-4 mb-6">
+      <div className="mb-6 flex flex-col gap-4">
         {/* Search */}
         <div className="relative">
           <Search
             size={18}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none"
+            className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[var(--color-text-muted)]"
           />
           <input
             type="text"
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
             placeholder="Search modpacks..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm
-              bg-[var(--color-bg-input)] border border-[var(--color-border-default)]
-              text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]
-              focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]/30
-              transition-colors"
+            className="w-full rounded-xl border border-[var(--color-border-default)] bg-[var(--color-bg-input)] py-2.5 pr-4 pl-10 text-sm text-[var(--color-text-primary)] transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]/30 focus:outline-none"
           />
         </div>
 
@@ -178,13 +175,11 @@ export default function ModpackBrowser() {
               <button
                 key={tab.value}
                 onClick={() => setSortBy(tab.value)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer
-                  ${
-                    isActive
-                      ? "bg-[var(--color-accent-amber)] text-white shadow-sm shadow-orange-900/20"
-                      : "bg-[var(--color-bg-card)] border border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-default)]"
-                  }
-                `}
+                className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                  isActive
+                    ? "bg-[var(--color-accent-amber)] text-white shadow-sm shadow-orange-900/20"
+                    : "border border-[var(--color-border-subtle)] bg-[var(--color-bg-card)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-default)] hover:text-[var(--color-text-primary)]"
+                } `}
               >
                 <Icon size={14} />
                 {tab.label}
@@ -193,20 +188,15 @@ export default function ModpackBrowser() {
           })}
 
           <div className="flex-1" />
-          <span className="text-xs text-[var(--color-text-muted)]">
-            {sorted.length} modpacks
-          </span>
+          <span className="text-xs text-[var(--color-text-muted)]">{sorted.length} modpacks</span>
         </div>
       </div>
 
       {/* Results */}
       {sorted.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <Layers
-            size={48}
-            className="text-[var(--color-text-muted)] mb-4"
-          />
-          <h3 className="text-lg font-semibold text-[var(--color-text-secondary)] mb-1">
+          <Layers size={48} className="mb-4 text-[var(--color-text-muted)]" />
+          <h3 className="mb-1 text-lg font-semibold text-[var(--color-text-secondary)]">
             {localSearch ? "No matching modpacks" : "No modpacks found"}
           </h3>
           <p className="text-sm text-[var(--color-text-muted)]">
@@ -216,20 +206,16 @@ export default function ModpackBrowser() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {sorted.map((pkg) => {
-            const isInstalled = installedMods.some(
-              (m) => m.full_name === pkg.full_name
-            );
+            const isInstalled = installedMods.some((m) => m.full_name === pkg.full_name);
             const isInstalling = isInstallingMod === pkg.full_name;
 
             return (
               <div
                 key={pkg.full_name}
                 onClick={() => setSelectedPackage(pkg)}
-                className="rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-bg-card)]
-                  hover:bg-[var(--color-bg-card-hover)] hover:border-[var(--color-border-default)]
-                  transition-all duration-150 overflow-hidden cursor-pointer"
+                className="cursor-pointer overflow-hidden rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-bg-card)] transition-all duration-150 hover:border-[var(--color-border-default)] hover:bg-[var(--color-bg-card-hover)]"
               >
                 <div className="p-4">
                   <div className="flex items-start gap-3">
@@ -237,32 +223,29 @@ export default function ModpackBrowser() {
                       <img
                         src={pkg.icon}
                         alt={pkg.name}
-                        className="w-16 h-16 rounded-xl shrink-0 bg-[var(--color-bg-input)] object-cover"
+                        className="h-16 w-16 shrink-0 rounded-xl bg-[var(--color-bg-input)] object-cover"
                         loading="lazy"
                       />
                     ) : (
-                      <div className="w-16 h-16 rounded-xl shrink-0 bg-[var(--color-bg-input)] flex items-center justify-center">
-                        <Package
-                          size={28}
-                          className="text-[var(--color-text-muted)]"
-                        />
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-[var(--color-bg-input)]">
+                        <Package size={28} className="text-[var(--color-text-muted)]" />
                       </div>
                     )}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-bold text-[var(--color-text-primary)] truncate">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="truncate text-sm font-bold text-[var(--color-text-primary)]">
                         {pkg.name}
                       </h3>
-                      <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                      <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
                         by {pkg.owner}
                       </p>
-                      <p className="text-xs text-[var(--color-text-secondary)] mt-1.5 line-clamp-2 leading-relaxed">
+                      <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[var(--color-text-secondary)]">
                         {pkg.description || "No description"}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between px-4 py-2.5 border-t border-[var(--color-border-subtle)] bg-[var(--color-bg-primary)]/30">
+                <div className="flex items-center justify-between border-t border-[var(--color-border-subtle)] bg-[var(--color-bg-primary)]/30 px-4 py-2.5">
                   <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)]">
                     <span className="flex items-center gap-1">
                       <Download size={12} />
@@ -272,25 +255,19 @@ export default function ModpackBrowser() {
                       <Star size={12} />
                       {pkg.rating_score}
                     </span>
-                    <span>
-                      {formatDate(pkg.date_updated)}
-                    </span>
+                    <span>{formatDate(pkg.date_updated)}</span>
                   </div>
 
                   <button
-                    onClick={() =>
-                      handleInstall(pkg.full_name, pkg.version_number, pkg.name)
-                    }
+                    onClick={() => handleInstall(pkg.full_name, pkg.version_number, pkg.name)}
                     disabled={isInstalled || isInstalling}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer
-                      ${
-                        isInstalled
-                          ? "bg-[var(--color-success)]/15 text-[var(--color-success)]"
-                          : isInstalling
-                            ? "bg-[var(--color-accent-primary)]/15 text-[var(--color-accent-primary)]"
-                            : "bg-[var(--color-accent-amber)] text-white hover:bg-[var(--color-accent-amber-hover)] active:scale-95"
-                      }
-                    `}
+                    className={`cursor-pointer rounded-lg px-4 py-1.5 text-xs font-semibold transition-all ${
+                      isInstalled
+                        ? "bg-[var(--color-success)]/15 text-[var(--color-success)]"
+                        : isInstalling
+                          ? "bg-[var(--color-accent-primary)]/15 text-[var(--color-accent-primary)]"
+                          : "bg-[var(--color-accent-amber)] text-white hover:bg-[var(--color-accent-amber-hover)] active:scale-95"
+                    } `}
                   >
                     {isInstalled ? (
                       <span className="flex items-center gap-1">

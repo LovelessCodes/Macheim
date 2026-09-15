@@ -20,12 +20,8 @@ export default function ProgressBar({
   return (
     <div className={`w-full ${className}`}>
       {(label || showPercentage) && (
-        <div className="flex items-center justify-between mb-1.5">
-          {label && (
-            <span className="text-sm text-[var(--color-text-secondary)]">
-              {label}
-            </span>
-          )}
+        <div className="mb-1.5 flex items-center justify-between">
+          {label && <span className="text-sm text-[var(--color-text-secondary)]">{label}</span>}
           {showPercentage && !indeterminate && (
             <span className="text-sm font-medium text-[var(--color-text-primary)]">
               {percentage}%
@@ -33,10 +29,10 @@ export default function ProgressBar({
           )}
         </div>
       )}
-      <div className="w-full h-2 rounded-full bg-[var(--color-bg-input)] overflow-hidden">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--color-bg-input)]">
         {indeterminate ? (
           <div
-            className="h-full rounded-full bg-[var(--color-accent-primary)] animate-[indeterminate_1.5s_ease-in-out_infinite]"
+            className="h-full animate-[indeterminate_1.5s_ease-in-out_infinite] rounded-full bg-[var(--color-accent-primary)]"
             style={{ width: "40%" }}
           />
         ) : (

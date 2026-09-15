@@ -1,10 +1,6 @@
 import { create } from "zustand";
-import type {
-  ThunderstorePackage,
-  InstalledMod,
-  SortOption,
-  SortDirection,
-} from "../lib/types";
+
+import type { ThunderstorePackage, InstalledMod, SortOption, SortDirection } from "../lib/types";
 
 interface ModState {
   packages: ThunderstorePackage[];
@@ -63,7 +59,7 @@ export const useModStore = create<ModState>((set, get) => ({
           pkg.name.toLowerCase().includes(q) ||
           pkg.full_name.toLowerCase().includes(q) ||
           pkg.owner.toLowerCase().includes(q) ||
-          (pkg.description ?? "").toLowerCase().includes(q)
+          (pkg.description ?? "").toLowerCase().includes(q),
       );
     }
 
@@ -77,9 +73,7 @@ export const useModStore = create<ModState>((set, get) => ({
           cmp = b.rating_score - a.rating_score;
           break;
         case "updated":
-          cmp =
-            new Date(b.date_updated).getTime() -
-            new Date(a.date_updated).getTime();
+          cmp = new Date(b.date_updated).getTime() - new Date(a.date_updated).getTime();
           break;
         case "name":
           cmp = a.name.localeCompare(b.name);

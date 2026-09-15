@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { Loader2, Download, CheckCircle, Package } from "lucide-react";
 import { listen } from "@tauri-apps/api/event";
+import { Loader2, Download, CheckCircle, Package } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface ProgressEvent {
   stage: string;
@@ -51,13 +51,11 @@ export default function ProgressOverlay() {
   const pct = progress.bytes_total
     ? Math.round((progress.bytes_downloaded / progress.bytes_total) * 100)
     : null;
-  const overallPct = progress.total > 0
-    ? Math.round((progress.current / progress.total) * 100)
-    : 0;
+  const overallPct = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center pb-6 pointer-events-none">
-      <div className="pointer-events-auto w-full max-w-lg mx-4 rounded-2xl border border-[var(--color-border-default)] bg-[var(--color-bg-sidebar)] shadow-2xl shadow-black/40 overflow-hidden animate-[slideUp_0.2s_ease-out]">
+    <div className="pointer-events-none fixed inset-0 z-[100] flex items-end justify-center pb-6">
+      <div className="pointer-events-auto mx-4 w-full max-w-lg animate-[slideUp_0.2s_ease-out] overflow-hidden rounded-2xl border border-[var(--color-border-default)] bg-[var(--color-bg-sidebar)] shadow-2xl shadow-black/40">
         {/* Overall progress bar */}
         <div className="h-1 bg-[var(--color-bg-input)]">
           <div
@@ -69,43 +67,49 @@ export default function ProgressOverlay() {
         <div className="p-4">
           <div className="flex items-center gap-3">
             {isDone ? (
-              <CheckCircle size={20} className="text-[var(--color-success)] shrink-0" />
+              <CheckCircle size={20} className="shrink-0 text-[var(--color-success)]" />
             ) : isDownloading ? (
-              <Download size={20} className="text-[var(--color-accent-primary)] shrink-0 animate-pulse" />
+              <Download
+                size={20}
+                className="shrink-0 animate-pulse text-[var(--color-accent-primary)]"
+              />
             ) : (
-              <Loader2 size={20} className="text-[var(--color-accent-primary)] shrink-0 animate-spin" />
+              <Loader2
+                size={20}
+                className="shrink-0 animate-spin text-[var(--color-accent-primary)]"
+              />
             )}
 
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
+                <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
                   {progress.message}
                 </p>
                 {progress.total > 0 && !isDone && (
-                  <span className="text-xs text-[var(--color-text-muted)] shrink-0 ml-2">
+                  <span className="ml-2 shrink-0 text-xs text-[var(--color-text-muted)]">
                     {progress.current}/{progress.total}
                   </span>
                 )}
               </div>
 
               {progress.mod_name && !isDone && (
-                <div className="flex items-center gap-2 mt-1">
-                  <Package size={12} className="text-[var(--color-text-muted)] shrink-0" />
-                  <p className="text-xs text-[var(--color-text-muted)] truncate">
+                <div className="mt-1 flex items-center gap-2">
+                  <Package size={12} className="shrink-0 text-[var(--color-text-muted)]" />
+                  <p className="truncate text-xs text-[var(--color-text-muted)]">
                     {progress.mod_name}
                   </p>
                 </div>
               )}
 
               {isDownloading && progress.bytes_downloaded > 0 && (
-                <div className="flex items-center gap-2 mt-1.5">
-                  <div className="flex-1 h-1.5 bg-[var(--color-bg-input)] rounded-full overflow-hidden">
+                <div className="mt-1.5 flex items-center gap-2">
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--color-bg-input)]">
                     <div
-                      className="h-full bg-[var(--color-accent-amber)] rounded-full transition-all duration-200"
+                      className="h-full rounded-full bg-[var(--color-accent-amber)] transition-all duration-200"
                       style={{ width: `${pct ?? 50}%` }}
                     />
                   </div>
-                  <span className="text-[10px] text-[var(--color-text-muted)] shrink-0 tabular-nums">
+                  <span className="shrink-0 text-[10px] text-[var(--color-text-muted)] tabular-nums">
                     {formatBytes(progress.bytes_downloaded)}
                     {progress.bytes_total ? ` / ${formatBytes(progress.bytes_total)}` : ""}
                   </span>

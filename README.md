@@ -3,7 +3,7 @@
 ### Valheim Mod Manager for macOS
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-macOS-blue.svg)]()
+[![Platform](https://img.shields.io/badge/platform-macOS-blue.svg)](<>)
 [![Latest Release](https://img.shields.io/github/v/release/lofcgi/macheim)](https://github.com/lofcgi/macheim/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/lofcgi/macheim/total.svg)](https://github.com/lofcgi/macheim/releases)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%20v2-orange.svg)](https://tauri.app)
@@ -15,8 +15,8 @@ A native macOS mod manager for [Valheim](https://store.steampowered.com/app/8929
 
 ## Screenshots
 
-| Mod Browser | Installed Mods | Modpacks |
-|:---:|:---:|:---:|
+|                 Mod Browser                 |                  Installed Mods                   |               Modpacks                |
+| :-----------------------------------------: | :-----------------------------------------------: | :-----------------------------------: |
 | ![Browse Mods](screenshots/browse-mods.png) | ![Installed Mods](screenshots/installed-mods.png) | ![Modpacks](screenshots/modpacks.png) |
 
 ## Features
@@ -147,13 +147,13 @@ After BepInEx installation, macOS may block some libraries. Macheim automaticall
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | [Tauri v2](https://tauri.app/) |
-| Backend | Rust (28 source files, 25 Tauri commands) |
-| Frontend | React 19 + TypeScript + Tailwind CSS v4 |
-| State | Zustand |
-| UI Icons | Lucide React |
+| Layer     | Technology                                |
+| --------- | ----------------------------------------- |
+| Framework | [Tauri v2](https://tauri.app/)            |
+| Backend   | Rust (28 source files, 25 Tauri commands) |
+| Frontend  | React 19 + TypeScript + Tailwind CSS v4   |
+| State     | Zustand                                   |
+| UI Icons  | Lucide React                              |
 
 ## How It Works
 

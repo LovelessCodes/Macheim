@@ -1,4 +1,5 @@
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from "lucide-react";
+
 import { useAppStore } from "../../store/appStore";
 
 const iconMap = {
@@ -22,7 +23,7 @@ export default function ToastContainer() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 max-w-sm">
+    <div className="fixed right-4 bottom-4 z-[100] flex max-w-sm flex-col gap-2">
       {toasts.map((toast) => {
         const Icon = iconMap[toast.type];
         const color = colorMap[toast.type];
@@ -30,19 +31,15 @@ export default function ToastContainer() {
         return (
           <div
             key={toast.id}
-            className="flex items-start gap-3 px-4 py-3 rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-elevated)] shadow-lg animate-[slideIn_0.25s_ease-out]"
+            className="flex animate-[slideIn_0.25s_ease-out] items-start gap-3 rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-elevated)] px-4 py-3 shadow-lg"
           >
-            <Icon
-              size={18}
-              className="mt-0.5 shrink-0"
-              style={{ color }}
-            />
-            <p className="text-sm text-[var(--color-text-primary)] flex-1 leading-relaxed">
+            <Icon size={18} className="mt-0.5 shrink-0" style={{ color }} />
+            <p className="flex-1 text-sm leading-relaxed text-[var(--color-text-primary)]">
               {toast.message}
             </p>
             <button
               onClick={() => removeToast(toast.id)}
-              className="shrink-0 p-0.5 rounded hover:bg-[var(--color-border-default)] transition-colors"
+              className="shrink-0 rounded p-0.5 transition-colors hover:bg-[var(--color-border-default)]"
             >
               <X size={14} className="text-[var(--color-text-muted)]" />
             </button>

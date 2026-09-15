@@ -1,10 +1,11 @@
 import { useEffect } from "react";
-import { useAppStore } from "./store/appStore";
-import { getGameStatus } from "./lib/tauri";
-import SetupWizard from "./components/setup/SetupWizard";
-import MainLayout from "./components/layout/MainLayout";
-import ToastContainer from "./components/common/Toast";
+
 import ProgressOverlay from "./components/common/ProgressOverlay";
+import ToastContainer from "./components/common/Toast";
+import MainLayout from "./components/layout/MainLayout";
+import SetupWizard from "./components/setup/SetupWizard";
+import { getGameStatus } from "./lib/tauri";
+import { useAppStore } from "./store/appStore";
 
 export default function App() {
   const gameStatus = useAppStore((s) => s.gameStatus);
@@ -27,10 +28,7 @@ export default function App() {
     checkStatus();
   }, [setGameStatus, setInitialized]);
 
-  const needsSetup =
-    !isInitialized ||
-    !gameStatus?.installed ||
-    !gameStatus?.bepinex_installed;
+  const needsSetup = !isInitialized || !gameStatus?.installed || !gameStatus?.bepinex_installed;
 
   return (
     <>

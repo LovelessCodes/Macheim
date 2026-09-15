@@ -1,10 +1,10 @@
 {
   "name": "macheim",
-  "private": true,
   "version": "1.1.0",
+  "private": true,
   "description": "Valheim Mod Manager for macOS",
-  "author": "iyeonsang",
   "license": "MIT",
+  "author": "iyeonsang",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,7 +12,11 @@
     "test": "vitest run",
     "verify:release": "node scripts/verify-release.mjs",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
@@ -32,6 +36,8 @@
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
     "jsdom": "^29.1.1",
+    "oxfmt": "^0.68.0",
+    "oxlint": "^1.83.0",
     "typescript": "~5.8.3",
     "vite": "^7.0.4",
     "vitest": "^4.1.11"

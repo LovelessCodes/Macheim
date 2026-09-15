@@ -1,21 +1,22 @@
 import { useCallback } from "react";
-import Sidebar from "./Sidebar";
-import Header from "./Header";
-import ModGrid from "../mods/ModGrid";
-import InstalledModList from "../mods/InstalledModList";
-import ModpackBrowser from "../mods/ModpackBrowser";
-import ConfigEditor from "../config/ConfigEditor";
-import ProfileManager from "../profiles/ProfileManager";
-import SettingsPage from "./SettingsPage";
-import CompatibilityPage from "../compatibility/CompatibilityPage";
-import { useProfileStore } from "../../store/profileStore";
-import ModDetail from "../mods/ModDetail";
+
+import { fetchPackages, getInstalledMods } from "../../lib/tauri";
 import { useAppStore } from "../../store/appStore";
 import { useModStore } from "../../store/modStore";
-import { fetchPackages, getInstalledMods } from "../../lib/tauri";
+import { useProfileStore } from "../../store/profileStore";
+import CompatibilityPage from "../compatibility/CompatibilityPage";
+import ConfigEditor from "../config/ConfigEditor";
+import InstalledModList from "../mods/InstalledModList";
+import ModDetail from "../mods/ModDetail";
+import ModGrid from "../mods/ModGrid";
+import ModpackBrowser from "../mods/ModpackBrowser";
+import ProfileManager from "../profiles/ProfileManager";
+import Header from "./Header";
+import SettingsPage from "./SettingsPage";
+import Sidebar from "./Sidebar";
 
 export default function MainLayout() {
-  const activeProfile = useProfileStore(s => s.activeProfile);
+  const activeProfile = useProfileStore((s) => s.activeProfile);
   const currentPage = useAppStore((s) => s.currentPage);
   const addToast = useAppStore((s) => s.addToast);
   const setPackages = useModStore((s) => s.setPackages);
@@ -65,9 +66,7 @@ export default function MainLayout() {
   ]);
 
   const showRefresh =
-    currentPage === "browse" ||
-    currentPage === "installed" ||
-    currentPage === "modpacks";
+    currentPage === "browse" || currentPage === "installed" || currentPage === "modpacks";
 
   const isRefreshing = isLoadingPackages || isLoadingInstalled;
 
@@ -95,19 +94,13 @@ export default function MainLayout() {
   return (
     <div className="flex h-screen w-screen overflow-hidden">
       <Sidebar />
-      <div className="flex flex-col flex-1 min-w-0">
-        <Header
-          onRefresh={showRefresh ? handleRefresh : undefined}
-          isRefreshing={isRefreshing}
-        />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Header onRefresh={showRefresh ? handleRefresh : undefined} isRefreshing={isRefreshing} />
         <main className="flex-1 overflow-y-auto p-6">{renderPage()}</main>
       </div>
 
       {selectedPackage && (
-        <ModDetail
-          pkg={selectedPackage}
-          onClose={() => setSelectedPackage(null)}
-        />
+        <ModDetail pkg={selectedPackage} onClose={() => setSelectedPackage(null)} />
       )}
     </div>
   );

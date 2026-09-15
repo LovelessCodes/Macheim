@@ -1,4 +1,5 @@
 import { RefreshCw } from "lucide-react";
+
 import { useAppStore } from "../../store/appStore";
 
 const pageTitles: Record<string, string> = {
@@ -21,8 +22,8 @@ export default function Header({ onRefresh, isRefreshing }: HeaderProps) {
   const currentPage = useAppStore((s) => s.currentPage);
 
   return (
-    <header className="h-14 shrink-0 flex items-center gap-4 px-6 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-primary)]">
-      <h2 className="text-lg font-semibold text-[var(--color-text-primary)] whitespace-nowrap">
+    <header className="flex h-14 shrink-0 items-center gap-4 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-primary)] px-6">
+      <h2 className="text-lg font-semibold whitespace-nowrap text-[var(--color-text-primary)]">
         {pageTitles[currentPage] ?? "Macheim"}
       </h2>
 
@@ -32,15 +33,10 @@ export default function Header({ onRefresh, isRefreshing }: HeaderProps) {
         <button
           onClick={onRefresh}
           disabled={isRefreshing}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm
-            text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]
-            hover:bg-[var(--color-bg-card)] transition-colors disabled:opacity-50 cursor-pointer"
+          className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-card)] hover:text-[var(--color-text-primary)] disabled:opacity-50"
           title="Refresh"
         >
-          <RefreshCw
-            size={16}
-            className={isRefreshing ? "animate-spin" : ""}
-          />
+          <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
           {isRefreshing ? "Refreshing..." : "Refresh"}
         </button>
       )}

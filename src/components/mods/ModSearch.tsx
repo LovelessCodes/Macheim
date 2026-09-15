@@ -1,6 +1,7 @@
 import { Search, Flame, Clock, Star, ArrowDownAZ } from "lucide-react";
-import { useModStore } from "../../store/modStore";
+
 import type { SortOption } from "../../lib/types";
+import { useModStore } from "../../store/modStore";
 
 const sortTabs: { value: SortOption; label: string; icon: typeof Flame }[] = [
   { value: "downloads", label: "Popular", icon: Flame },
@@ -16,23 +17,19 @@ export default function ModSearch() {
   const setSearchQuery = useModStore((s) => s.setSearchQuery);
 
   return (
-    <div className="flex flex-col gap-4 mb-6">
+    <div className="mb-6 flex flex-col gap-4">
       {/* Search */}
       <div className="relative">
         <Search
           size={18}
-          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none"
+          className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[var(--color-text-muted)]"
         />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search mods..."
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm
-            bg-[var(--color-bg-input)] border border-[var(--color-border-default)]
-            text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]
-            focus:outline-none focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]/30
-            transition-colors"
+          className="w-full rounded-xl border border-[var(--color-border-default)] bg-[var(--color-bg-input)] py-2.5 pr-4 pl-10 text-sm text-[var(--color-text-primary)] transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent-primary)] focus:ring-1 focus:ring-[var(--color-accent-primary)]/30 focus:outline-none"
         />
       </div>
 
@@ -45,13 +42,11 @@ export default function ModSearch() {
             <button
               key={tab.value}
               onClick={() => setSortBy(tab.value)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer
-                ${
-                  isActive
-                    ? "bg-[var(--color-accent-primary)] text-white shadow-sm"
-                    : "bg-[var(--color-bg-card)] border border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-default)]"
-                }
-              `}
+              className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                isActive
+                  ? "bg-[var(--color-accent-primary)] text-white shadow-sm"
+                  : "border border-[var(--color-border-subtle)] bg-[var(--color-bg-card)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-default)] hover:text-[var(--color-text-primary)]"
+              } `}
             >
               <Icon size={14} />
               {tab.label}

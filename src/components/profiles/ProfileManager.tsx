@@ -1,22 +1,10 @@
-import { useEffect, useState } from "react";
 import { confirm } from "@tauri-apps/plugin-dialog";
-import {
-  Plus,
-  Trash2,
-  User,
-  Check,
-  X,
-  Clock,
-  Package,
-} from "lucide-react";
-import { useProfileStore } from "../../store/profileStore";
+import { Plus, Trash2, User, Check, X, Clock, Package } from "lucide-react";
+import { useEffect, useState } from "react";
+
+import { listProfiles, createProfile, switchProfile, deleteProfile } from "../../lib/tauri";
 import { useAppStore } from "../../store/appStore";
-import {
-  listProfiles,
-  createProfile,
-  switchProfile,
-  deleteProfile,
-} from "../../lib/tauri";
+import { useProfileStore } from "../../store/profileStore";
 
 function formatDate(dateStr: string): string {
   try {
@@ -86,7 +74,13 @@ export default function ProfileManager() {
   };
 
   const handleDelete = async (name: string) => {
-    if (!await confirm(`Remove profile "${name}"? Its files will be preserved in Macheim's deleted-profiles folder.`, { title: "Remove profile", kind: "warning" })) return;
+    if (
+      !(await confirm(
+        `Remove profile "${name}"? Its files will be preserved in Macheim's deleted-profiles folder.`,
+        { title: "Remove profile", kind: "warning" },
+      ))
+    )
+      return;
     if (name === activeProfile) {
       addToast({
         type: "warning",
@@ -99,7 +93,10 @@ export default function ProfileManager() {
     try {
       await deleteProfile(name);
       setProfiles(profiles.filter((p) => p.name !== name));
-      addToast({ type: "info", message: `Removed "${name}". Recoverable from the deleted-profiles data folder.` });
+      addToast({
+        type: "info",
+        message: `Removed "${name}". Recoverable from the deleted-profiles data folder.`,
+      });
     } catch (err) {
       addToast({
         type: "error",
@@ -113,20 +110,16 @@ export default function ProfileManager() {
   return (
     <div className="max-w-2xl">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold text-[var(--color-text-primary)]">
-            Mod Profiles
-          </h3>
-          <p className="text-sm text-[var(--color-text-muted)] mt-0.5">
+          <h3 className="text-base font-semibold text-[var(--color-text-primary)]">Mod Profiles</h3>
+          <p className="mt-0.5 text-sm text-[var(--color-text-muted)]">
             Manage separate mod configurations for different playstyles.
           </p>
         </div>
         <button
           onClick={() => setIsCreating(true)}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium
-            bg-[var(--color-accent-primary)] text-white
-            hover:bg-[var(--color-accent-primary-hover)] active:scale-[0.98] transition-all cursor-pointer"
+          className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[var(--color-accent-primary)] px-3.5 py-2 text-sm font-medium text-white transition-all hover:bg-[var(--color-accent-primary-hover)] active:scale-[0.98]"
         >
           <Plus size={16} />
           New Profile
@@ -135,7 +128,7 @@ export default function ProfileManager() {
 
       {/* Create form */}
       {isCreating && (
-        <div className="flex items-center gap-2 mb-4 p-3 rounded-lg border border-[var(--color-accent-primary)]/30 bg-[var(--color-accent-primary)]/5">
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-[var(--color-accent-primary)]/30 bg-[var(--color-accent-primary)]/5 p-3">
           <input
             type="text"
             value={newName}
@@ -149,16 +142,12 @@ export default function ProfileManager() {
             }}
             placeholder="Profile name..."
             autoFocus
-            className="flex-1 px-3 py-1.5 rounded-md text-sm
-              bg-[var(--color-bg-input)] border border-[var(--color-border-default)]
-              text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]
-              focus:outline-none focus:border-[var(--color-accent-primary)]"
+            className="flex-1 rounded-md border border-[var(--color-border-default)] bg-[var(--color-bg-input)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent-primary)] focus:outline-none"
           />
           <button
             onClick={handleCreate}
             disabled={!newName.trim()}
-            className="p-2 rounded-md bg-[var(--color-accent-primary)] text-white
-              hover:bg-[var(--color-accent-primary-hover)] disabled:opacity-50 transition-colors cursor-pointer"
+            className="cursor-pointer rounded-md bg-[var(--color-accent-primary)] p-2 text-white transition-colors hover:bg-[var(--color-accent-primary-hover)] disabled:opacity-50"
           >
             <Check size={16} />
           </button>
@@ -167,7 +156,7 @@ export default function ProfileManager() {
               setIsCreating(false);
               setNewName("");
             }}
-            className="p-2 rounded-md text-[var(--color-text-muted)] hover:bg-[var(--color-bg-card)] transition-colors cursor-pointer"
+            className="cursor-pointer rounded-md p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-card)]"
           >
             <X size={16} />
           </button>
@@ -183,22 +172,16 @@ export default function ProfileManager() {
           return (
             <div
               key={profile.name}
-              className={`flex items-center gap-4 p-4 rounded-lg border transition-all
-                ${
-                  isActive
-                    ? "border-[var(--color-accent-primary)]/30 bg-[var(--color-accent-primary)]/5"
-                    : "border-[var(--color-border-subtle)] bg-[var(--color-bg-card)] hover:bg-[var(--color-bg-card-hover)]"
-                }
-              `}
+              className={`flex items-center gap-4 rounded-lg border p-4 transition-all ${
+                isActive
+                  ? "border-[var(--color-accent-primary)]/30 bg-[var(--color-accent-primary)]/5"
+                  : "border-[var(--color-border-subtle)] bg-[var(--color-bg-card)] hover:bg-[var(--color-bg-card-hover)]"
+              } `}
             >
               <div
-                className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0
-                  ${
-                    isActive
-                      ? "bg-[var(--color-accent-primary)]/15"
-                      : "bg-[var(--color-bg-input)]"
-                  }
-                `}
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+                  isActive ? "bg-[var(--color-accent-primary)]/15" : "bg-[var(--color-bg-input)]"
+                } `}
               >
                 <User
                   size={18}
@@ -210,18 +193,18 @@ export default function ProfileManager() {
                 />
               </div>
 
-              <div className="flex-1 min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <h4 className="text-sm font-semibold text-[var(--color-text-primary)]">
                     {profile.name}
                   </h4>
                   {isActive && (
-                    <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-[var(--color-accent-primary)]/20 text-[var(--color-accent-primary)]">
+                    <span className="rounded-full bg-[var(--color-accent-primary)]/20 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-[var(--color-accent-primary)] uppercase">
                       Active
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-3 mt-0.5 text-xs text-[var(--color-text-muted)]">
+                <div className="mt-0.5 flex items-center gap-3 text-xs text-[var(--color-text-muted)]">
                   <span className="flex items-center gap-1">
                     <Package size={11} />
                     {profile.mods.length} mods
@@ -236,10 +219,7 @@ export default function ProfileManager() {
               {!isActive && (
                 <button
                   onClick={() => handleSwitch(profile.name)}
-                  className="px-3 py-1.5 rounded-md text-xs font-medium
-                    border border-[var(--color-border-default)] text-[var(--color-text-secondary)]
-                    hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text-primary)]
-                    transition-colors cursor-pointer"
+                  className="cursor-pointer rounded-md border border-[var(--color-border-default)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text-primary)]"
                 >
                   Switch
                 </button>
@@ -249,8 +229,7 @@ export default function ProfileManager() {
                 <button
                   onClick={() => handleDelete(profile.name)}
                   disabled={isDeleting}
-                  className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-error)] hover:bg-[var(--color-error)]/10
-                    transition-colors disabled:opacity-50 cursor-pointer"
+                  className="cursor-pointer rounded-lg p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-error)]/10 hover:text-[var(--color-error)] disabled:opacity-50"
                   title="Delete profile"
                 >
                   <Trash2 size={16} />
@@ -263,16 +242,11 @@ export default function ProfileManager() {
 
       {profiles.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <User
-            size={48}
-            className="text-[var(--color-text-muted)] mb-4"
-          />
-          <h3 className="text-lg font-semibold text-[var(--color-text-secondary)] mb-1">
+          <User size={48} className="mb-4 text-[var(--color-text-muted)]" />
+          <h3 className="mb-1 text-lg font-semibold text-[var(--color-text-secondary)]">
             No profiles
           </h3>
-          <p className="text-sm text-[var(--color-text-muted)]">
-            Create a profile to get started.
-          </p>
+          <p className="text-sm text-[var(--color-text-muted)]">Create a profile to get started.</p>
         </div>
       )}
     </div>

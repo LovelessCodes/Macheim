@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+
 import { useAppStore } from "../store/appStore";
 import { useModStore } from "../store/modStore";
 import { useProfileStore } from "../store/profileStore";
@@ -41,15 +42,11 @@ export async function fetchPackages(): Promise<ThunderstorePackage[]> {
   return invoke<ThunderstorePackage[]>("fetch_packages");
 }
 
-export async function searchPackages(
-  query: string
-): Promise<ThunderstorePackage[]> {
+export async function searchPackages(query: string): Promise<ThunderstorePackage[]> {
   return invoke<ThunderstorePackage[]>("search_packages", { query });
 }
 
-export async function getPackageDetails(
-  fullName: string
-): Promise<PackageDetail> {
+export async function getPackageDetails(fullName: string): Promise<PackageDetail> {
   return invoke<PackageDetail>("get_package_details", { fullName });
 }
 
@@ -81,8 +78,14 @@ export interface SyncResult {
   cleaned: string[];
 }
 
-export async function syncMods(cleanUnmanaged = false, approvedUnmanaged: string[] = []): Promise<SyncResult> {
-  return invoke<SyncResult>("sync_mods", { cleanUnmanaged: cleanUnmanaged === true, approvedUnmanaged });
+export async function syncMods(
+  cleanUnmanaged = false,
+  approvedUnmanaged: string[] = [],
+): Promise<SyncResult> {
+  return invoke<SyncResult>("sync_mods", {
+    cleanUnmanaged: cleanUnmanaged === true,
+    approvedUnmanaged,
+  });
 }
 
 export async function listUnmanagedMods(): Promise<string[]> {
@@ -107,9 +110,16 @@ export async function switchProfile(name: string): Promise<void> {
   useProfileStore.getState().setProfiles(await listProfiles());
 }
 
-export async function getActiveProfile(): Promise<string> { return invoke("get_active_profile"); }
-export async function getCompatibility(): Promise<CompatibilityStatus> { return invoke("get_compatibility"); }
-export async function applyCompatibility(profileName: string, settings: CompatibilitySettings): Promise<CompatibilityStatus> {
+export async function getActiveProfile(): Promise<string> {
+  return invoke("get_active_profile");
+}
+export async function getCompatibility(): Promise<CompatibilityStatus> {
+  return invoke("get_compatibility");
+}
+export async function applyCompatibility(
+  profileName: string,
+  settings: CompatibilitySettings,
+): Promise<CompatibilityStatus> {
   return invoke("apply_compatibility", { profileName, settings });
 }
 

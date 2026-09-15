@@ -9,9 +9,10 @@ import {
   FileText,
   Shield,
 } from "lucide-react";
-import { useAppStore } from "../../store/appStore";
-import type { Page } from "../../lib/types";
+
 import { launchModded, launchVanilla } from "../../lib/tauri";
+import type { Page } from "../../lib/types";
+import { useAppStore } from "../../store/appStore";
 import ProfileSelector from "../profiles/ProfileSelector";
 
 interface NavItem {
@@ -60,15 +61,15 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-64 h-full flex flex-col bg-[var(--color-bg-sidebar)] border-r border-[var(--color-border-subtle)] shrink-0">
+    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-[var(--color-border-subtle)] bg-[var(--color-bg-sidebar)]">
       {/* Logo / Title */}
-      <div className="px-5 py-5 border-b border-[var(--color-border-subtle)]">
+      <div className="border-b border-[var(--color-border-subtle)] px-5 py-5">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--color-accent-amber)] to-orange-700 flex items-center justify-center">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--color-accent-amber)] to-orange-700">
             <Shield size={20} className="text-white" />
           </div>
           <div>
-            <h1 className="text-sm font-bold tracking-wide text-[var(--color-text-primary)] leading-tight">
+            <h1 className="text-sm leading-tight font-bold tracking-wide text-[var(--color-text-primary)]">
               MACHEIM
             </h1>
             <p className="text-[10px] font-medium tracking-widest text-[var(--color-accent-amber)] uppercase">
@@ -79,12 +80,12 @@ export default function Sidebar() {
       </div>
 
       {/* Profile Selector */}
-      <div className="px-3 py-3 border-b border-[var(--color-border-subtle)]">
+      <div className="border-b border-[var(--color-border-subtle)] px-3 py-3">
         <ProfileSelector />
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
         {navItems.map((item) => {
           const isActive = currentPage === item.page;
           const Icon = item.icon;
@@ -93,22 +94,16 @@ export default function Sidebar() {
             <button
               key={item.page}
               onClick={() => setCurrentPage(item.page)}
-              className={`
-                w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
-                transition-all duration-150 cursor-pointer
-                ${
-                  isActive
-                    ? "bg-[var(--color-accent-primary)]/15 text-[var(--color-accent-primary)]"
-                    : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-card)]"
-                }
-              `}
+              className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
+                isActive
+                  ? "bg-[var(--color-accent-primary)]/15 text-[var(--color-accent-primary)]"
+                  : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-card)] hover:text-[var(--color-text-primary)]"
+              } `}
             >
               <Icon
                 size={18}
                 className={
-                  isActive
-                    ? "text-[var(--color-accent-primary)]"
-                    : "text-[var(--color-text-muted)]"
+                  isActive ? "text-[var(--color-accent-primary)]" : "text-[var(--color-text-muted)]"
                 }
               />
               {item.label}
@@ -118,24 +113,17 @@ export default function Sidebar() {
       </nav>
 
       {/* Launch Buttons */}
-      <div className="px-3 py-4 border-t border-[var(--color-border-subtle)] space-y-2">
+      <div className="space-y-2 border-t border-[var(--color-border-subtle)] px-3 py-4">
         <button
           onClick={handleLaunchModded}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold
-            bg-gradient-to-r from-[var(--color-accent-amber)] to-orange-600
-            text-white shadow-md shadow-orange-900/30
-            hover:from-[var(--color-accent-amber-hover)] hover:to-orange-700
-            active:scale-[0.98] transition-all duration-150 cursor-pointer"
+          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[var(--color-accent-amber)] to-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-orange-900/30 transition-all duration-150 hover:from-[var(--color-accent-amber-hover)] hover:to-orange-700 active:scale-[0.98]"
         >
           <Play size={16} />
           Play Modded
         </button>
         <button
           onClick={handleLaunchVanilla}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
-            border border-[var(--color-border-default)] text-[var(--color-text-secondary)]
-            hover:bg-[var(--color-bg-card)] hover:text-[var(--color-text-primary)]
-            active:scale-[0.98] transition-all duration-150 cursor-pointer"
+          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-[var(--color-border-default)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-all duration-150 hover:bg-[var(--color-bg-card)] hover:text-[var(--color-text-primary)] active:scale-[0.98]"
         >
           <Wrench size={15} />
           Play Vanilla
