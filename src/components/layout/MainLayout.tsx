@@ -1,6 +1,8 @@
 import { useCallback } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import { SidebarInset, SidebarProvider } from "../ui/sidebar";
+import { ScrollArea } from "../ui/scroll-area";
 import ModGrid from "../mods/ModGrid";
 import InstalledModList from "../mods/InstalledModList";
 import ModpackBrowser from "../mods/ModpackBrowser";
@@ -92,15 +94,17 @@ export default function MainLayout() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden">
+    <SidebarProvider className="h-svh overflow-hidden">
       <Sidebar />
-      <div className="flex flex-col flex-1 min-w-0">
+      <SidebarInset className="min-w-0 overflow-hidden">
         <Header
           onRefresh={showRefresh ? handleRefresh : undefined}
           isRefreshing={isRefreshing}
         />
-        <main className="flex-1 overflow-y-auto p-6">{renderPage()}</main>
-      </div>
+        <ScrollArea scrollFade className="min-h-0 flex-1">
+          <div className="p-6">{renderPage()}</div>
+        </ScrollArea>
+      </SidebarInset>
 
       {selectedPackage && (
         <ModDetail
@@ -108,6 +112,6 @@ export default function MainLayout() {
           onClose={() => setSelectedPackage(null)}
         />
       )}
-    </div>
+    </SidebarProvider>
   );
 }

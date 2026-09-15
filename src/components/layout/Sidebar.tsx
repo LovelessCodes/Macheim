@@ -1,24 +1,40 @@
+import type { LucideIcon } from "lucide-react";
 import {
-  Package,
   Download,
+  FileText,
   Layers,
-  Settings,
+  Package,
   Play,
+  Settings,
+  Shield,
   User,
   Wrench,
-  FileText,
-  Shield,
 } from "lucide-react";
 import { useAppStore } from "../../store/appStore";
 import type { Page } from "../../lib/types";
 import { launchModded, launchVanilla } from "../../lib/tauri";
 import ProfileSelector from "../profiles/ProfileSelector";
 import { toast } from "../ui/toast";
+import { Button } from "../ui/button";
+import {
+  Sidebar as SidebarRoot,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+  SidebarSeparator,
+} from "../ui/sidebar";
 
 interface NavItem {
   page: Page;
   label: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
 }
 
 const navItems: NavItem[] = [
@@ -60,87 +76,80 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-64 h-full flex flex-col bg-[var(--color-bg-sidebar)] border-r border-[var(--color-border-subtle)] shrink-0">
-      {/* Logo / Title */}
-      <div className="px-5 py-5 border-b border-[var(--color-border-subtle)]">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--color-accent-amber)] to-orange-700 flex items-center justify-center">
-            <Shield size={20} className="text-white" />
+    <SidebarRoot collapsible="icon">
+      <SidebarHeader>
+        <div className="flex items-center gap-2.5 px-1 group-data-[collapsible=icon]:px-0">
+          <div className="flex size-8 shrink-0 items-center justify-center bg-gradient-to-br from-[var(--color-accent-amber)] to-orange-700">
+            <Shield className="size-4 text-white" />
           </div>
-          <div>
-            <h1 className="text-sm font-bold tracking-wide text-[var(--color-text-primary)] leading-tight">
+          <div className="grid min-w-0 flex-1 leading-tight group-data-[collapsible=icon]:hidden">
+            <span className="truncate text-sm font-bold tracking-wide">
               MACHEIM
-            </h1>
-            <p className="text-[10px] font-medium tracking-widest text-[var(--color-accent-amber)] uppercase">
+            </span>
+            <span className="truncate text-[10px] font-medium tracking-widest text-[var(--color-accent-amber)] uppercase">
               Mod Manager
-            </p>
+            </span>
           </div>
         </div>
-      </div>
+      </SidebarHeader>
 
-      {/* Profile Selector */}
-      <div className="px-3 py-3 border-b border-[var(--color-border-subtle)]">
-        <ProfileSelector />
-      </div>
+      <SidebarSeparator />
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
-        {navItems.map((item) => {
-          const isActive = currentPage === item.page;
-          const Icon = item.icon;
+      <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+        <SidebarGroupContent>
+          <ProfileSelector />
+        </SidebarGroupContent>
+      </SidebarGroup>
 
-          return (
-            <button
-              key={item.page}
-              onClick={() => setCurrentPage(item.page)}
-              className={`
-                w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
-                transition-all duration-150 cursor-pointer
-                ${
-                  isActive
-                    ? "bg-[var(--color-accent-primary)]/15 text-[var(--color-accent-primary)]"
-                    : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-card)]"
-                }
-              `}
-            >
-              <Icon
-                size={18}
-                className={
-                  isActive
-                    ? "text-[var(--color-accent-primary)]"
-                    : "text-[var(--color-text-muted)]"
-                }
-              />
-              {item.label}
-            </button>
-          );
-        })}
-      </nav>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <SidebarMenuItem key={item.page}>
+                    <SidebarMenuButton
+                      isActive={currentPage === item.page}
+                      tooltip={item.label}
+                      onClick={() => setCurrentPage(item.page)}
+                    >
+                      <Icon />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
 
-      {/* Launch Buttons */}
-      <div className="px-3 py-4 border-t border-[var(--color-border-subtle)] space-y-2">
-        <button
+      <SidebarFooter>
+        <Button
+          variant="amber"
+          className="w-full group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:px-0"
           onClick={handleLaunchModded}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold
-            bg-gradient-to-r from-[var(--color-accent-amber)] to-orange-600
-            text-white shadow-md shadow-orange-900/30
-            hover:from-[var(--color-accent-amber-hover)] hover:to-orange-700
-            active:scale-[0.98] transition-all duration-150 cursor-pointer"
         >
-          <Play size={16} />
-          Play Modded
-        </button>
-        <button
+          <Play />
+          <span className="group-data-[collapsible=icon]:hidden">
+            Play Modded
+          </span>
+        </Button>
+        <Button
+          variant="outline"
+          className="w-full group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:px-0"
           onClick={handleLaunchVanilla}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
-            border border-[var(--color-border-default)] text-[var(--color-text-secondary)]
-            hover:bg-[var(--color-bg-card)] hover:text-[var(--color-text-primary)]
-            active:scale-[0.98] transition-all duration-150 cursor-pointer"
         >
-          <Wrench size={15} />
-          Play Vanilla
-        </button>
-      </div>
-    </aside>
+          <Wrench />
+          <span className="group-data-[collapsible=icon]:hidden">
+            Play Vanilla
+          </span>
+        </Button>
+      </SidebarFooter>
+
+      <SidebarRail />
+    </SidebarRoot>
   );
 }
