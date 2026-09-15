@@ -103,10 +103,7 @@ export default function MainLayout() {
   return (
     <SidebarProvider className="h-svh overflow-hidden">
       <Sidebar />
-      <SidebarInset className="min-w-0 overflow-hidden">
-        <div data-tauri-drag-region className="w-full h-8 px-2 bg-sidebar border-b border-b-muted items-center flex justify-end">
-          <SidebarTrigger className="-ml-1 shrink-0 group-data-[collapsible=icon]:hidden" />
-        </div>
+      <SidebarInset data-tauri-drag-region={false} className="min-w-0 overflow-hidden">
         <Header
           onRefresh={showRefresh ? handleRefresh : undefined}
           isRefreshing={isRefreshing}
