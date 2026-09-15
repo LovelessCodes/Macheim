@@ -119,7 +119,7 @@ export default function ProfileManager() {
   };
 
   return (
-    <div className="grid max-w-2xl gap-4">
+    <div className="grid gap-4">
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
