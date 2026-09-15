@@ -9,6 +9,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import ProgressBar from "../common/ProgressBar";
+import { Button } from "../ui/button";
 import { detectGame, installBepinex, getGameStatus } from "../../lib/tauri";
 import { useAppStore } from "../../store/appStore";
 
@@ -192,15 +193,10 @@ export default function SetupWizard() {
                   <p className="text-sm text-[var(--color-text-secondary)] mb-6">
                     {detectError}
                   </p>
-                  <button
-                    onClick={handleRetryDetect}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold
-                      bg-[var(--color-accent-primary)] text-white
-                      hover:bg-[var(--color-accent-primary-hover)] active:scale-[0.98] transition-all cursor-pointer"
-                  >
+                  <Button onClick={handleRetryDetect}>
                     <Search size={16} />
                     Retry Detection
-                  </button>
+                  </Button>
                 </>
               ) : (
                 <>
@@ -214,15 +210,10 @@ export default function SetupWizard() {
                   <p className="text-sm text-[var(--color-text-muted)] font-mono bg-[var(--color-bg-input)] px-3 py-2 rounded-md mb-6">
                     {gamePath}
                   </p>
-                  <button
-                    onClick={() => setStep("bepinex")}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold
-                      bg-[var(--color-accent-amber)] text-white
-                      hover:bg-[var(--color-accent-amber-hover)] active:scale-[0.98] transition-all cursor-pointer"
-                  >
+                  <Button onClick={() => setStep("bepinex")} variant="outline">
                     Continue
                     <ArrowRight size={16} />
-                  </button>
+                  </Button>
                 </>
               )}
             </div>
@@ -261,14 +252,7 @@ export default function SetupWizard() {
                   <p className="text-sm text-[var(--color-text-secondary)] mb-6">
                     {installError}
                   </p>
-                  <button
-                    onClick={handleInstallBepinex}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold
-                      bg-[var(--color-accent-primary)] text-white
-                      hover:bg-[var(--color-accent-primary-hover)] active:scale-[0.98] transition-all cursor-pointer"
-                  >
-                    Retry Installation
-                  </button>
+                  <Button onClick={handleInstallBepinex}>Retry Installation</Button>
                 </>
               ) : (
                 <>
@@ -302,15 +286,10 @@ export default function SetupWizard() {
                     </p>
                   </div>
 
-                  <button
-                    onClick={handleInstallBepinex}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold
-                      bg-[var(--color-accent-primary)] text-white
-                      hover:bg-[var(--color-accent-primary-hover)] active:scale-[0.98] transition-all cursor-pointer"
-                  >
+                  <Button onClick={handleInstallBepinex} variant="violet">
                     Install BepInEx
                     <ArrowRight size={16} />
-                  </button>
+                  </Button>
                 </>
               )}
             </div>
@@ -330,17 +309,10 @@ export default function SetupWizard() {
                 Valheim and BepInEx are ready. Start browsing and installing
                 mods.
               </p>
-              <button
-                onClick={handleFinish}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold
-                  bg-gradient-to-r from-[var(--color-accent-amber)] to-orange-600 text-white
-                  shadow-md shadow-orange-900/30
-                  hover:from-[var(--color-accent-amber-hover)] hover:to-orange-700
-                  active:scale-[0.98] transition-all cursor-pointer"
-              >
+              <Button variant="ghost" onClick={handleFinish}>
                 Start Managing Mods
                 <ArrowRight size={16} />
-              </button>
+              </Button>
             </div>
           )}
         </div>
