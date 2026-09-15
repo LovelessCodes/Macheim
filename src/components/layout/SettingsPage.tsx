@@ -171,6 +171,7 @@ export default function SettingsPage() {
                 </div>
                 <button
                   onClick={() => handleRestore(b.filename)}
+                  aria-label={`Restore backup ${b.profile_name}`}
                   className="text-xs px-3 py-1.5 rounded-md border border-[var(--color-border-default)] text-[var(--color-text-secondary)]
                     hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
                 >

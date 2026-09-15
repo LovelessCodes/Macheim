@@ -50,10 +50,20 @@ export default function ModCard({ pkg }: ModCardProps) {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={`View details for ${pkg.name}`}
       onClick={() => setSelectedPackage(pkg)}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setSelectedPackage(pkg);
+        }
+      }}
       className="group rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-bg-card)]
         hover:bg-[var(--color-bg-card-hover)] hover:border-[var(--color-border-default)]
-        transition-all duration-150 cursor-pointer overflow-hidden"
+        transition-colors duration-150 cursor-pointer overflow-hidden"
     >
       <div className="p-4">
         <div className="flex items-start gap-3">
@@ -100,7 +110,7 @@ export default function ModCard({ pkg }: ModCardProps) {
           onClick={handleInstall}
           disabled={isInstalled || isInstalling}
           className={`
-            px-3 py-1 rounded-md text-xs font-medium transition-all cursor-pointer
+            px-3 py-1 rounded-md text-xs font-medium transition cursor-pointer
             ${
               isInstalled
                 ? "bg-[var(--color-success)]/15 text-[var(--color-success)]"

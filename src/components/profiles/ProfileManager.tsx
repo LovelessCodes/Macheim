@@ -126,7 +126,7 @@ export default function ProfileManager() {
           onClick={() => setIsCreating(true)}
           className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium
             bg-[var(--color-accent-primary)] text-white
-            hover:bg-[var(--color-accent-primary-hover)] active:scale-[0.98] transition-all cursor-pointer"
+            hover:bg-[var(--color-accent-primary-hover)] active:scale-[0.98] transition cursor-pointer"
         >
           <Plus size={16} />
           New Profile
@@ -139,6 +139,7 @@ export default function ProfileManager() {
           <input
             type="text"
             value={newName}
+            aria-label="Profile name"
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") handleCreate();
@@ -157,6 +158,7 @@ export default function ProfileManager() {
           <button
             onClick={handleCreate}
             disabled={!newName.trim()}
+            aria-label="Create profile"
             className="p-2 rounded-md bg-[var(--color-accent-primary)] text-white
               hover:bg-[var(--color-accent-primary-hover)] disabled:opacity-50 transition-colors cursor-pointer"
           >
@@ -167,6 +169,7 @@ export default function ProfileManager() {
               setIsCreating(false);
               setNewName("");
             }}
+            aria-label="Cancel profile creation"
             className="p-2 rounded-md text-[var(--color-text-muted)] hover:bg-[var(--color-bg-card)] transition-colors cursor-pointer"
           >
             <X size={16} />
@@ -183,7 +186,7 @@ export default function ProfileManager() {
           return (
             <div
               key={profile.name}
-              className={`flex items-center gap-4 p-4 rounded-lg border transition-all
+              className={`flex items-center gap-4 p-4 rounded-lg border transition-colors
                 ${
                   isActive
                     ? "border-[var(--color-accent-primary)]/30 bg-[var(--color-accent-primary)]/5"

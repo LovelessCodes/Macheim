@@ -26,6 +26,7 @@ export default function ModSearch() {
         <input
           type="text"
           value={searchQuery}
+          aria-label="Search mods"
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search mods..."
           className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm
@@ -45,7 +46,7 @@ export default function ModSearch() {
             <button
               key={tab.value}
               onClick={() => setSortBy(tab.value)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer
                 ${
                   isActive
                     ? "bg-[var(--color-accent-primary)] text-white shadow-sm"

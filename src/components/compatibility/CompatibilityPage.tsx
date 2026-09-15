@@ -9,6 +9,7 @@ export default function CompatibilityPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const addToast = useAppStore(s => s.addToast);
+  const disabledRules = new Set(status?.settings.disabled_rules ?? []);
   const load = useCallback(async () => {
     setBusy(true); setError("");
     try { setStatus(await getCompatibility()); }
@@ -50,7 +51,7 @@ export default function CompatibilityPage() {
         <p>Not a universal shader repair. Other items, monsters, buildings, equipment and UI icons are not covered. Effect brightness can differ from Windows. Unverified all-mod scanning is not included in 1.1.0.</p>
       </section>
       <div className="space-y-3">{status.rules.map(({ rule, eligible, reason }) => {
-        const enabled = !status.settings.disabled_rules.includes(rule.id);
+        const enabled = !disabledRules.has(rule.id);
         return <section key={rule.id} className="rounded-xl border border-[var(--color-border-default)] bg-[var(--color-bg-card)] p-5 space-y-2">
           <div className="flex justify-between gap-4 items-start"><div><h4 className="font-semibold">{rule.title}</h4><p className="text-xs text-[var(--color-text-muted)] mt-1">{rule.package} · {rule.version}</p></div>
             <label className="flex gap-2 text-sm items-center"><input type="checkbox" aria-label={`Enable ${rule.title}`} checked={enabled} disabled={busy || status.game_running} onChange={e => apply({ ...status.settings, disabled_rules: e.target.checked ? status.settings.disabled_rules.filter(id => id !== rule.id) : [...status.settings.disabled_rules, rule.id] })} />Allow rule</label></div>

@@ -95,7 +95,7 @@ export default function ModGrid() {
                 className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium
                   bg-[var(--color-bg-card)] border border-[var(--color-border-default)]
                   text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]
-                  hover:border-[var(--color-border-hover)] transition-all cursor-pointer"
+                  hover:border-[var(--color-border-hover)] transition-colors cursor-pointer"
               >
                 <ChevronDown size={16} />
                 Load More ({(filtered.length - displayCount).toLocaleString()} remaining)

@@ -137,6 +137,7 @@ export default function InstalledModList() {
           <input
             type="text"
             value={localSearch}
+            aria-label="Search installed mods"
             onChange={(e) => setLocalSearch(e.target.value)}
             placeholder="Search installed mods..."
             className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm
@@ -200,7 +201,7 @@ export default function InstalledModList() {
             disabled={syncing}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
               bg-[var(--color-accent-amber)] text-white hover:bg-[var(--color-accent-amber-hover)]
-              transition-all cursor-pointer disabled:opacity-60"
+              transition-colors cursor-pointer disabled:opacity-60"
           >
             {syncing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
             {syncing ? "Syncing..." : "Sync & Clean"}
@@ -213,7 +214,7 @@ export default function InstalledModList() {
         {filtered.map((mod) => (
           <div
             key={mod.full_name}
-            className={`flex items-center gap-4 p-3.5 rounded-xl border transition-all
+            className={`flex items-center gap-4 p-3.5 rounded-xl border transition-colors
               ${
                 mod.enabled
                   ? "border-[var(--color-border-subtle)] bg-[var(--color-bg-card)]"

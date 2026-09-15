@@ -95,7 +95,7 @@ export default function Sidebar() {
               onClick={() => setCurrentPage(item.page)}
               className={`
                 w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
-                transition-all duration-150 cursor-pointer
+                transition-colors duration-150 cursor-pointer
                 ${
                   isActive
                     ? "bg-[var(--color-accent-primary)]/15 text-[var(--color-accent-primary)]"
@@ -125,7 +125,7 @@ export default function Sidebar() {
             bg-gradient-to-r from-[var(--color-accent-amber)] to-orange-600
             text-white shadow-md shadow-orange-900/30
             hover:from-[var(--color-accent-amber-hover)] hover:to-orange-700
-            active:scale-[0.98] transition-all duration-150 cursor-pointer"
+            active:scale-[0.98] transition duration-150 cursor-pointer"
         >
           <Play size={16} />
           Play Modded
@@ -135,7 +135,7 @@ export default function Sidebar() {
           className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
             border border-[var(--color-border-default)] text-[var(--color-text-secondary)]
             hover:bg-[var(--color-bg-card)] hover:text-[var(--color-text-primary)]
-            active:scale-[0.98] transition-all duration-150 cursor-pointer"
+            active:scale-[0.98] transition duration-150 cursor-pointer"
         >
           <Wrench size={15} />
           Play Vanilla

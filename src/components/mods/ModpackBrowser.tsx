@@ -159,6 +159,7 @@ export default function ModpackBrowser() {
           <input
             type="text"
             value={localSearch}
+            aria-label="Search modpacks"
             onChange={(e) => setLocalSearch(e.target.value)}
             placeholder="Search modpacks..."
             className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm
@@ -178,7 +179,7 @@ export default function ModpackBrowser() {
               <button
                 key={tab.value}
                 onClick={() => setSortBy(tab.value)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer
                   ${
                     isActive
                       ? "bg-[var(--color-accent-amber)] text-white shadow-sm shadow-orange-900/20"
@@ -226,10 +227,20 @@ export default function ModpackBrowser() {
             return (
               <div
                 key={pkg.full_name}
+                role="button"
+                tabIndex={0}
+                aria-label={`View details for ${pkg.name}`}
                 onClick={() => setSelectedPackage(pkg)}
+                onKeyDown={(e) => {
+                  if (e.target !== e.currentTarget) return;
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelectedPackage(pkg);
+                  }
+                }}
                 className="rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-bg-card)]
                   hover:bg-[var(--color-bg-card-hover)] hover:border-[var(--color-border-default)]
-                  transition-all duration-150 overflow-hidden cursor-pointer"
+                  transition-colors duration-150 overflow-hidden cursor-pointer"
               >
                 <div className="p-4">
                   <div className="flex items-start gap-3">
@@ -282,7 +293,7 @@ export default function ModpackBrowser() {
                       handleInstall(pkg.full_name, pkg.version_number, pkg.name)
                     }
                     disabled={isInstalled || isInstalling}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer
+                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer
                       ${
                         isInstalled
                           ? "bg-[var(--color-success)]/15 text-[var(--color-success)]"
