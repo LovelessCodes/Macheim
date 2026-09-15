@@ -1,7 +1,6 @@
 import { RefreshCw } from "lucide-react";
 import { useAppStore } from "../../store/appStore";
 import { Button } from "../ui/button";
-import { SidebarTrigger } from "../ui/sidebar";
 
 const pageTitles: Record<string, string> = {
   browse: "Browse Mods",
@@ -23,9 +22,10 @@ export default function Header({ onRefresh, isRefreshing }: HeaderProps) {
   const currentPage = useAppStore((s) => s.currentPage);
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
-      <SidebarTrigger className="-ml-1" />
-
+    <header
+      className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4"
+      data-tauri-drag-region
+    >
       <h2 className="text-base font-semibold text-foreground whitespace-nowrap">
         {pageTitles[currentPage] ?? "Macheim"}
       </h2>

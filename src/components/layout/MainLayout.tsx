@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import { SidebarInset, SidebarProvider } from "../ui/sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "../ui/sidebar";
 import { ScrollArea } from "../ui/scroll-area";
 import ModGrid from "../mods/ModGrid";
 import InstalledModList from "../mods/InstalledModList";
@@ -104,6 +104,9 @@ export default function MainLayout() {
     <SidebarProvider className="h-svh overflow-hidden">
       <Sidebar />
       <SidebarInset className="min-w-0 overflow-hidden">
+        <div data-tauri-drag-region className="w-full h-8 px-2 bg-sidebar border-b border-b-muted items-center flex justify-end">
+          <SidebarTrigger className="-ml-1 shrink-0 group-data-[collapsible=icon]:hidden" />
+        </div>
         <Header
           onRefresh={showRefresh ? handleRefresh : undefined}
           isRefreshing={isRefreshing}

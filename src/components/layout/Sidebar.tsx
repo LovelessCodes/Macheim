@@ -79,8 +79,13 @@ export default function Sidebar() {
 
   return (
     <SidebarRoot collapsible="icon">
-      <SidebarHeader>
-        <div className="flex items-center gap-2.5 px-1 group-data-[collapsible=icon]:px-0">
+      <SidebarHeader
+        className="pt-8 select-none"
+        data-tauri-drag-region
+      >
+        <div
+          className="flex items-center gap-2.5 px-1 group-data-[collapsible=icon]:px-0 pointer-events-none"
+        >
           <img src="/icon.png" alt="Macheim" className="size-8 shrink-0" />
           <div className="grid min-w-0 flex-1 leading-tight group-data-[collapsible=icon]:hidden">
             <span className="flex items-baseline gap-1.5">
