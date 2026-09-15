@@ -1,10 +1,22 @@
-import { useRef } from "react";
-import { ArrowDownNarrowWide, ArrowUpNarrowWide, Clock, Flame, Search, Star, ArrowDownAZ } from "lucide-react";
+import { useRef, type ReactNode } from "react";
+import {
+  ArrowDownAZ,
+  ArrowDownNarrowWide,
+  ArrowUpNarrowWide,
+  Clock,
+  Flame,
+  Search,
+  Star,
+} from "lucide-react";
 import { useHotkey } from "@tanstack/react-hotkeys";
-import { useModStore } from "../../store/modStore";
-import type { SortOption } from "../../lib/types";
+import type { SortDirection, SortOption } from "../../lib/types";
 import { Button } from "../ui/button";
-import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "../ui/input-group";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
+} from "../ui/input-group";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 
 const sortTabs: { value: SortOption; label: string; icon: typeof Flame }[] = [
@@ -14,14 +26,27 @@ const sortTabs: { value: SortOption; label: string; icon: typeof Flame }[] = [
   { value: "name", label: "A-Z", icon: ArrowDownAZ },
 ];
 
-export default function ModSearch() {
-  const sortBy = useModStore((s) => s.sortBy);
-  const setSortBy = useModStore((s) => s.setSortBy);
-  const sortDirection = useModStore((s) => s.sortDirection);
-  const setSortDirection = useModStore((s) => s.setSortDirection);
-  const searchQuery = useModStore((s) => s.searchQuery);
-  const setSearchQuery = useModStore((s) => s.setSearchQuery);
+interface ModToolbarProps {
+  search: string;
+  onSearchChange: (value: string) => void;
+  placeholder?: string;
+  sortBy: SortOption;
+  onSortByChange: (value: SortOption) => void;
+  sortDirection: SortDirection;
+  onSortDirectionChange: (value: SortDirection) => void;
+  children?: ReactNode;
+}
 
+export default function ModToolbar({
+  search,
+  onSearchChange,
+  placeholder = "Search...",
+  sortBy,
+  onSortByChange,
+  sortDirection,
+  onSortDirectionChange,
+  children,
+}: ModToolbarProps) {
   const searchRef = useRef<HTMLInputElement>(null);
 
   useHotkey("Mod+F", () => {
@@ -37,10 +62,10 @@ export default function ModSearch() {
         </InputGroupAddon>
         <InputGroupInput
           ref={searchRef}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search mods..."
-          aria-label="Search mods"
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder={placeholder}
+          aria-label={placeholder}
         />
         <InputGroupAddon align="inline-end">
           <InputGroupText>
@@ -54,9 +79,9 @@ export default function ModSearch() {
         size="sm"
         value={[sortBy]}
         onValueChange={(value) => {
-          if (value[0]) setSortBy(value[0] as SortOption);
+          if (value[0]) onSortByChange(value[0] as SortOption);
         }}
-        aria-label="Sort mods by"
+        aria-label="Sort by"
       >
         {sortTabs.map((tab) => {
           const Icon = tab.icon;
@@ -73,7 +98,7 @@ export default function ModSearch() {
         variant="outline"
         size="icon-sm"
         onClick={() =>
-          setSortDirection(sortDirection === "desc" ? "asc" : "desc")
+          onSortDirectionChange(sortDirection === "desc" ? "asc" : "desc")
         }
         title={
           sortDirection === "desc"
@@ -88,6 +113,12 @@ export default function ModSearch() {
           <ArrowUpNarrowWide />
         )}
       </Button>
+
+      {children && (
+        <div className="ms-auto flex items-center text-xs text-muted-foreground">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
