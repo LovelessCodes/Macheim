@@ -32,6 +32,7 @@ import {
 import { Separator } from "../ui/separator";
 import { detectGame, getGameStatus, installBepinex } from "../../lib/tauri";
 import { useAppStore } from "../../store/appStore";
+import { useAppVersion } from "../../hooks/use-app-version";
 
 type Step = "detect" | "bepinex" | "ready";
 
@@ -44,6 +45,7 @@ const steps: { id: Step; label: string }[] = [
 export default function SetupWizard() {
   const setGameStatus = useAppStore((s) => s.setGameStatus);
   const setInitialized = useAppStore((s) => s.setInitialized);
+  const version = useAppVersion();
 
   const [step, setStep] = useState<Step>("detect");
   const [detecting, setDetecting] = useState(true);
@@ -411,7 +413,7 @@ export default function SetupWizard() {
 
         {/* Footer */}
         <p className="mt-6 text-center text-xs text-[var(--color-text-muted)]">
-          Built for macOS &middot; Macheim v1.1.0
+          Built for macOS &middot; Macheim{version ? ` v${version}` : ""}
         </p>
       </div>
     </div>

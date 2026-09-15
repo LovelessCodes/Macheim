@@ -13,6 +13,7 @@ import {
 import { useAppStore } from "../../store/appStore";
 import type { Page } from "../../lib/types";
 import { launchModded, launchVanilla } from "../../lib/tauri";
+import { useAppVersion } from "../../hooks/use-app-version";
 import ProfileSelector from "../profiles/ProfileSelector";
 import { toast } from "../ui/toast";
 import { Button } from "../ui/button";
@@ -50,6 +51,7 @@ const navItems: NavItem[] = [
 export default function Sidebar() {
   const currentPage = useAppStore((s) => s.currentPage);
   const setCurrentPage = useAppStore((s) => s.setCurrentPage);
+  const version = useAppVersion();
 
   const handleLaunchModded = async () => {
     try {
@@ -81,8 +83,15 @@ export default function Sidebar() {
         <div className="flex items-center gap-2.5 px-1 group-data-[collapsible=icon]:px-0">
           <img src="/icon.png" alt="Macheim" className="size-8 shrink-0" />
           <div className="grid min-w-0 flex-1 leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="truncate text-sm font-bold tracking-wide">
-              MACHEIM
+            <span className="flex items-baseline gap-1.5">
+              <span className="truncate text-sm font-bold tracking-wide">
+                MACHEIM
+              </span>
+              {version && (
+                <span className="text-[10px] font-medium text-muted-foreground">
+                  v{version}
+                </span>
+              )}
             </span>
             <span className="truncate text-[10px] font-medium tracking-widest text-[var(--color-accent-amber)] uppercase">
               Mod Manager

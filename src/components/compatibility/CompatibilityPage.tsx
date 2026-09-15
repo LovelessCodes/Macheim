@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Shield, RefreshCw, Loader2, AlertTriangle } from "lucide-react";
 import { getCompatibility, applyCompatibility } from "../../lib/tauri";
 import type { CompatibilitySettings, CompatibilityStatus } from "../../lib/types";
+import { useAppVersion } from "../../hooks/use-app-version";
 import { toast } from "../ui/toast";
 import {
   Alert,
@@ -19,6 +20,7 @@ import {
 } from "../ui/card";
 
 export default function CompatibilityPage() {
+  const version = useAppVersion();
   const [status, setStatus] = useState<CompatibilityStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -78,7 +80,7 @@ export default function CompatibilityPage() {
         <AlertTitle className="font-medium">Limited, tested coverage</AlertTitle>
         <AlertDescription className="text-foreground">
           <p>Runtime support: Valheim {status.catalog.game_version}, Unity {status.catalog.unity_version}, macOS Metal. The plugin skips other game/Unity versions. Mod versions come from profile metadata; manually replaced DLLs cannot be verified by that metadata.</p>
-          <p>Not a universal shader repair. Other items, monsters, buildings, equipment and UI icons are not covered. Effect brightness can differ from Windows. Unverified all-mod scanning is not included in 1.1.0.</p>
+          <p>Not a universal shader repair. Other items, monsters, buildings, equipment and UI icons are not covered. Effect brightness can differ from Windows. Unverified all-mod scanning is not included in {version ? `v${version}` : "this release"}.</p>
         </AlertDescription>
       </Alert>
       <div className="grid gap-3">{status.rules.map(({ rule, eligible, reason }) => {
