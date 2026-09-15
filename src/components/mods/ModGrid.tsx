@@ -1,13 +1,22 @@
-import { useEffect, useState } from "react";
-import { Package, ChevronDown } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { Package } from "lucide-react";
 import ModCard from "./ModCard";
 import ModSearch from "./ModSearch";
 import { GridSkeleton } from "../common/LoadingSkeleton";
 import { useModStore } from "../../store/modStore";
 import { fetchPackages } from "../../lib/tauri";
 import { toast } from "../ui/toast";
+import { ScrollArea } from "../ui/scroll-area";
 
-const PAGE_SIZE = 48;
+const ROW_GAP = 16;
+const ESTIMATED_ROW_HEIGHT = 168;
+
+function getColumnCount(width: number) {
+  if (width >= 1280) return 4;
+  if (width >= 768) return 3;
+  return 2;
+}
 
 export default function ModGrid() {
   const packages = useModStore((s) => s.packages);
@@ -15,7 +24,12 @@ export default function ModGrid() {
   const setPackages = useModStore((s) => s.setPackages);
   const setLoading = useModStore((s) => s.setLoadingPackages);
   const getFilteredPackages = useModStore((s) => s.getFilteredPackages);
-  const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
+  const searchQuery = useModStore((s) => s.searchQuery);
+  const sortBy = useModStore((s) => s.sortBy);
+  const sortDirection = useModStore((s) => s.sortDirection);
+
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [columns, setColumns] = useState(3);
 
   useEffect(() => {
     if (packages.length > 0) return;
@@ -43,66 +57,83 @@ export default function ModGrid() {
     };
   }, [packages.length, setPackages, setLoading]);
 
-  // Reset display count when search changes
-  const searchQuery = useModStore((s) => s.searchQuery);
+  const filtered = useMemo(
+    () => getFilteredPackages(),
+    [getFilteredPackages, packages, searchQuery, sortBy, sortDirection]
+  );
+
+  // Derive the responsive column count from the scroll viewport width
   useEffect(() => {
-    setDisplayCount(PAGE_SIZE);
-  }, [searchQuery]);
+    const el = viewportRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => {
+      setColumns(getColumnCount(el.clientWidth));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
-  const filtered = getFilteredPackages();
-  const displayed = filtered.slice(0, displayCount);
-  const hasMore = displayCount < filtered.length;
+  const rowCount = Math.ceil(filtered.length / columns);
+  const rowVirtualizer = useVirtualizer({
+    count: rowCount,
+    getScrollElement: () => viewportRef.current,
+    estimateSize: () => ESTIMATED_ROW_HEIGHT,
+    overscan: 4,
+    gap: ROW_GAP,
+  });
 
-  if (isLoading && packages.length === 0) {
-    return (
-      <div>
-        <ModSearch />
-        <GridSkeleton count={9} />
-      </div>
-    );
-  }
+  const isEmpty = !isLoading && filtered.length === 0;
 
   return (
-    <div>
+    <div className="flex h-full min-h-0 flex-col">
       <ModSearch />
 
-      {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <Package
-            size={48}
-            className="text-[var(--color-text-muted)] mb-4"
-          />
-          <h3 className="text-lg font-semibold text-[var(--color-text-secondary)] mb-1">
-            No mods found
-          </h3>
-          <p className="text-sm text-[var(--color-text-muted)]">
-            Try adjusting your search or refresh the package list.
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {displayed.map((pkg) => (
-              <ModCard key={pkg.full_name} pkg={pkg} />
-            ))}
+      <ScrollArea
+        scrollFade
+        viewportRef={viewportRef}
+        className="min-h-0 flex-1"
+      >
+        {isLoading && packages.length === 0 ? (
+          <GridSkeleton count={9} />
+        ) : isEmpty ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <Package size={48} className="mb-4 text-muted-foreground" />
+            <h3 className="mb-1 text-lg font-semibold text-foreground">
+              No mods found
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Try adjusting your search or refresh the package list.
+            </p>
           </div>
-
-          {hasMore && (
-            <div className="flex justify-center mt-6 mb-4">
-              <button
-                onClick={() => setDisplayCount((c) => c + PAGE_SIZE)}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium
-                  bg-[var(--color-bg-card)] border border-[var(--color-border-default)]
-                  text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]
-                  hover:border-[var(--color-border-hover)] transition-all cursor-pointer"
-              >
-                <ChevronDown size={16} />
-                Load More ({(filtered.length - displayCount).toLocaleString()} remaining)
-              </button>
-            </div>
-          )}
-        </>
-      )}
+        ) : (
+          <div
+            className="relative w-full"
+            style={{ height: rowVirtualizer.getTotalSize() + ROW_GAP }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const start = virtualRow.index * columns;
+              return (
+                <div
+                  key={virtualRow.key}
+                  data-index={virtualRow.index}
+                  ref={rowVirtualizer.measureElement}
+                  className="absolute inset-x-0 top-0 grid gap-4"
+                  style={{
+                    transform: `translateY(${virtualRow.start}px)`,
+                    gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+                  }}
+                >
+                  {filtered
+                    .slice(start, start + columns)
+                    .map((pkg) => (
+                      <ModCard key={pkg.full_name} pkg={pkg} />
+                    ))}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </ScrollArea>
     </div>
   );
 }

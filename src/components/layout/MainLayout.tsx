@@ -93,6 +93,9 @@ export default function MainLayout() {
     }
   };
 
+  const page = renderPage();
+  const managesOwnScroll = currentPage === "browse";
+
   return (
     <SidebarProvider className="h-svh overflow-hidden">
       <Sidebar />
@@ -101,9 +104,13 @@ export default function MainLayout() {
           onRefresh={showRefresh ? handleRefresh : undefined}
           isRefreshing={isRefreshing}
         />
-        <ScrollArea scrollFade className="min-h-0 flex-1">
-          <div className="p-6">{renderPage()}</div>
-        </ScrollArea>
+        {managesOwnScroll ? (
+          <div className="min-h-0 flex-1 p-6">{page}</div>
+        ) : (
+          <ScrollArea scrollFade className="min-h-0 flex-1">
+            <div className="p-6">{page}</div>
+          </ScrollArea>
+        )}
       </SidebarInset>
 
       {selectedPackage && (
