@@ -79,9 +79,7 @@ export default function Sidebar() {
     <SidebarRoot collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center gap-2.5 px-1 group-data-[collapsible=icon]:px-0">
-          <div className="flex size-8 shrink-0 items-center justify-center bg-gradient-to-br from-[var(--color-accent-amber)] to-orange-700">
-            <Shield className="size-4 text-white" />
-          </div>
+          <img src="/icon.png" alt="Macheim" className="size-8 shrink-0" />
           <div className="grid min-w-0 flex-1 leading-tight group-data-[collapsible=icon]:hidden">
             <span className="truncate text-sm font-bold tracking-wide">
               MACHEIM

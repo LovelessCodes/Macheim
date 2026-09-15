@@ -158,9 +158,7 @@ export default function SetupWizard() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex size-14 items-center justify-center bg-gradient-to-br from-[var(--color-accent-amber)] to-orange-700 shadow-lg shadow-orange-900/40">
-            <Shield size={28} className="text-white" />
-          </div>
+          <img src="/icon.png" alt="Macheim" className="size-14" />
           <div className="text-center">
             <h1 className="text-2xl font-bold tracking-tight text-[var(--color-text-primary)]">
               Macheim
