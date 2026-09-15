@@ -43,6 +43,14 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
   const [loadingDetail, setLoadingDetail] = useState(true);
   const [detailError, setDetailError] = useState<string | null>(null);
 
+  // Open on the next frame so the Sheet plays its enter transition, and let
+  // the exit transition finish before the parent unmounts us.
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setOpen(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
   // Fetch full details on mount
   useEffect(() => {
     let cancelled = false;
@@ -108,9 +116,10 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
 
   return (
     <Sheet
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
+      open={open}
+      onOpenChange={setOpen}
+      onOpenChangeComplete={(isOpen) => {
+        if (!isOpen) onClose();
       }}
     >
       <SheetContent
