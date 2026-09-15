@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import {
-  X,
   Download,
   CheckCircle,
   Loader2,
@@ -13,30 +12,25 @@ import {
 } from "lucide-react";
 import type { ThunderstorePackage, PackageDetail } from "../../lib/types";
 import { useModStore } from "../../store/modStore";
+import { formatDate, formatDownloads } from "../../lib/format";
 import { installMod, uninstallMod, getInstalledMods, getPackageDetails } from "../../lib/tauri";
 import { toast } from "../ui/toast";
+import { Alert, AlertDescription } from "../ui/alert";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { ScrollArea } from "../ui/scroll-area";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "../ui/sheet";
 
 interface ModDetailProps {
   pkg: ThunderstorePackage;
   onClose: () => void;
-}
-
-function formatDate(dateStr: string): string {
-  try {
-    return new Date(dateStr).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return dateStr;
-  }
-}
-
-function formatDownloads(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
 }
 
 export default function ModDetail({ pkg, onClose }: ModDetailProps) {
@@ -113,254 +107,231 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
   const thunderstoreUrl = `https://thunderstore.io/c/valheim/p/${pkg.owner}/${pkg.name}/`;
 
   return (
-    <>
-      <div
-        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.15s_ease-out]"
-        onClick={onClose}
-      />
+    <Sheet
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <SheetContent
+        side="right"
+        className="w-full gap-0 p-0 sm:max-w-xl"
+      >
+        <SheetHeader className="border-b">
+          <SheetTitle>Mod Details</SheetTitle>
+          <SheetDescription className="sr-only">
+            {pkg.name} by {pkg.owner}
+          </SheetDescription>
+        </SheetHeader>
 
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-xl bg-[var(--color-bg-sidebar)] border-l border-[var(--color-border-default)] shadow-2xl animate-[slideInRight_0.2s_ease-out] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border-subtle)]">
-          <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
-            Mod Details
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-[var(--color-bg-card)] transition-colors cursor-pointer"
-          >
-            <X size={18} className="text-[var(--color-text-muted)]" />
-          </button>
-        </div>
+        <ScrollArea scrollFade className="min-h-0 flex-1">
+          <div className="space-y-6 p-5">
+            {/* Top section - always visible from listing data */}
+            <div className="flex items-start gap-4">
+              {pkg.icon ? (
+                <img
+                  src={pkg.icon}
+                  alt={pkg.name}
+                  className="size-20 shrink-0 bg-muted object-cover"
+                />
+              ) : (
+                <div className="flex size-20 shrink-0 items-center justify-center bg-muted">
+                  <Package className="size-8 text-muted-foreground" />
+                </div>
+              )}
+              <div className="min-w-0">
+                <h3 className="text-xl font-bold text-foreground">
+                  {pkg.name}
+                </h3>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  by {pkg.owner}
+                </p>
+                <div className="mt-2.5 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Download className="size-3.5" />
+                    {formatDownloads(pkg.downloads)}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Star className="size-3.5" />
+                    {pkg.rating_score}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="size-3.5" />
+                    {formatDate(pkg.date_updated)}
+                  </span>
+                </div>
+              </div>
+            </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-6">
-          {/* Top section - always visible from listing data */}
-          <div className="flex items-start gap-4">
-            {pkg.icon ? (
-              <img
-                src={pkg.icon}
-                alt={pkg.name}
-                className="w-20 h-20 rounded-xl shrink-0 bg-[var(--color-bg-input)] object-cover shadow-md"
-              />
-            ) : (
-              <div className="w-20 h-20 rounded-xl shrink-0 bg-[var(--color-bg-input)] flex items-center justify-center">
-                <Package size={32} className="text-[var(--color-text-muted)]" />
+            {/* Description */}
+            <div>
+              <h4 className="mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                Description
+              </h4>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
+                {pkg.description || "No description available."}
+              </p>
+            </div>
+
+            {/* Categories */}
+            {pkg.categories && pkg.categories.length > 0 && (
+              <div>
+                <h4 className="mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                  Categories
+                </h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {pkg.categories.map((cat) => (
+                    <Badge
+                      key={cat}
+                      variant="outline"
+                      className="border-accent-primary/20 bg-accent-primary/10 text-accent-primary"
+                    >
+                      {cat}
+                    </Badge>
+                  ))}
+                </div>
               </div>
             )}
-            <div className="min-w-0">
-              <h3 className="text-xl font-bold text-[var(--color-text-primary)]">
-                {pkg.name}
-              </h3>
-              <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">
-                by {pkg.owner}
-              </p>
-              <div className="flex items-center gap-4 mt-2.5 text-xs text-[var(--color-text-muted)]">
-                <span className="flex items-center gap-1">
-                  <Download size={13} />
-                  {formatDownloads(pkg.downloads)}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Star size={13} />
-                  {pkg.rating_score}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock size={13} />
-                  {formatDate(pkg.date_updated)}
+
+            {/* Loading detail */}
+            {loadingDetail && (
+              <div className="flex items-center justify-center gap-2 py-8">
+                <Loader2 className="size-5 animate-spin text-accent-primary" />
+                <span className="text-sm text-muted-foreground">
+                  Loading details...
                 </span>
               </div>
-            </div>
-          </div>
+            )}
 
-          {/* Description */}
-          <div>
-            <h4 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
-              Description
-            </h4>
-            <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed whitespace-pre-wrap">
-              {pkg.description || "No description available."}
-            </p>
-          </div>
+            {detailError && (
+              <Alert className="border-[var(--color-warning)]/20 bg-[var(--color-warning)]/10">
+                <AlertTriangle className="text-[var(--color-warning)]" />
+                <AlertDescription className="text-muted-foreground">
+                  Could not load full details: {detailError}
+                </AlertDescription>
+              </Alert>
+            )}
 
-          {/* Categories */}
-          {pkg.categories && pkg.categories.length > 0 && (
-            <div>
-              <h4 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
-                Categories
-              </h4>
-              <div className="flex flex-wrap gap-1.5">
-                {pkg.categories.map((cat) => (
-                  <span
-                    key={cat}
-                    className="inline-block px-2.5 py-1 rounded-full text-xs bg-[var(--color-accent-primary)]/10 text-[var(--color-accent-primary)] border border-[var(--color-accent-primary)]/20"
-                  >
-                    {cat}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Loading detail */}
-          {loadingDetail && (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 size={24} className="text-[var(--color-accent-primary)] animate-spin" />
-              <span className="ml-2 text-sm text-[var(--color-text-muted)]">Loading details...</span>
-            </div>
-          )}
-
-          {detailError && (
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/20">
-              <AlertTriangle size={16} className="text-[var(--color-warning)] mt-0.5 shrink-0" />
-              <p className="text-xs text-[var(--color-text-secondary)]">
-                Could not load full details: {detailError}
-              </p>
-            </div>
-          )}
-
-          {/* Version History */}
-          {detail && detail.versions.length > 0 && (
-            <div>
-              <h4 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
-                Version History ({detail.versions.length})
-              </h4>
-              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                {detail.versions.slice(0, 15).map((v, i) => (
-                  <div
-                    key={v.version_number}
-                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm
-                      ${i === 0
-                        ? "bg-[var(--color-accent-primary)]/10 border border-[var(--color-accent-primary)]/20"
-                        : "bg-[var(--color-bg-input)]"
+            {/* Version History */}
+            {detail && detail.versions.length > 0 && (
+              <div>
+                <h4 className="mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                  Version History ({detail.versions.length})
+                </h4>
+                <div className="space-y-1.5">
+                  {detail.versions.slice(0, 15).map((v, i) => (
+                    <div
+                      key={v.version_number}
+                      className={
+                        i === 0
+                          ? "flex items-center justify-between border border-accent-primary/20 bg-accent-primary/10 px-3 py-2 text-sm"
+                          : "flex items-center justify-between bg-muted px-3 py-2 text-sm"
                       }
-                    `}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-[var(--color-text-primary)] font-mono text-xs font-medium">
-                        v{v.version_number}
-                      </span>
-                      {i === 0 && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[var(--color-accent-primary)] text-white">
-                          LATEST
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)]">
-                      <span>{formatDownloads(v.downloads)}</span>
-                      <span>{formatDate(v.date_created)}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Dependencies */}
-          {dependencies.length > 0 && (
-            <div>
-              <h4 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
-                <span className="flex items-center gap-1.5">
-                  <Layers size={13} />
-                  Dependencies ({dependencies.length})
-                </span>
-              </h4>
-              <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto">
-                {dependencies.map((dep) => {
-                  const parts = dep.split("-");
-                  const depName = parts.length >= 3
-                    ? parts.slice(0, -1).join("-")
-                    : dep;
-                  const depVersion = parts.length >= 3
-                    ? parts[parts.length - 1]
-                    : "";
-                  return (
-                    <span
-                      key={dep}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs bg-[var(--color-bg-input)] text-[var(--color-text-secondary)] border border-[var(--color-border-subtle)]"
                     >
-                      {depName}
-                      {depVersion && (
-                        <span className="text-[var(--color-text-muted)]">
-                          {depVersion}
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-medium text-foreground">
+                          v{v.version_number}
                         </span>
-                      )}
-                    </span>
-                  );
-                })}
+                        {i === 0 && (
+                          <Badge className="border-transparent bg-accent-primary text-white">
+                            LATEST
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span>{formatDownloads(v.downloads)}</span>
+                        <span>{formatDate(v.date_created)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Thunderstore Link */}
-          <a
-            href={thunderstoreUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary-hover)] transition-colors"
-          >
-            <ExternalLink size={14} />
-            View on Thunderstore
-          </a>
-        </div>
+            {/* Dependencies */}
+            {dependencies.length > 0 && (
+              <div>
+                <h4 className="mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                  <span className="flex items-center gap-1.5">
+                    <Layers className="size-3.5" />
+                    Dependencies ({dependencies.length})
+                  </span>
+                </h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {dependencies.map((dep) => {
+                    const parts = dep.split("-");
+                    const depName = parts.length >= 3
+                      ? parts.slice(0, -1).join("-")
+                      : dep;
+                    const depVersion = parts.length >= 3
+                      ? parts[parts.length - 1]
+                      : "";
+                    return (
+                      <Badge key={dep} variant="secondary">
+                        {depName}
+                        {depVersion && (
+                          <span className="text-muted-foreground">
+                            {depVersion}
+                          </span>
+                        )}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
 
         {/* Action Footer */}
-        <div className="px-5 py-4 border-t border-[var(--color-border-subtle)] flex gap-3">
+        <SheetFooter className="flex-col items-center gap-1 border-t">
           {isInstalled ? (
-            <>
-              <button
-                className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-[var(--color-success)]/15 text-[var(--color-success)] flex items-center justify-center gap-2"
-                disabled
-              >
-                <CheckCircle size={16} />
+            <div className="grid grid-cols-[1fr_min-content] items-center gap-1 w-full">
+              <Button variant="outline-success" size="lg" disabled>
+                <CheckCircle />
                 Installed (v
                 {installedMods.find((m) => m.full_name === pkg.full_name)
                   ?.version ?? pkg.version_number}
                 )
-              </button>
-              <button
-                onClick={handleUninstall}
-                className="px-4 py-2.5 rounded-lg text-sm font-medium border border-[var(--color-error)]/40 text-[var(--color-error)]
-                  hover:bg-[var(--color-error)]/10 transition-colors cursor-pointer"
-              >
+              </Button>
+              <Button variant="destructive" size="lg" onClick={handleUninstall}>
                 Uninstall
-              </button>
-            </>
+              </Button>
+            </div>
           ) : (
-            <button
+            <Button
+              variant="accent-primary"
+              size="lg"
+              className="w-full"
               onClick={handleInstall}
               disabled={isInstalling}
-              className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold
-                bg-[var(--color-accent-primary)] text-white
-                hover:bg-[var(--color-accent-primary-hover)]
-                disabled:opacity-60 active:scale-[0.98] transition-all cursor-pointer
-                flex items-center justify-center gap-2"
             >
               {isInstalling ? (
                 <>
-                  <Loader2 size={16} className="animate-spin" />
+                  <Loader2 className="animate-spin" />
                   Installing...
                 </>
               ) : (
                 <>
-                  <Download size={16} />
+                  <Download />
                   Install v{pkg.version_number}
                 </>
               )}
-            </button>
+            </Button>
           )}
-        </div>
-
-        <style>{`
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-          @keyframes slideInRight {
-            from { transform: translateX(100%); }
-            to { transform: translateX(0); }
-          }
-        `}</style>
-      </div>
-    </>
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-full"
+            render={
+              <a href={thunderstoreUrl} target="_blank" rel="noopener noreferrer" />
+            }
+          >
+            <ExternalLink />
+            View on Thunderstore
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
