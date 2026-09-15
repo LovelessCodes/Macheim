@@ -26,16 +26,16 @@ tauri-plugin-dialog = "2"
 tauri-plugin-shell = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-reqwest = { version = "0.12", features = ["json", "stream"] }
-tokio = { version = "1", features = ["full"] }
-zip = "2"
-dirs = "6"
+reqwest = { version = "0.13", default-features = false, features = ["json", "stream", "rustls", "http2", "system-proxy"] }
+tokio = { version = "1", features = ["sync"] }
+zip = { version = "8", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+dirs = "7"
 thiserror = "2"
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "std", "serde"] }
 semver = { version = "1", features = ["serde"] }
 plist = "1"
 regex = "1"
-sha2 = "0.10"
+sha2 = "0.11"
 hex = "0.4"
 tempfile = "3"
 tracing = "0.1"
