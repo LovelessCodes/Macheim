@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
+import { cn } from "cn";
 import { Loader2, Download, CheckCircle, Package } from "lucide-react";
 import { listen } from "@tauri-apps/api/event";
+import { Card, CardContent } from "../ui/card";
+import { Progress } from "../ui/progress";
 
 interface ProgressEvent {
   stage: string;
@@ -56,72 +59,64 @@ export default function ProgressOverlay() {
     : 0;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center pb-6 pointer-events-none">
-      <div className="pointer-events-auto w-full max-w-lg mx-4 rounded-2xl border border-[var(--color-border-default)] bg-[var(--color-bg-sidebar)] shadow-2xl shadow-black/40 overflow-hidden animate-[slideUp_0.2s_ease-out]">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[100] flex justify-center p-6">
+      <Card className="pointer-events-auto w-full max-w-lg animate-in gap-0 overflow-hidden py-0 shadow-2xl shadow-black/40 duration-200 fade-in slide-in-from-bottom-4">
         {/* Overall progress bar */}
-        <div className="h-1 bg-[var(--color-bg-input)]">
-          <div
-            className={`h-full transition-all duration-300 ${isDone ? "bg-[var(--color-success)]" : "bg-[var(--color-accent-primary)]"}`}
-            style={{ width: `${isDone ? 100 : overallPct}%` }}
-          />
-        </div>
+        <Progress
+          value={isDone ? 100 : overallPct}
+          className={cn(
+            "[&_[data-slot=progress-indicator]]:transition-all [&_[data-slot=progress-track]]:h-1 [&_[data-slot=progress-track]]:bg-muted",
+            isDone
+              ? "[&_[data-slot=progress-indicator]]:bg-[var(--color-success)]"
+              : "[&_[data-slot=progress-indicator]]:bg-accent-primary"
+          )}
+        />
 
-        <div className="p-4">
-          <div className="flex items-center gap-3">
-            {isDone ? (
-              <CheckCircle size={20} className="text-[var(--color-success)] shrink-0" />
-            ) : isDownloading ? (
-              <Download size={20} className="text-[var(--color-accent-primary)] shrink-0 animate-pulse" />
-            ) : (
-              <Loader2 size={20} className="text-[var(--color-accent-primary)] shrink-0 animate-spin" />
-            )}
+        <CardContent className="flex items-center gap-3 p-4">
+          {isDone ? (
+            <CheckCircle className="size-5 shrink-0 text-[var(--color-success)]" />
+          ) : isDownloading ? (
+            <Download className="size-5 shrink-0 animate-pulse text-accent-primary" />
+          ) : (
+            <Loader2 className="size-5 shrink-0 animate-spin text-accent-primary" />
+          )}
 
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
-                  {progress.message}
-                </p>
-                {progress.total > 0 && !isDone && (
-                  <span className="text-xs text-[var(--color-text-muted)] shrink-0 ml-2">
-                    {progress.current}/{progress.total}
-                  </span>
-                )}
-              </div>
-
-              {progress.mod_name && !isDone && (
-                <div className="flex items-center gap-2 mt-1">
-                  <Package size={12} className="text-[var(--color-text-muted)] shrink-0" />
-                  <p className="text-xs text-[var(--color-text-muted)] truncate">
-                    {progress.mod_name}
-                  </p>
-                </div>
-              )}
-
-              {isDownloading && progress.bytes_downloaded > 0 && (
-                <div className="flex items-center gap-2 mt-1.5">
-                  <div className="flex-1 h-1.5 bg-[var(--color-bg-input)] rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-[var(--color-accent-amber)] rounded-full transition-all duration-200"
-                      style={{ width: `${pct ?? 50}%` }}
-                    />
-                  </div>
-                  <span className="text-[10px] text-[var(--color-text-muted)] shrink-0 tabular-nums">
-                    {formatBytes(progress.bytes_downloaded)}
-                    {progress.bytes_total ? ` / ${formatBytes(progress.bytes_total)}` : ""}
-                  </span>
-                </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between">
+              <p className="truncate text-sm font-medium text-foreground">
+                {progress.message}
+              </p>
+              {progress.total > 0 && !isDone && (
+                <span className="ml-2 shrink-0 text-xs text-muted-foreground">
+                  {progress.current}/{progress.total}
+                </span>
               )}
             </div>
-          </div>
-        </div>
 
-        <style>{`
-          @keyframes slideUp {
-            from { transform: translateY(100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-          }
-        `}</style>
-      </div>
+            {progress.mod_name && !isDone && (
+              <div className="mt-1 flex items-center gap-2">
+                <Package className="size-3 shrink-0 text-muted-foreground" />
+                <p className="truncate text-xs text-muted-foreground">
+                  {progress.mod_name}
+                </p>
+              </div>
+            )}
+
+            {isDownloading && progress.bytes_downloaded > 0 && (
+              <div className="mt-1.5 flex items-center gap-2">
+                <Progress
+                  value={pct ?? 50}
+                  className="flex-1 [&_[data-slot=progress-indicator]]:bg-accent-amber [&_[data-slot=progress-track]]:h-1.5"
+                />
+                <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                  {formatBytes(progress.bytes_downloaded)}
+                  {progress.bytes_total ? ` / ${formatBytes(progress.bytes_total)}` : ""}
+                </span>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
