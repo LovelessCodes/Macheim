@@ -3,7 +3,6 @@ import {
   CheckCircle,
   Loader2,
   ExternalLink,
-  Package,
   Clock,
   Star,
   Layers,
@@ -28,6 +27,7 @@ import {
   SheetTitle,
 } from "../ui/sheet";
 import { toast } from "../ui/toast";
+import ModIcon from "./ModIcon";
 
 interface ModDetailProps {
   pkg: ThunderstorePackage;
@@ -134,17 +134,7 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
           <div className="space-y-6 p-5">
             {/* Top section - always visible from listing data */}
             <div className="flex items-start gap-4">
-              {pkg.icon ? (
-                <img
-                  src={pkg.icon}
-                  alt={pkg.name}
-                  className="bg-muted size-20 shrink-0 object-cover"
-                />
-              ) : (
-                <div className="bg-muted flex size-20 shrink-0 items-center justify-center">
-                  <Package className="text-muted-foreground size-8" />
-                </div>
-              )}
+              <ModIcon src={pkg.icon} alt={pkg.name} className="size-20" iconClassName="size-8" />
               <div className="min-w-0">
                 <h3 className="text-foreground text-xl font-bold">{pkg.name}</h3>
                 <p className="text-muted-foreground mt-0.5 text-sm">by {pkg.owner}</p>

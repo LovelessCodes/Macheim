@@ -19,6 +19,7 @@ import { ScrollArea } from "../ui/scroll-area";
 import { Switch } from "../ui/switch";
 import { toast } from "../ui/toast";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
+import ModIcon from "./ModIcon";
 import ModSearchInput from "./ModSearchInput";
 
 type ModFilter = "all" | "enabled" | "disabled";
@@ -208,18 +209,7 @@ export default function InstalledModList() {
                 !mod.enabled && "opacity-50",
               )}
             >
-              {mod.icon ? (
-                <img
-                  src={mod.icon}
-                  alt={mod.name}
-                  className="bg-muted size-10 shrink-0 object-cover"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="bg-muted flex size-10 shrink-0 items-center justify-center">
-                  <Package className="text-muted-foreground size-4" />
-                </div>
-              )}
+              <ModIcon src={mod.icon} alt={mod.name} className="size-10" iconClassName="size-4" />
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">

@@ -15,7 +15,7 @@ const CACHE_MAX_AGE_MINUTES: i64 = 30;
 const PRIMARY_CDN_HOST: &str = "gcdn.thunderstore.io";
 /// Thunderstore's backup CDN, used when the primary one is unreachable.
 const FALLBACK_CDN_HOST: &str = "hcdn-1.hcdn.thunderstore.io";
-const MAX_REDIRECTS: usize = 10;
+const MAX_REDIRECTS: usize = 1;
 
 /// Get the application data directory for cache and config storage.
 pub fn get_app_data_dir() -> PathBuf {

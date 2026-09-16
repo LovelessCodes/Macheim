@@ -1,4 +1,4 @@
-import { Download, CheckCircle, Loader2, Package } from "lucide-react";
+import { Download, CheckCircle, Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { usePackageInstall } from "../../hooks/use-package-install";
@@ -8,6 +8,7 @@ import { useModStore } from "../../store/modStore";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
+import ModIcon from "./ModIcon";
 
 interface ModCardProps {
   pkg: ThunderstorePackage;
@@ -37,18 +38,7 @@ export default function ModCard({
       className="group hover:bg-muted/40 cursor-pointer gap-3 transition-colors"
     >
       <CardHeader className="grid-cols-[auto_1fr] items-start gap-3">
-        {pkg.icon ? (
-          <img
-            src={pkg.icon}
-            alt={pkg.name}
-            className="bg-muted size-14 shrink-0 object-cover"
-            loading="lazy"
-          />
-        ) : (
-          <div className="bg-muted flex size-14 shrink-0 items-center justify-center">
-            <Package className="text-muted-foreground size-6" />
-          </div>
-        )}
+        <ModIcon src={pkg.icon} alt={pkg.name} className="size-14" iconClassName="size-6" />
 
         <div className="grid min-w-0 gap-0.5">
           <CardTitle className="truncate transition-colors group-hover:text-[var(--color-accent-amber)]">
