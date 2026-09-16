@@ -1,28 +1,39 @@
+import { cn } from "cn";
+
+import { Card, CardFooter, CardHeader } from "../ui/card";
+
 interface SkeletonProps {
   className?: string;
 }
 
 function Skeleton({ className = "" }: SkeletonProps) {
-  return <div className={`animate-pulse rounded bg-[var(--color-bg-elevated)] ${className}`} />;
+  return <div className={cn("animate-pulse rounded bg-muted", className)} />;
 }
 
 export function CardSkeleton() {
   return (
-    <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-bg-card)] p-4">
-      <div className="flex items-start gap-3">
-        <Skeleton className="h-16 w-16 shrink-0 rounded-lg" />
-        <div className="min-w-0 flex-1 space-y-2">
+    <Card size="sm" className="h-full">
+      <CardHeader className="grid-cols-[auto_1fr] items-start gap-3">
+        <Skeleton className="size-14 shrink-0 rounded-lg" />
+
+        <div className="grid min-w-0 gap-0.5">
           <Skeleton className="h-5 w-3/4" />
           <Skeleton className="h-3.5 w-1/3" />
-          <Skeleton className="h-3.5 w-full" />
-          <Skeleton className="h-3.5 w-2/3" />
+          <div className="mt-1 grid gap-1.5">
+            <Skeleton className="h-3.5 w-full" />
+            <Skeleton className="h-3.5 w-2/3" />
+          </div>
         </div>
-      </div>
-      <div className="mt-4 flex items-center justify-between border-t border-[var(--color-border-subtle)] pt-3">
-        <Skeleton className="h-4 w-20" />
+      </CardHeader>
+
+      <CardFooter className="mt-auto justify-between">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-3.5 w-20" />
+          <Skeleton className="h-5 w-12 rounded-full" />
+        </div>
         <Skeleton className="h-8 w-20 rounded-md" />
-      </div>
-    </div>
+      </CardFooter>
+    </Card>
   );
 }
 
@@ -48,7 +59,7 @@ export function ListSkeleton({ rows = 5 }: { rows?: number }) {
 
 export function GridSkeleton({ count = 6 }: { count?: number }) {
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
       {Array.from({ length: count }).map((_, i) => (
         <CardSkeleton key={i} />
       ))}

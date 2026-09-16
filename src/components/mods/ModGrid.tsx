@@ -66,7 +66,7 @@ export default function ModGrid() {
       </ModToolbar>
 
       {isLoading && packages.length === 0 ? (
-        <ScrollArea className="min-h-0 flex-1">
+        <ScrollArea scrollFade className="min-h-0 flex-1">
           <GridSkeleton count={9} />
         </ScrollArea>
       ) : (

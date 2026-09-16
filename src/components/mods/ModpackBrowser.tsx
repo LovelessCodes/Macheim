@@ -90,8 +90,8 @@ export default function ModpackBrowser() {
       </ModToolbar>
 
       {isLoading && packages.length === 0 ? (
-        <ScrollArea className="min-h-0 flex-1">
-          <GridSkeleton count={6} />
+        <ScrollArea scrollFade className="min-h-0 flex-1">
+          <GridSkeleton count={20} />
         </ScrollArea>
       ) : (
         <VirtualGrid
