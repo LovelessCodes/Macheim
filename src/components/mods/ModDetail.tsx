@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Download,
   Check,
@@ -17,7 +17,6 @@ import { formatDate, formatDownloads } from "../../lib/format";
 import { installedModsQueryKey, packageDetailQueryKey } from "../../lib/query-keys";
 import { installMod, uninstallMod, getPackageDetails } from "../../lib/tauri";
 import type { ThunderstorePackage } from "../../lib/types";
-import { useModStore } from "../../store/modStore";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -41,8 +40,6 @@ interface ModDetailProps {
 export default function ModDetail({ pkg, onClose }: ModDetailProps) {
   const queryClient = useQueryClient();
   const { data: installedMods = [] } = useInstalledMods();
-  const isInstallingMod = useModStore((s) => s.isInstallingMod);
-  const setInstallingMod = useModStore((s) => s.setInstallingMod);
 
   const {
     data: detail = null,
@@ -53,7 +50,6 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
     queryFn: () => getPackageDetails(pkg.full_name),
   });
   const detailError = detailErrorObj ? String(detailErrorObj) : null;
-  const [installingVersion, setInstallingVersion] = useState<string | null>(null);
 
   // Open on the next frame so the Sheet plays its enter transition, and let
   // the exit transition finish before the parent unmounts us.
@@ -64,48 +60,55 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
   }, []);
 
   const isInstalled = installedMods.some((m) => m.full_name === pkg.full_name);
-  const isInstalling = isInstallingMod === pkg.full_name;
   const installedVersion = installedMods.find((m) => m.full_name === pkg.full_name)?.version;
 
   const latestVersion = detail?.versions?.[0];
   const dependencies =
     latestVersion?.dependencies?.filter((d) => !d.startsWith("denikson-BepInExPack")) ?? [];
 
-  const handleInstallVersion = async (version: string) => {
-    if (isInstalling) return;
-    setInstallingMod(pkg.full_name);
-    setInstallingVersion(version);
-    try {
-      await installMod(pkg.full_name, version);
+  const installMutation = useMutation({
+    mutationFn: (version: string) => installMod(pkg.full_name, version),
+    onSuccess: async (_data, version) => {
       await queryClient.invalidateQueries({ queryKey: installedModsQueryKey });
       toast.add({ type: "success", title: `Installed ${pkg.name} v${version}` });
-    } catch (err) {
+    },
+    onError: (err) => {
       toast.add({
         type: "error",
         title: `Failed to install ${pkg.name}: ${err}`,
       });
-    } finally {
-      setInstallingMod(null);
-      setInstallingVersion(null);
-    }
-  };
+    },
+  });
 
-  const handleInstall = async () => {
-    if (isInstalled || isInstalling) return;
-    await handleInstallVersion(pkg.version_number);
-  };
-
-  const handleUninstall = async () => {
-    try {
-      await uninstallMod(pkg.full_name);
+  const uninstallMutation = useMutation({
+    mutationFn: () => uninstallMod(pkg.full_name),
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: installedModsQueryKey });
       toast.add({ type: "info", title: `Uninstalled ${pkg.name}` });
-    } catch (err) {
+    },
+    onError: (err) => {
       toast.add({
         type: "error",
         title: `Failed to uninstall ${pkg.name}: ${err}`,
       });
-    }
+    },
+  });
+
+  const isInstalling = installMutation.isPending;
+  const installingVersion = installMutation.isPending ? installMutation.variables : null;
+
+  const handleInstall = () => {
+    if (isInstalled || isInstalling) return;
+    installMutation.mutate(pkg.version_number);
+  };
+
+  const handleInstallVersion = (version: string) => {
+    if (isInstalling) return;
+    installMutation.mutate(version);
+  };
+
+  const handleUninstall = () => {
+    uninstallMutation.mutate();
   };
 
   const thunderstoreUrl = `https://thunderstore.io/c/valheim/p/${pkg.owner}/${pkg.name}/`;
