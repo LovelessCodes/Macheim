@@ -1,6 +1,8 @@
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use chrono::{DateTime, Utc};
+use tauri::Emitter;
 use tracing::{debug, info};
 
 use crate::error::{AppError, AppResult};
@@ -8,6 +10,12 @@ use crate::models::thunderstore::{PackageListing, ThunderstorePackage};
 
 const THUNDERSTORE_API_URL: &str = "https://thunderstore.io/c/valheim/api/v1/package/";
 const CACHE_MAX_AGE_MINUTES: i64 = 30;
+
+/// Thunderstore's primary CDN, blocked by some antivirus tools (e.g. Malwarebytes).
+const PRIMARY_CDN_HOST: &str = "gcdn.thunderstore.io";
+/// Thunderstore's backup CDN, used when the primary one is unreachable.
+const FALLBACK_CDN_HOST: &str = "hcdn-1.hcdn.thunderstore.io";
+const MAX_REDIRECTS: usize = 10;
 
 /// Get the application data directory for cache and config storage.
 pub fn get_app_data_dir() -> PathBuf {
@@ -166,7 +174,52 @@ pub async fn download_mod(download_url: &str) -> AppResult<Vec<u8>> {
 /// Progress callback type: (downloaded_bytes, total_bytes_option)
 pub type ProgressFn = Box<dyn Fn(u64, Option<u64>) + Send>;
 
+/// Payload for the one-time "we switched CDNs" notification.
+#[derive(Clone, serde::Serialize)]
+pub struct CdnFallbackEvent {
+    pub from: String,
+    pub to: String,
+}
+
+static CDN_FALLBACK_NOTIFIED: AtomicBool = AtomicBool::new(false);
+
+/// Swap Thunderstore's primary CDN host for the backup CDN in place.
+/// Returns true when a rewrite happened.
+fn replace_primary_cdn(url: &mut reqwest::Url) -> bool {
+    if url.host_str() == Some(PRIMARY_CDN_HOST) {
+        return url.set_host(Some(FALLBACK_CDN_HOST)).is_ok();
+    }
+    false
+}
+
+/// Tell the user, once per session, that downloads use the backup CDN.
+fn notify_cdn_fallback_once() {
+    if CDN_FALLBACK_NOTIFIED.swap(true, Ordering::Relaxed) {
+        return;
+    }
+
+    tracing::warn!(
+        "{} is blocked; switched downloads to backup CDN {}",
+        PRIMARY_CDN_HOST,
+        FALLBACK_CDN_HOST
+    );
+
+    if let Some(app) = crate::APP_HANDLE.get() {
+        let _ = app.emit(
+            "cdn-fallback",
+            CdnFallbackEvent {
+                from: PRIMARY_CDN_HOST.to_string(),
+                to: FALLBACK_CDN_HOST.to_string(),
+            },
+        );
+    }
+}
+
 /// Download a mod's ZIP with optional progress callback. No body timeout.
+///
+/// Thunderstore redirects package downloads to `gcdn.thunderstore.io`, which
+/// some antivirus tools block. Redirects are followed manually so the primary
+/// CDN host can be swapped for Thunderstore's backup CDN before it is contacted.
 pub async fn download_mod_with_progress(
     download_url: &str,
     progress: Option<ProgressFn>,
@@ -177,14 +230,50 @@ pub async fn download_mod_with_progress(
         .user_agent("Macheim/1.0.1")
         .connect_timeout(std::time::Duration::from_secs(30))
         // No overall timeout - large mods can be 200MB+
+        // Redirects are resolved manually to rewrite the CDN host.
+        .redirect(reqwest::redirect::Policy::none())
         .build()
         .map_err(|e| AppError::Network(format!("Failed to create HTTP client: {}", e)))?;
 
-    let response = client
-        .get(download_url)
-        .send()
-        .await
-        .map_err(|e| AppError::Network(format!("Download failed: {}", e)))?;
+    let mut url = reqwest::Url::parse(download_url)
+        .map_err(|e| AppError::Network(format!("Invalid download URL: {}", e)))?;
+
+    let mut redirects = 0;
+    let response = loop {
+        if replace_primary_cdn(&mut url) {
+            notify_cdn_fallback_once();
+        }
+
+        let response = client
+            .get(url.clone())
+            .send()
+            .await
+            .map_err(|e| AppError::Network(format!("Download failed: {}", e)))?;
+
+        if !matches!(response.status().as_u16(), 301 | 302 | 303 | 307 | 308) {
+            break response;
+        }
+
+        if redirects >= MAX_REDIRECTS {
+            return Err(AppError::Network(format!(
+                "Too many redirects downloading from {}",
+                download_url
+            )));
+        }
+        redirects += 1;
+
+        let location = response
+            .headers()
+            .get(reqwest::header::LOCATION)
+            .and_then(|value| value.to_str().ok())
+            .ok_or_else(|| {
+                AppError::Network(format!("Redirect from {} had no Location header", url))
+            })?;
+
+        url = url
+            .join(location)
+            .map_err(|e| AppError::Network(format!("Invalid redirect URL '{}': {}", location, e)))?;
+    };
 
     if !response.status().is_success() {
         return Err(AppError::Network(format!(
@@ -210,4 +299,33 @@ pub async fn download_mod_with_progress(
 
     info!("Downloaded {} bytes", bytes.len());
     Ok(bytes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn swaps_primary_cdn_host() {
+        let mut url = reqwest::Url::parse(
+            "https://gcdn.thunderstore.io/live/repository/packages/denikson-BepInExPack_Valheim-5.4.2350.zip",
+        )
+        .unwrap();
+
+        assert!(replace_primary_cdn(&mut url));
+        assert_eq!(
+            url.as_str(),
+            "https://hcdn-1.hcdn.thunderstore.io/live/repository/packages/denikson-BepInExPack_Valheim-5.4.2350.zip"
+        );
+    }
+
+    #[test]
+    fn leaves_other_hosts_untouched() {
+        let mut url =
+            reqwest::Url::parse("https://thunderstore.io/package/download/denikson/BepInExPack_Valheim/5.4.2350/")
+                .unwrap();
+
+        assert!(!replace_primary_cdn(&mut url));
+        assert_eq!(url.host_str(), Some("thunderstore.io"));
+    }
 }
