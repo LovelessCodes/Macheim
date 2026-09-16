@@ -1,11 +1,7 @@
 import { create } from "zustand";
+
 import { sortPackages } from "../lib/packages";
-import type {
-  ThunderstorePackage,
-  InstalledMod,
-  SortOption,
-  SortDirection,
-} from "../lib/types";
+import type { ThunderstorePackage, InstalledMod, SortOption, SortDirection } from "../lib/types";
 
 interface ModState {
   packages: ThunderstorePackage[];

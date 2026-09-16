@@ -11,10 +11,12 @@ import {
   Wrench,
 } from "lucide-react";
 
-import { launchModded, launchVanilla } from "../../lib/tauri";
+import { Page } from "@/lib/types";
+
 import { useAppVersion } from "../../hooks/use-app-version";
+import { launchModded, launchVanilla } from "../../lib/tauri";
+import { useAppStore } from "../../store/appStore";
 import ProfileSelector from "../profiles/ProfileSelector";
-import { toast } from "../ui/toast";
 import { Button } from "../ui/button";
 import {
   Sidebar as SidebarRoot,
@@ -30,6 +32,7 @@ import {
   SidebarRail,
   SidebarSeparator,
 } from "../ui/sidebar";
+import { toast } from "../ui/toast";
 
 interface NavItem {
   page: Page;
@@ -78,23 +81,14 @@ export default function Sidebar() {
 
   return (
     <SidebarRoot collapsible="icon">
-      <SidebarHeader
-        className="pt-8 select-none"
-        data-tauri-drag-region
-      >
-        <div
-          className="flex items-center gap-2.5 px-1 group-data-[collapsible=icon]:px-0 pointer-events-none"
-        >
+      <SidebarHeader className="pt-8 select-none" data-tauri-drag-region>
+        <div className="pointer-events-none flex items-center gap-2.5 px-1 group-data-[collapsible=icon]:px-0">
           <img src="/icon.png" alt="Macheim" className="size-8 shrink-0" />
           <div className="grid min-w-0 flex-1 leading-tight group-data-[collapsible=icon]:hidden">
             <span className="flex items-baseline gap-1.5">
-              <span className="truncate text-sm font-bold tracking-wide">
-                MACHEIM
-              </span>
+              <span className="truncate text-sm font-bold tracking-wide">MACHEIM</span>
               {version && (
-                <span className="text-[10px] font-medium text-muted-foreground">
-                  v{version}
-                </span>
+                <span className="text-muted-foreground text-[10px] font-medium">v{version}</span>
               )}
             </span>
             <span className="truncate text-[10px] font-medium tracking-widest text-[var(--color-accent-amber)] uppercase">
@@ -144,9 +138,7 @@ export default function Sidebar() {
           onClick={handleLaunchModded}
         >
           <Play />
-          <span className="group-data-[collapsible=icon]:hidden">
-            Play Modded
-          </span>
+          <span className="group-data-[collapsible=icon]:hidden">Play Modded</span>
         </Button>
         <Button
           variant="outline"
@@ -154,9 +146,7 @@ export default function Sidebar() {
           onClick={handleLaunchVanilla}
         >
           <Wrench />
-          <span className="group-data-[collapsible=icon]:hidden">
-            Play Vanilla
-          </span>
+          <span className="group-data-[collapsible=icon]:hidden">Play Vanilla</span>
         </Button>
       </SidebarFooter>
 

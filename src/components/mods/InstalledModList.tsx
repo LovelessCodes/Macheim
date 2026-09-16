@@ -1,25 +1,6 @@
-import { useEffect, useState } from "react";
-import { cn } from "cn";
-import {
-  Package,
-  Trash2,
-  Power,
-  PowerOff,
-  RefreshCw,
-  Loader2,
-} from "lucide-react";
-import { ListSkeleton } from "../common/LoadingSkeleton";
-import VirtualList from "../common/VirtualList";
-import ModSearchInput from "./ModSearchInput";
-import { ScrollArea } from "../ui/scroll-area";
-import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
-import { Switch } from "../ui/switch";
-import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
-import { useModStore } from "../../store/modStore";
-import { toast } from "../ui/toast";
 import { confirm } from "@tauri-apps/plugin-dialog";
-import { Package, Trash2, Search, Power, PowerOff, RefreshCw, Loader2 } from "lucide-react";
+import { cn } from "cn";
+import { Package, Trash2, Power, PowerOff, RefreshCw, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import {
@@ -29,9 +10,16 @@ import {
   syncMods,
   listUnmanagedMods,
 } from "../../lib/tauri";
-import { useAppStore } from "../../store/appStore";
 import { useModStore } from "../../store/modStore";
 import { ListSkeleton } from "../common/LoadingSkeleton";
+import VirtualList from "../common/VirtualList";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { ScrollArea } from "../ui/scroll-area";
+import { Switch } from "../ui/switch";
+import { toast } from "../ui/toast";
+import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
+import ModSearchInput from "./ModSearchInput";
 
 type ModFilter = "all" | "enabled" | "disabled";
 
@@ -116,18 +104,15 @@ export default function InstalledModList() {
           `The following ${unmanaged.length} mod(s) will be moved to BepInEx/.macheim-clean-backups (recoverable):\n\n` +
             unmanaged.join("\n") +
             "\n\nProceed with cleanup?",
-          { title: "Remove Unmanaged Mods?", kind: "warning" }
+          { title: "Remove Unmanaged Mods?", kind: "warning" },
         );
         if (!doClean) return;
       }
       const result = await syncMods(doClean, doClean ? unmanaged : []);
       const msgs: string[] = [];
-      if (result.reinstalled.length > 0)
-        msgs.push(`${result.reinstalled.length} reinstalled`);
-      if (result.cleaned.length > 0)
-        msgs.push(`${result.cleaned.length} cleaned`);
-      if (result.failed.length > 0)
-        msgs.push(`${result.failed.length} failed`);
+      if (result.reinstalled.length > 0) msgs.push(`${result.reinstalled.length} reinstalled`);
+      if (result.cleaned.length > 0) msgs.push(`${result.cleaned.length} cleaned`);
+      if (result.failed.length > 0) msgs.push(`${result.failed.length} failed`);
       toast.add({
         type: result.failed.length > 0 ? "warning" : "success",
         title: `Sync complete: ${msgs.join(", ") || "all up to date"}`,
@@ -187,10 +172,8 @@ export default function InstalledModList() {
           </ToggleGroupItem>
         </ToggleGroup>
 
-        <div className="ms-auto flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">
-            {installedMods.length} mods total
-          </span>
+        <div className="text-muted-foreground ms-auto flex flex-wrap items-center gap-3 text-xs">
+          <span className="text-foreground font-medium">{installedMods.length} mods total</span>
           <span className="flex items-center gap-1 text-[var(--color-success)]">
             <Power className="size-3" />
             {enabledCount} enabled
@@ -201,17 +184,8 @@ export default function InstalledModList() {
               {disabledCount} disabled
             </span>
           )}
-          <Button
-            variant="amber"
-            size="sm"
-            onClick={handleSync}
-            disabled={syncing}
-          >
-            {syncing ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <RefreshCw />
-            )}
+          <Button variant="amber" size="sm" onClick={handleSync} disabled={syncing}>
+            {syncing ? <Loader2 className="animate-spin" /> : <RefreshCw />}
             Sync & Clean
           </Button>
         </div>
@@ -231,27 +205,25 @@ export default function InstalledModList() {
             <div
               className={cn(
                 "flex items-center gap-4 border bg-card p-3",
-                !mod.enabled && "opacity-50"
+                !mod.enabled && "opacity-50",
               )}
             >
               {mod.icon ? (
                 <img
                   src={mod.icon}
                   alt={mod.name}
-                  className="size-10 shrink-0 bg-muted object-cover"
+                  className="bg-muted size-10 shrink-0 object-cover"
                   loading="lazy"
                 />
               ) : (
-                <div className="flex size-10 shrink-0 items-center justify-center bg-muted">
-                  <Package className="size-4 text-muted-foreground" />
+                <div className="bg-muted flex size-10 shrink-0 items-center justify-center">
+                  <Package className="text-muted-foreground size-4" />
                 </div>
               )}
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <h4 className="truncate text-sm font-semibold text-foreground">
-                    {mod.name}
-                  </h4>
+                  <h4 className="text-foreground truncate text-sm font-semibold">{mod.name}</h4>
                   <Badge variant="outline" className="shrink-0">
                     v{mod.version}
                   </Badge>
@@ -261,9 +233,7 @@ export default function InstalledModList() {
                     </Badge>
                   )}
                 </div>
-                <p className="truncate text-xs text-muted-foreground">
-                  by {mod.author}
-                </p>
+                <p className="text-muted-foreground truncate text-xs">by {mod.author}</p>
               </div>
 
               <Switch
@@ -294,16 +264,14 @@ export default function InstalledModList() {
           empty={
             installedMods.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                <Package size={48} className="mb-4 text-muted-foreground" />
-                <h3 className="mb-1 text-lg font-semibold text-foreground">
-                  No mods installed
-                </h3>
-                <p className="text-sm text-muted-foreground">
+                <Package size={48} className="text-muted-foreground mb-4" />
+                <h3 className="text-foreground mb-1 text-lg font-semibold">No mods installed</h3>
+                <p className="text-muted-foreground text-sm">
                   Go to Browse Mods or Modpacks to install some.
                 </p>
               </div>
             ) : (
-              <div className="py-10 text-center text-sm text-muted-foreground">
+              <div className="text-muted-foreground py-10 text-center text-sm">
                 No mods matching &quot;{search}&quot;
               </div>
             )

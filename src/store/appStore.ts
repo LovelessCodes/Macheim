@@ -1,4 +1,5 @@
 import { create } from "zustand";
+
 import type { Page, GameStatus } from "../lib/types";
 
 interface AppState {

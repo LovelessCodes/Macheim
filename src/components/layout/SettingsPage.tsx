@@ -1,5 +1,3 @@
-import { FolderOpen, HardDrive, Download, Trash2, Archive, AlertTriangle } from "lucide-react";
-import { useState } from "react";
 import {
   FolderOpen,
   HardDrive,
@@ -9,19 +7,15 @@ import {
   AlertTriangle,
   Loader2,
 } from "lucide-react";
-import { useAppStore } from "../../store/appStore";
+import { useState } from "react";
+
 import { createBackup, listBackups, restoreBackup } from "../../lib/tauri";
 import type { BackupInfo } from "../../lib/types";
-import { toast } from "../ui/toast";
+import { useAppStore } from "../../store/appStore";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { toast } from "../ui/toast";
 
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -116,9 +110,7 @@ export default function SettingsPage() {
             )}
           </InfoRow>
           <InfoRow label="Active Profile">
-            <span className="font-medium">
-              {gameStatus?.active_profile ?? "Default"}
-            </span>
+            <span className="font-medium">{gameStatus?.active_profile ?? "Default"}</span>
           </InfoRow>
         </CardContent>
       </Card>
@@ -131,12 +123,12 @@ export default function SettingsPage() {
             Data Locations
           </CardTitle>
           <CardDescription>
-            Active mod files are in the game&apos;s BepInEx folder. Saved
-            profiles are in ~/Library/Application Support/com.macheim/profiles.
+            Active mod files are in the game&apos;s BepInEx folder. Saved profiles are in
+            ~/Library/Application Support/com.macheim/profiles.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="break-all bg-muted px-3 py-2 font-mono text-xs text-muted-foreground">
+          <p className="bg-muted text-muted-foreground px-3 py-2 font-mono text-xs break-all">
             {gameStatus?.game_path
               ? `${gameStatus.game_path}/BepInEx/`
               : "~/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/"}
@@ -152,9 +144,9 @@ export default function SettingsPage() {
             Backups
           </CardTitle>
           <CardDescription>
-            Backups contain profile metadata and configuration—not mod binaries
-            or worlds. Restoring creates a separate profile. Thunderstore mods
-            must be downloaded again; keep a separate copy of manual mods.
+            Backups contain profile metadata and configuration—not mod binaries or worlds. Restoring
+            creates a separate profile. Thunderstore mods must be downloaded again; keep a separate
+            copy of manual mods.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
@@ -170,29 +162,20 @@ export default function SettingsPage() {
               onClick={handleCreateBackup}
               disabled={isCreatingBackup}
             >
-              {isCreatingBackup ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <Archive />
-              )}
+              {isCreatingBackup ? <Loader2 className="animate-spin" /> : <Archive />}
               {isCreatingBackup ? "Creating..." : "Create Backup"}
             </Button>
           </div>
           {backupsLoaded && backups.length === 0 && (
-            <p className="text-sm text-muted-foreground">No backups found.</p>
+            <p className="text-muted-foreground text-sm">No backups found.</p>
           )}
           {backups.length > 0 && (
-            <div className="divide-y divide-border border">
+            <div className="divide-border divide-y border">
               {backups.map((b) => (
-                <div
-                  key={b.filename}
-                  className="flex items-center justify-between gap-4 p-3"
-                >
+                <div key={b.filename} className="flex items-center justify-between gap-4 p-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {b.profile_name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="truncate text-sm font-medium">{b.profile_name}</p>
+                    <p className="text-muted-foreground text-xs">
                       {(b.size / 1024).toFixed(1)} KB &middot;{" "}
                       {new Date(b.created_at).toLocaleDateString()}
                     </p>
@@ -216,13 +199,12 @@ export default function SettingsPage() {
       {/* Reserved action: do not present an inert destructive control as working. */}
       <Card className="ring-destructive/30">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-destructive">
+          <CardTitle className="text-destructive flex items-center gap-2">
             <AlertTriangle className="size-4" />
             Danger Zone
           </CardTitle>
           <CardDescription>
-            These actions are destructive and cannot be undone. Please create a
-            backup first.
+            These actions are destructive and cannot be undone. Please create a backup first.
           </CardDescription>
         </CardHeader>
         <CardContent>

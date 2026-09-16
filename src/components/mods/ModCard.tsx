@@ -1,18 +1,13 @@
-import type { ReactNode } from "react";
 import { Download, CheckCircle, Loader2, Package } from "lucide-react";
-import type { ThunderstorePackage } from "../../lib/types";
-import { useModStore } from "../../store/modStore";
+import type { ReactNode } from "react";
+
 import { usePackageInstall } from "../../hooks/use-package-install";
 import { formatDownloads } from "../../lib/format";
+import type { ThunderstorePackage } from "../../lib/types";
+import { useModStore } from "../../store/modStore";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
 
 interface ModCardProps {
   pkg: ThunderstorePackage;
@@ -39,19 +34,19 @@ export default function ModCard({
     <Card
       size="sm"
       onClick={() => setSelectedPackage(pkg)}
-      className="group cursor-pointer gap-3 transition-colors hover:bg-muted/40"
+      className="group hover:bg-muted/40 cursor-pointer gap-3 transition-colors"
     >
       <CardHeader className="grid-cols-[auto_1fr] items-start gap-3">
         {pkg.icon ? (
           <img
             src={pkg.icon}
             alt={pkg.name}
-            className="size-14 shrink-0 bg-muted object-cover"
+            className="bg-muted size-14 shrink-0 object-cover"
             loading="lazy"
           />
         ) : (
-          <div className="flex size-14 shrink-0 items-center justify-center bg-muted">
-            <Package className="size-6 text-muted-foreground" />
+          <div className="bg-muted flex size-14 shrink-0 items-center justify-center">
+            <Package className="text-muted-foreground size-6" />
           </div>
         )}
 
@@ -59,9 +54,7 @@ export default function ModCard({
           <CardTitle className="truncate transition-colors group-hover:text-[var(--color-accent-amber)]">
             {pkg.name}
           </CardTitle>
-          <CardDescription className="truncate">
-            by {pkg.owner}
-          </CardDescription>
+          <CardDescription className="truncate">by {pkg.owner}</CardDescription>
           <CardDescription className="mt-1 line-clamp-2 leading-relaxed">
             {pkg.description || "No description"}
           </CardDescription>
@@ -69,26 +62,18 @@ export default function ModCard({
       </CardHeader>
 
       <CardFooter className="mt-auto justify-between">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="text-muted-foreground flex items-center gap-2 text-xs">
           <span className="flex items-center gap-1">
             <Download className="size-3" />
             {formatDownloads(pkg.downloads)}
           </span>
-          {showVersion && (
-            <Badge variant="outline">v{pkg.version_number}</Badge>
-          )}
+          {showVersion && <Badge variant="outline">v{pkg.version_number}</Badge>}
           {extraMeta}
         </div>
 
         <Button
           size="sm"
-          variant={
-            isInstalled
-              ? "outline-success"
-              : isInstalling
-                ? "secondary"
-                : "accent-primary"
-          }
+          variant={isInstalled ? "outline-success" : isInstalling ? "secondary" : "accent-primary"}
           onClick={handleInstall}
           disabled={isInstalled || isInstalling}
         >

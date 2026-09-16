@@ -1,14 +1,10 @@
-import { useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { useAppStore } from "./store/appStore";
-import { getGameStatus } from "./lib/tauri";
-import SetupWizard from "./components/setup/SetupWizard";
-import MainLayout from "./components/layout/MainLayout";
-import { Toaster } from "./components/ui/toast";
+import { useEffect } from "react";
+
 import ProgressOverlay from "./components/common/ProgressOverlay";
-import ToastContainer from "./components/common/Toast";
 import MainLayout from "./components/layout/MainLayout";
 import SetupWizard from "./components/setup/SetupWizard";
+import { toast, Toaster } from "./components/ui/toast";
 import { getGameStatus } from "./lib/tauri";
 import { useAppStore } from "./store/appStore";
 
@@ -22,24 +18,23 @@ export default function App() {
   const isInitialized = useAppStore((s) => s.isInitialized);
   const setGameStatus = useAppStore((s) => s.setGameStatus);
   const setInitialized = useAppStore((s) => s.setInitialized);
-  const addToast = useAppStore((s) => s.addToast);
 
   useEffect(() => {
     const unlisten = listen<CdnFallbackEvent>("cdn-fallback", (event) => {
-      addToast({
+      toast.add({
         type: "info",
-        message:
+        description:
           `Thunderstore's main download server (${event.payload.from}) is blocked by antivirus software ` +
           `like Malwarebytes, so Macheim switched to Thunderstore's backup server (${event.payload.to}). ` +
           `Downloading works normally.`,
-        duration: 12000,
+        timeout: 12000,
       });
     });
 
     return () => {
       unlisten.then((fn) => fn());
     };
-  }, [addToast]);
+  }, []);
 
   useEffect(() => {
     async function checkStatus() {
