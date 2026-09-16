@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   Download,
   Check,
@@ -13,10 +13,11 @@ import {
 import { useEffect, useState } from "react";
 
 import { useInstalledMods } from "../../hooks/use-installed-mods";
+import { useModUninstall } from "../../hooks/use-mod-uninstall";
 import { usePackageInstall } from "../../hooks/use-package-install";
 import { formatDate, formatDownloads } from "../../lib/format";
-import { installedModsQueryKey, packageDetailQueryKey } from "../../lib/query-keys";
-import { uninstallMod, getPackageDetails } from "../../lib/tauri";
+import { packageDetailQueryKey } from "../../lib/query-keys";
+import { getPackageDetails } from "../../lib/tauri";
 import type { ThunderstorePackage } from "../../lib/types";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
@@ -30,7 +31,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "../ui/sheet";
-import { toast } from "../ui/toast";
 import ModIcon from "./ModIcon";
 
 interface ModDetailProps {
@@ -39,8 +39,8 @@ interface ModDetailProps {
 }
 
 export default function ModDetail({ pkg, onClose }: ModDetailProps) {
-  const queryClient = useQueryClient();
   const { install, isInstalled, isInstalling, installingVersion } = usePackageInstall(pkg);
+  const { uninstall } = useModUninstall();
 
   const {
     data: detail = null,
@@ -67,20 +67,6 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
   const dependencies =
     latestVersion?.dependencies?.filter((d) => !d.startsWith("denikson-BepInExPack")) ?? [];
 
-  const uninstallMutation = useMutation({
-    mutationFn: () => uninstallMod(pkg.full_name),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: installedModsQueryKey });
-      toast.add({ type: "info", title: `Uninstalled ${pkg.name}` });
-    },
-    onError: (err) => {
-      toast.add({
-        type: "error",
-        title: `Failed to uninstall ${pkg.name}: ${err}`,
-      });
-    },
-  });
-
   const handleInstall = () => {
     if (isInstalled || isInstalling) return;
     install(pkg.version_number);
@@ -91,7 +77,7 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
   };
 
   const handleUninstall = () => {
-    uninstallMutation.mutate();
+    uninstall(pkg.full_name, pkg.name);
   };
 
   const thunderstoreUrl = `https://thunderstore.io/c/valheim/p/${pkg.owner}/${pkg.name}/`;

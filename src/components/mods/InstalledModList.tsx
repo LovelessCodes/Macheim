@@ -5,8 +5,9 @@ import { Package, Trash2, Power, PowerOff, RefreshCw, Loader2 } from "lucide-rea
 import { useState } from "react";
 
 import { useInstalledMods } from "../../hooks/use-installed-mods";
+import { useModUninstall } from "../../hooks/use-mod-uninstall";
 import { installedModsQueryKey } from "../../lib/query-keys";
-import { toggleMod, uninstallMod, syncMods, listUnmanagedMods } from "../../lib/tauri";
+import { toggleMod, syncMods, listUnmanagedMods } from "../../lib/tauri";
 import type { InstalledMod } from "../../lib/types";
 import { ListSkeleton } from "../common/LoadingSkeleton";
 import VirtualList from "../common/VirtualList";
@@ -24,10 +25,10 @@ type ModFilter = "all" | "enabled" | "disabled";
 export default function InstalledModList() {
   const queryClient = useQueryClient();
   const { data: installedMods = [], isPending: isLoading } = useInstalledMods();
+  const { uninstall, uninstallingFullName } = useModUninstall();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<ModFilter>("all");
   const [togglingMod, setTogglingMod] = useState<string | null>(null);
-  const [uninstallingMod, setUninstallingMod] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
 
   const handleToggle = async (fullName: string, currentEnabled: boolean) => {
@@ -44,24 +45,6 @@ export default function InstalledModList() {
       });
     } finally {
       setTogglingMod(null);
-    }
-  };
-
-  const handleUninstall = async (fullName: string, name: string) => {
-    setUninstallingMod(fullName);
-    try {
-      await uninstallMod(fullName);
-      queryClient.setQueryData<InstalledMod[]>(installedModsQueryKey, (prev) =>
-        prev?.filter((m) => m.full_name !== fullName),
-      );
-      toast.add({ type: "info", title: `Uninstalled ${name}` });
-    } catch (err) {
-      toast.add({
-        type: "error",
-        title: `Failed to uninstall ${name}: ${err}`,
-      });
-    } finally {
-      setUninstallingMod(null);
     }
   };
 
@@ -206,13 +189,13 @@ export default function InstalledModList() {
               <Button
                 variant="ghost"
                 size="icon-sm"
-                onClick={() => handleUninstall(mod.full_name, mod.name)}
-                disabled={uninstallingMod === mod.full_name}
+                onClick={() => uninstall(mod.full_name, mod.name)}
+                disabled={uninstallingFullName === mod.full_name}
                 title="Uninstall"
                 aria-label={`Uninstall ${mod.name}`}
                 className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
               >
-                {uninstallingMod === mod.full_name ? (
+                {uninstallingFullName === mod.full_name ? (
                   <Loader2 className="animate-spin" />
                 ) : (
                   <Trash2 />
