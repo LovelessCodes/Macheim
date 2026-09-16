@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { cn } from "cn";
 import {
   AlertTriangle,
   ArrowRight,
@@ -9,30 +9,16 @@ import {
   Shield,
   XCircle,
 } from "lucide-react";
-import { cn } from "cn";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "../ui/alert";
-import { Button } from "../ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
-import {
-  Progress,
-  ProgressLabel,
-  ProgressValue,
-} from "../ui/progress";
-import { Separator } from "../ui/separator";
+import { Fragment, useEffect, useState } from "react";
+
+import { useAppVersion } from "../../hooks/use-app-version";
 import { detectGame, getGameStatus, installBepinex } from "../../lib/tauri";
 import { useAppStore } from "../../store/appStore";
-import { useAppVersion } from "../../hooks/use-app-version";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
+import { Progress, ProgressLabel, ProgressValue } from "../ui/progress";
+import { Separator } from "../ui/separator";
 
 type Step = "detect" | "bepinex" | "ready";
 
@@ -171,7 +157,7 @@ export default function SetupWizard() {
           </div>
         </div>
 
-        <Card className="gap-5 border border-[var(--color-border-default)] bg-[var(--color-bg-card)] py-5 ring-0 shadow-xl shadow-black/30">
+        <Card className="gap-5 border border-[var(--color-border-default)] bg-[var(--color-bg-card)] py-5 shadow-xl ring-0 shadow-black/30">
           {/* Step indicator */}
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -180,9 +166,7 @@ export default function SetupWizard() {
                 const isCurrent = i === currentIndex;
                 return (
                   <Fragment key={s.id}>
-                    {i > 0 && (
-                      <Separator className="flex-1 bg-[var(--color-border-default)]" />
-                    )}
+                    {i > 0 && <Separator className="flex-1 bg-[var(--color-border-default)]" />}
                     <div className="flex items-center gap-1.5">
                       <span
                         className={cn(
@@ -193,7 +177,7 @@ export default function SetupWizard() {
                             "border-[var(--color-accent-amber)] bg-[var(--color-accent-amber)]/15 text-[var(--color-accent-amber)]",
                           !isDone &&
                             !isCurrent &&
-                            "border-[var(--color-border-default)] text-[var(--color-text-muted)]"
+                            "border-[var(--color-border-default)] text-[var(--color-text-muted)]",
                         )}
                       >
                         {isDone ? <Check size={12} /> : i + 1}
@@ -203,7 +187,7 @@ export default function SetupWizard() {
                           "text-[11px] font-medium",
                           isDone || isCurrent
                             ? "text-[var(--color-text-primary)]"
-                            : "text-[var(--color-text-muted)]"
+                            : "text-[var(--color-text-muted)]",
                         )}
                       >
                         {s.label}
@@ -221,10 +205,7 @@ export default function SetupWizard() {
               <CardContent className="flex flex-col items-center gap-4 text-center">
                 {detecting ? (
                   <>
-                    <Loader2
-                      size={32}
-                      className="animate-spin text-[var(--color-accent-amber)]"
-                    />
+                    <Loader2 size={32} className="animate-spin text-[var(--color-accent-amber)]" />
                     <div className="space-y-1">
                       <CardTitle className="text-base text-[var(--color-text-primary)]">
                         Detecting Valheim...
@@ -236,26 +217,19 @@ export default function SetupWizard() {
                   </>
                 ) : detectError || gameMissing ? (
                   <>
-                    <XCircle
-                      size={32}
-                      className="text-[var(--color-error)]"
-                    />
+                    <XCircle size={32} className="text-[var(--color-error)]" />
                     <div className="space-y-1">
                       <CardTitle className="text-base text-[var(--color-text-primary)]">
                         Valheim Not Found
                       </CardTitle>
                       <CardDescription className="text-[var(--color-text-secondary)]">
-                        {detectError ??
-                          "Install Valheim through Steam, then retry detection."}
+                        {detectError ?? "Install Valheim through Steam, then retry detection."}
                       </CardDescription>
                     </div>
                   </>
                 ) : (
                   <>
-                    <CheckCircle
-                      size={32}
-                      className="text-[var(--color-success)]"
-                    />
+                    <CheckCircle size={32} className="text-[var(--color-success)]" />
                     <div className="space-y-1">
                       <CardTitle className="text-base text-[var(--color-text-primary)]">
                         Valheim Found
@@ -264,7 +238,7 @@ export default function SetupWizard() {
                         Your installation is ready for mods
                       </CardDescription>
                     </div>
-                    <p className="w-full break-all bg-[var(--color-bg-input)] px-3 py-2 font-mono text-xs text-[var(--color-text-muted)]">
+                    <p className="w-full bg-[var(--color-bg-input)] px-3 py-2 font-mono text-xs break-all text-[var(--color-text-muted)]">
                       {gamePath}
                     </p>
                   </>
@@ -324,18 +298,15 @@ export default function SetupWizard() {
                 ) : (
                   <>
                     <div className="flex size-11 items-center justify-center bg-[var(--color-accent-primary)]/15">
-                      <Shield
-                        size={22}
-                        className="text-[var(--color-accent-primary)]"
-                      />
+                      <Shield size={22} className="text-[var(--color-accent-primary)]" />
                     </div>
                     <div className="space-y-1">
                       <CardTitle className="text-base text-[var(--color-text-primary)]">
                         Install BepInEx
                       </CardTitle>
                       <CardDescription className="text-[var(--color-text-secondary)]">
-                        BepInEx is the mod loading framework required for
-                        Valheim mods. It only needs to be installed once.
+                        BepInEx is the mod loading framework required for Valheim mods. It only
+                        needs to be installed once.
                       </CardDescription>
                     </div>
 
@@ -356,8 +327,8 @@ export default function SetupWizard() {
                         macOS Gatekeeper
                       </AlertTitle>
                       <AlertDescription className="text-[var(--color-text-secondary)]">
-                        After installation, allow BepInEx libraries in System
-                        Settings &gt; Privacy &amp; Security if prompted.
+                        After installation, allow BepInEx libraries in System Settings &gt; Privacy
+                        &amp; Security if prompted.
                       </AlertDescription>
                     </Alert>
                   </>
@@ -383,26 +354,18 @@ export default function SetupWizard() {
           {step === "ready" && (
             <>
               <CardContent className="flex flex-col items-center gap-4 text-center">
-                <CheckCircle
-                  size={36}
-                  className="text-[var(--color-success)]"
-                />
+                <CheckCircle size={36} className="text-[var(--color-success)]" />
                 <div className="space-y-1">
                   <CardTitle className="text-base text-[var(--color-text-primary)]">
                     You&apos;re All Set
                   </CardTitle>
                   <CardDescription className="text-[var(--color-text-secondary)]">
-                    Valheim and BepInEx are ready. Start browsing and installing
-                    mods.
+                    Valheim and BepInEx are ready. Start browsing and installing mods.
                   </CardDescription>
                 </div>
               </CardContent>
               <CardFooter>
-                <Button
-                  className="w-full"
-                  variant="accent-primary"
-                  onClick={handleFinish}
-                >
+                <Button className="w-full" variant="accent-primary" onClick={handleFinish}>
                   Start Managing Mods
                   <ArrowRight size={16} />
                 </Button>

@@ -9,11 +9,11 @@ import {
   Layers,
   AlertTriangle,
 } from "lucide-react";
-import type { ThunderstorePackage, PackageDetail } from "../../lib/types";
-import { useModStore } from "../../store/modStore";
+
 import { formatDate, formatDownloads } from "../../lib/format";
 import { installMod, uninstallMod, getInstalledMods, getPackageDetails } from "../../lib/tauri";
-import { toast } from "../ui/toast";
+import type { ThunderstorePackage, PackageDetail } from "../../lib/types";
+import { useModStore } from "../../store/modStore";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -26,6 +26,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "../ui/sheet";
+import { toast } from "../ui/toast";
 
 interface ModDetailProps {
   pkg: ThunderstorePackage;
@@ -120,10 +121,7 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
         if (!isOpen) onClose();
       }}
     >
-      <SheetContent
-        side="right"
-        className="w-full gap-0 p-0 sm:max-w-xl"
-      >
+      <SheetContent side="right" className="w-full gap-0 p-0 sm:max-w-xl">
         <SheetHeader className="border-b">
           <SheetTitle>Mod Details</SheetTitle>
           <SheetDescription className="sr-only">
@@ -139,21 +137,17 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
                 <img
                   src={pkg.icon}
                   alt={pkg.name}
-                  className="size-20 shrink-0 bg-muted object-cover"
+                  className="bg-muted size-20 shrink-0 object-cover"
                 />
               ) : (
-                <div className="flex size-20 shrink-0 items-center justify-center bg-muted">
-                  <Package className="size-8 text-muted-foreground" />
+                <div className="bg-muted flex size-20 shrink-0 items-center justify-center">
+                  <Package className="text-muted-foreground size-8" />
                 </div>
               )}
               <div className="min-w-0">
-                <h3 className="text-xl font-bold text-foreground">
-                  {pkg.name}
-                </h3>
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  by {pkg.owner}
-                </p>
-                <div className="mt-2.5 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                <h3 className="text-foreground text-xl font-bold">{pkg.name}</h3>
+                <p className="text-muted-foreground mt-0.5 text-sm">by {pkg.owner}</p>
+                <div className="text-muted-foreground mt-2.5 flex flex-wrap items-center gap-4 text-xs">
                   <span className="flex items-center gap-1">
                     <Download className="size-3.5" />
                     {formatDownloads(pkg.downloads)}
@@ -172,10 +166,10 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
 
             {/* Description */}
             <div>
-              <h4 className="mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              <h4 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wider uppercase">
                 Description
               </h4>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
+              <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">
                 {pkg.description || "No description available."}
               </p>
             </div>
@@ -183,7 +177,7 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
             {/* Categories */}
             {pkg.categories && pkg.categories.length > 0 && (
               <div>
-                <h4 className="mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                <h4 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wider uppercase">
                   Categories
                 </h4>
                 <div className="flex flex-wrap gap-1.5">
@@ -203,10 +197,8 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
             {/* Loading detail */}
             {loadingDetail && (
               <div className="flex items-center justify-center gap-2 py-8">
-                <Loader2 className="size-5 animate-spin text-accent-primary" />
-                <span className="text-sm text-muted-foreground">
-                  Loading details...
-                </span>
+                <Loader2 className="text-accent-primary size-5 animate-spin" />
+                <span className="text-muted-foreground text-sm">Loading details...</span>
               </div>
             )}
 
@@ -222,7 +214,7 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
             {/* Version History */}
             {detail && detail.versions.length > 0 && (
               <div>
-                <h4 className="mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                <h4 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wider uppercase">
                   Version History ({detail.versions.length})
                 </h4>
                 <div className="space-y-1.5">
@@ -231,21 +223,21 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
                       key={v.version_number}
                       className={
                         i === 0
-                          ? "flex items-center justify-between border border-accent-primary/20 bg-accent-primary/10 px-3 py-2 text-sm"
-                          : "flex items-center justify-between bg-muted px-3 py-2 text-sm"
+                          ? "border-accent-primary/20 bg-accent-primary/10 flex items-center justify-between border px-3 py-2 text-sm"
+                          : "bg-muted flex items-center justify-between px-3 py-2 text-sm"
                       }
                     >
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-medium text-foreground">
+                        <span className="text-foreground font-mono text-xs font-medium">
                           v{v.version_number}
                         </span>
                         {i === 0 && (
-                          <Badge className="border-transparent bg-accent-primary text-white">
+                          <Badge className="bg-accent-primary border-transparent text-white">
                             LATEST
                           </Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <div className="text-muted-foreground flex items-center gap-3 text-xs">
                         <span>{formatDownloads(v.downloads)}</span>
                         <span>{formatDate(v.date_created)}</span>
                       </div>
@@ -258,7 +250,7 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
             {/* Dependencies */}
             {dependencies.length > 0 && (
               <div>
-                <h4 className="mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                <h4 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wider uppercase">
                   <span className="flex items-center gap-1.5">
                     <Layers className="size-3.5" />
                     Dependencies ({dependencies.length})
@@ -267,20 +259,12 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
                 <div className="flex flex-wrap gap-1.5">
                   {dependencies.map((dep) => {
                     const parts = dep.split("-");
-                    const depName = parts.length >= 3
-                      ? parts.slice(0, -1).join("-")
-                      : dep;
-                    const depVersion = parts.length >= 3
-                      ? parts[parts.length - 1]
-                      : "";
+                    const depName = parts.length >= 3 ? parts.slice(0, -1).join("-") : dep;
+                    const depVersion = parts.length >= 3 ? parts[parts.length - 1] : "";
                     return (
                       <Badge key={dep} variant="secondary">
                         {depName}
-                        {depVersion && (
-                          <span className="text-muted-foreground">
-                            {depVersion}
-                          </span>
-                        )}
+                        {depVersion && <span className="text-muted-foreground">{depVersion}</span>}
                       </Badge>
                     );
                   })}
@@ -293,7 +277,7 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
         {/* Action Footer */}
         <SheetFooter className="flex-col items-center gap-1 border-t">
           {isInstalled ? (
-            <div className="grid grid-cols-[1fr_min-content] items-center gap-1 w-full">
+            <div className="grid w-full grid-cols-[1fr_min-content] items-center gap-1">
               <Button variant="outline-success" size="lg" disabled>
                 <CheckCircle />
                 Installed (v
@@ -330,9 +314,7 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
             variant="outline"
             size="lg"
             className="w-full"
-            render={
-              <a href={thunderstoreUrl} target="_blank" rel="noopener noreferrer" />
-            }
+            render={<a href={thunderstoreUrl} target="_blank" rel="noopener noreferrer" />}
           >
             <ExternalLink />
             View on Thunderstore

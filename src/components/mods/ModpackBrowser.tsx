@@ -1,20 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
 import { Layers, Star } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+
+import { formatDate } from "../../lib/format";
+import { sortPackages } from "../../lib/packages";
+import { fetchPackages } from "../../lib/tauri";
+import type { SortDirection, SortOption, ThunderstorePackage } from "../../lib/types";
+import { useModStore } from "../../store/modStore";
+import { GridSkeleton } from "../common/LoadingSkeleton";
+import VirtualGrid from "../common/VirtualGrid";
+import { ScrollArea } from "../ui/scroll-area";
+import { toast } from "../ui/toast";
 import ModCard from "./ModCard";
 import ModToolbar from "./ModToolbar";
-import VirtualGrid from "../common/VirtualGrid";
-import { GridSkeleton } from "../common/LoadingSkeleton";
-import { ScrollArea } from "../ui/scroll-area";
-import { useModStore } from "../../store/modStore";
-import { fetchPackages } from "../../lib/tauri";
-import { sortPackages } from "../../lib/packages";
-import { formatDate } from "../../lib/format";
-import { toast } from "../ui/toast";
-import type {
-  SortDirection,
-  SortOption,
-  ThunderstorePackage,
-} from "../../lib/types";
 
 function isModpack(pkg: ThunderstorePackage): boolean {
   if (pkg.is_deprecated) return false;
@@ -118,11 +115,11 @@ export default function ModpackBrowser() {
           )}
           empty={
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <Layers size={48} className="mb-4 text-muted-foreground" />
-              <h3 className="mb-1 text-lg font-semibold text-foreground">
+              <Layers size={48} className="text-muted-foreground mb-4" />
+              <h3 className="text-foreground mb-1 text-lg font-semibold">
                 {search ? "No matching modpacks" : "No modpacks found"}
               </h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 {search
                   ? "Try a different search term."
                   : "Modpacks will appear here when available on Thunderstore."}

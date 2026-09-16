@@ -1,21 +1,22 @@
 import { useCallback } from "react";
-import Sidebar from "./Sidebar";
-import Header from "./Header";
-import { SidebarInset, SidebarProvider } from "../ui/sidebar";
-import { ScrollArea } from "../ui/scroll-area";
-import ModGrid from "../mods/ModGrid";
-import InstalledModList from "../mods/InstalledModList";
-import ModpackBrowser from "../mods/ModpackBrowser";
-import ConfigEditor from "../config/ConfigEditor";
-import ProfileManager from "../profiles/ProfileManager";
-import SettingsPage from "./SettingsPage";
-import CompatibilityPage from "../compatibility/CompatibilityPage";
-import { useProfileStore } from "../../store/profileStore";
-import ModDetail from "../mods/ModDetail";
+
+import { fetchPackages, getInstalledMods } from "../../lib/tauri";
 import { useAppStore } from "../../store/appStore";
 import { useModStore } from "../../store/modStore";
-import { fetchPackages, getInstalledMods } from "../../lib/tauri";
+import { useProfileStore } from "../../store/profileStore";
+import CompatibilityPage from "../compatibility/CompatibilityPage";
+import ConfigEditor from "../config/ConfigEditor";
+import InstalledModList from "../mods/InstalledModList";
+import ModDetail from "../mods/ModDetail";
+import ModGrid from "../mods/ModGrid";
+import ModpackBrowser from "../mods/ModpackBrowser";
+import ProfileManager from "../profiles/ProfileManager";
+import { ScrollArea } from "../ui/scroll-area";
+import { SidebarInset, SidebarProvider } from "../ui/sidebar";
 import { toast } from "../ui/toast";
+import Header from "./Header";
+import SettingsPage from "./SettingsPage";
+import Sidebar from "./Sidebar";
 
 export default function MainLayout() {
   const activeProfile = useProfileStore((s) => s.activeProfile);
@@ -57,13 +58,7 @@ export default function MainLayout() {
         setLoadingInstalled(false);
       }
     }
-  }, [
-    currentPage,
-    setLoadingPackages,
-    setPackages,
-    setLoadingInstalled,
-    setInstalledMods,
-  ]);
+  }, [currentPage, setLoadingPackages, setPackages, setLoadingInstalled, setInstalledMods]);
 
   const showRefresh =
     currentPage === "browse" || currentPage === "installed" || currentPage === "modpacks";
@@ -102,10 +97,7 @@ export default function MainLayout() {
     <SidebarProvider className="h-svh overflow-hidden">
       <Sidebar />
       <SidebarInset data-tauri-drag-region={false} className="min-w-0 overflow-hidden">
-        <Header
-          onRefresh={showRefresh ? handleRefresh : undefined}
-          isRefreshing={isRefreshing}
-        />
+        <Header onRefresh={showRefresh ? handleRefresh : undefined} isRefreshing={isRefreshing} />
         {managesOwnScroll ? (
           <div className="min-h-0 flex-1 p-6">{page}</div>
         ) : (

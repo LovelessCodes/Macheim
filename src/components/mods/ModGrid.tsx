@@ -1,13 +1,14 @@
-import { useEffect, useMemo } from "react";
 import { Package } from "lucide-react";
+import { useEffect } from "react";
+
+import { fetchPackages } from "../../lib/tauri";
+import { useModStore } from "../../store/modStore";
+import { GridSkeleton } from "../common/LoadingSkeleton";
+import VirtualGrid from "../common/VirtualGrid";
+import { ScrollArea } from "../ui/scroll-area";
+import { toast } from "../ui/toast";
 import ModCard from "./ModCard";
 import ModToolbar from "./ModToolbar";
-import VirtualGrid from "../common/VirtualGrid";
-import { GridSkeleton } from "../common/LoadingSkeleton";
-import { ScrollArea } from "../ui/scroll-area";
-import { useModStore } from "../../store/modStore";
-import { fetchPackages } from "../../lib/tauri";
-import { toast } from "../ui/toast";
 
 export default function ModGrid() {
   const packages = useModStore((s) => s.packages);
@@ -48,10 +49,7 @@ export default function ModGrid() {
     };
   }, [packages.length, setPackages, setLoading]);
 
-  const filtered = useMemo(
-    () => getFilteredPackages(),
-    [getFilteredPackages, packages, searchQuery, sortBy, sortDirection]
-  );
+  const filtered = getFilteredPackages();
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -78,11 +76,9 @@ export default function ModGrid() {
           renderItem={(pkg) => <ModCard pkg={pkg} />}
           empty={
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <Package size={48} className="mb-4 text-muted-foreground" />
-              <h3 className="mb-1 text-lg font-semibold text-foreground">
-                No mods found
-              </h3>
-              <p className="text-sm text-muted-foreground">
+              <Package size={48} className="text-muted-foreground mb-4" />
+              <h3 className="text-foreground mb-1 text-lg font-semibold">No mods found</h3>
+              <p className="text-muted-foreground text-sm">
                 Try adjusting your search or refresh the package list.
               </p>
             </div>

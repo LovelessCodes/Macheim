@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { cn } from "cn";
 import { Loader2, Download, CheckCircle, Package } from "lucide-react";
-import { listen } from "@tauri-apps/api/event";
+import { useEffect, useRef, useState } from "react";
+
 import { Card, CardContent } from "../ui/card";
 import { Progress } from "../ui/progress";
 
@@ -73,7 +74,7 @@ export default function ProgressOverlay() {
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[100] flex justify-center p-6">
-      <Card className="pointer-events-auto w-full max-w-lg animate-in gap-0 overflow-hidden py-0 shadow-2xl shadow-black/40 duration-200 fade-in slide-in-from-bottom-4">
+      <Card className="animate-in fade-in slide-in-from-bottom-4 pointer-events-auto w-full max-w-lg gap-0 overflow-hidden py-0 shadow-2xl shadow-black/40 duration-200">
         {/* Overall progress bar */}
         <Progress
           value={isDone ? 100 : overallPct}
@@ -81,7 +82,7 @@ export default function ProgressOverlay() {
             "[&_[data-slot=progress-indicator]]:transition-all [&_[data-slot=progress-track]]:h-1 [&_[data-slot=progress-track]]:bg-muted",
             isDone
               ? "[&_[data-slot=progress-indicator]]:bg-[var(--color-success)]"
-              : "[&_[data-slot=progress-indicator]]:bg-accent-primary"
+              : "[&_[data-slot=progress-indicator]]:bg-accent-primary",
           )}
         />
 
@@ -89,18 +90,16 @@ export default function ProgressOverlay() {
           {isDone ? (
             <CheckCircle className="size-5 shrink-0 text-[var(--color-success)]" />
           ) : isDownloading ? (
-            <Download className="size-5 shrink-0 animate-pulse text-accent-primary" />
+            <Download className="text-accent-primary size-5 shrink-0 animate-pulse" />
           ) : (
-            <Loader2 className="size-5 shrink-0 animate-spin text-accent-primary" />
+            <Loader2 className="text-accent-primary size-5 shrink-0 animate-spin" />
           )}
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between">
-              <p className="truncate text-sm font-medium text-foreground">
-                {progress.message}
-              </p>
+              <p className="text-foreground truncate text-sm font-medium">{progress.message}</p>
               {progress.total > 0 && !isDone && (
-                <span className="ml-2 shrink-0 text-xs text-muted-foreground">
+                <span className="text-muted-foreground ml-2 shrink-0 text-xs">
                   {progress.current}/{progress.total}
                 </span>
               )}
@@ -108,10 +107,8 @@ export default function ProgressOverlay() {
 
             {progress.mod_name && !isDone && (
               <div className="mt-1 flex items-center gap-2">
-                <Package className="size-3 shrink-0 text-muted-foreground" />
-                <p className="truncate text-xs text-muted-foreground">
-                  {progress.mod_name}
-                </p>
+                <Package className="text-muted-foreground size-3 shrink-0" />
+                <p className="text-muted-foreground truncate text-xs">{progress.mod_name}</p>
               </div>
             )}
 
@@ -119,9 +116,9 @@ export default function ProgressOverlay() {
               <div className="mt-1.5 flex items-center gap-2">
                 <Progress
                   value={pct ?? 50}
-                  className="flex-1 [&_[data-slot=progress-indicator]]:bg-accent-amber [&_[data-slot=progress-track]]:h-1.5"
+                  className="[&_[data-slot=progress-indicator]]:bg-accent-amber flex-1 [&_[data-slot=progress-track]]:h-1.5"
                 />
-                <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                <span className="text-muted-foreground shrink-0 text-[10px] tabular-nums">
                   {formatBytes(progress.bytes_downloaded)}
                   {progress.bytes_total ? ` / ${formatBytes(progress.bytes_total)}` : ""}
                 </span>
