@@ -3,9 +3,7 @@
   "plugin_version": "0.2.0",
   "game_version": "0.221.12",
   "unity_version": "6000.0.61f1",
-  "requirements": [
-    { "package": "DrummerCraig-ShaderHelperForMac", "version": "3.3.0" }
-  ],
+  "requirements": [{ "package": "DrummerCraig-ShaderHelperForMac", "version": "3.3.0" }],
   "rules": [
     {
       "id": "ves-scroll-particles",

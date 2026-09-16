@@ -1,13 +1,9 @@
-import type {
-  SortDirection,
-  SortOption,
-  ThunderstorePackage,
-} from "./types";
+import type { SortDirection, SortOption, ThunderstorePackage } from "./types";
 
 export function sortPackages(
   packages: ThunderstorePackage[],
   sortBy: SortOption,
-  sortDirection: SortDirection
+  sortDirection: SortDirection,
 ): ThunderstorePackage[] {
   return [...packages].sort((a, b) => {
     let cmp = 0;
@@ -19,9 +15,7 @@ export function sortPackages(
         cmp = b.rating_score - a.rating_score;
         break;
       case "updated":
-        cmp =
-          new Date(b.date_updated).getTime() -
-          new Date(a.date_updated).getTime();
+        cmp = new Date(b.date_updated).getTime() - new Date(a.date_updated).getTime();
         break;
       case "name":
         cmp = a.name.localeCompare(b.name);

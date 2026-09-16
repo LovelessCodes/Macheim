@@ -2,17 +2,10 @@
 // and the virtualizer renders nothing. Report plausible sizes instead.
 // TanStack Virtual reads offsetWidth/offsetHeight for its measurements.
 
-const originalOffsetWidth = Object.getOwnPropertyDescriptor(
-  HTMLElement.prototype,
-  "offsetWidth"
-);
-const originalOffsetHeight = Object.getOwnPropertyDescriptor(
-  HTMLElement.prototype,
-  "offsetHeight"
-);
+const originalOffsetWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetWidth");
+const originalOffsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetHeight");
 
-const isViewport = (el: HTMLElement) =>
-  el.getAttribute?.("data-slot") === "scroll-area-viewport";
+const isViewport = (el: HTMLElement) => el.getAttribute?.("data-slot") === "scroll-area-viewport";
 const isRow = (el: HTMLElement) => el.hasAttribute?.("data-index");
 
 Object.defineProperty(HTMLElement.prototype, "offsetWidth", {

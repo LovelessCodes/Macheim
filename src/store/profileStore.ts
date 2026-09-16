@@ -1,4 +1,5 @@
 import { create } from "zustand";
+
 import type { Profile } from "../lib/types";
 
 interface ProfileState {

@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import {
   ArrowDownAZ,
   ArrowDownNarrowWide,
@@ -7,6 +6,8 @@ import {
   Flame,
   Star,
 } from "lucide-react";
+import type { ReactNode } from "react";
+
 import type { SortDirection, SortOption } from "../../lib/types";
 import { Button } from "../ui/button";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
@@ -72,27 +73,17 @@ export default function ModToolbar({
       <Button
         variant="outline"
         size="icon-sm"
-        onClick={() =>
-          onSortDirectionChange(sortDirection === "desc" ? "asc" : "desc")
-        }
+        onClick={() => onSortDirectionChange(sortDirection === "desc" ? "asc" : "desc")}
         title={
-          sortDirection === "desc"
-            ? "Sort direction: descending"
-            : "Sort direction: ascending"
+          sortDirection === "desc" ? "Sort direction: descending" : "Sort direction: ascending"
         }
         aria-label="Toggle sort direction"
       >
-        {sortDirection === "desc" ? (
-          <ArrowDownNarrowWide />
-        ) : (
-          <ArrowUpNarrowWide />
-        )}
+        {sortDirection === "desc" ? <ArrowDownNarrowWide /> : <ArrowUpNarrowWide />}
       </Button>
 
       {children && (
-        <div className="ms-auto flex items-center text-xs text-muted-foreground">
-          {children}
-        </div>
+        <div className="text-muted-foreground ms-auto flex items-center text-xs">{children}</div>
       )}
     </div>
   );

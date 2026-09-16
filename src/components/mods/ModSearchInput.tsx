@@ -1,12 +1,8 @@
-import { useRef } from "react";
-import { Search } from "lucide-react";
 import { useHotkey } from "@tanstack/react-hotkeys";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-  InputGroupText,
-} from "../ui/input-group";
+import { Search } from "lucide-react";
+import { useRef } from "react";
+
+import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "../ui/input-group";
 
 interface ModSearchInputProps {
   value: string;

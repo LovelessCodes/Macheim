@@ -25,15 +25,36 @@ export default function CompatibilityPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const load = useCallback(async () => {
-    setBusy(true); setError("");
-    try { setStatus(await getCompatibility()); }
-    catch (e) { setError(String(e)); }
-    finally { setBusy(false); }
+    setBusy(true);
+    setError("");
+    try {
+      setStatus(await getCompatibility());
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    getCompatibility()
+      .then((next) => {
+        if (!cancelled) setStatus(next);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(String(e));
+      })
+      .finally(() => {
+        if (!cancelled) setBusy(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   async function apply(settings: CompatibilitySettings) {
     if (!status) return;
-    setBusy(true); setError("");
+    setBusy(true);
+    setError("");
     try {
       setStatus(await applyCompatibility(status.profile_name, settings));
       toast.add({ type: "success", title: "Compatibility settings saved for the next game launch." });

@@ -1,25 +1,17 @@
 import { useCallback } from "react";
-import { useModStore } from "../store/modStore";
-import {
-  getInstalledMods,
-  installMod,
-  installModpack,
-} from "../lib/tauri";
-import { toast } from "../components/ui/toast";
-import type { ThunderstorePackage } from "../lib/types";
 
-export function usePackageInstall(
-  pkg: ThunderstorePackage,
-  kind: "mod" | "modpack" = "mod"
-) {
+import { toast } from "../components/ui/toast";
+import { getInstalledMods, installMod, installModpack } from "../lib/tauri";
+import type { ThunderstorePackage } from "../lib/types";
+import { useModStore } from "../store/modStore";
+
+export function usePackageInstall(pkg: ThunderstorePackage, kind: "mod" | "modpack" = "mod") {
   const installedMods = useModStore((s) => s.installedMods);
   const isInstallingMod = useModStore((s) => s.isInstallingMod);
   const setInstallingMod = useModStore((s) => s.setInstallingMod);
   const setInstalledMods = useModStore((s) => s.setInstalledMods);
 
-  const isInstalled = installedMods.some(
-    (m) => m.full_name === pkg.full_name
-  );
+  const isInstalled = installedMods.some((m) => m.full_name === pkg.full_name);
   const isInstalling = isInstallingMod === pkg.full_name;
 
   const install = useCallback(async () => {

@@ -18,7 +18,7 @@ import { fetchPackages, getInstalledMods } from "../../lib/tauri";
 import { toast } from "../ui/toast";
 
 export default function MainLayout() {
-  const activeProfile = useProfileStore(s => s.activeProfile);
+  const activeProfile = useProfileStore((s) => s.activeProfile);
   const currentPage = useAppStore((s) => s.currentPage);
   const setPackages = useModStore((s) => s.setPackages);
   const setInstalledMods = useModStore((s) => s.setInstalledMods);
@@ -66,9 +66,7 @@ export default function MainLayout() {
   ]);
 
   const showRefresh =
-    currentPage === "browse" ||
-    currentPage === "installed" ||
-    currentPage === "modpacks";
+    currentPage === "browse" || currentPage === "installed" || currentPage === "modpacks";
 
   const isRefreshing = isLoadingPackages || isLoadingInstalled;
 
@@ -118,10 +116,7 @@ export default function MainLayout() {
       </SidebarInset>
 
       {selectedPackage && (
-        <ModDetail
-          pkg={selectedPackage}
-          onClose={() => setSelectedPackage(null)}
-        />
+        <ModDetail pkg={selectedPackage} onClose={() => setSelectedPackage(null)} />
       )}
     </SidebarProvider>
   );

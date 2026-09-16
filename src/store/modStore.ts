@@ -64,7 +64,7 @@ export const useModStore = create<ModState>((set, get) => ({
           pkg.name.toLowerCase().includes(q) ||
           pkg.full_name.toLowerCase().includes(q) ||
           pkg.owner.toLowerCase().includes(q) ||
-          (pkg.description ?? "").toLowerCase().includes(q)
+          (pkg.description ?? "").toLowerCase().includes(q),
       );
     }
 

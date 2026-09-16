@@ -1,3 +1,4 @@
+import { FolderOpen, HardDrive, Download, Trash2, Archive, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import {
   FolderOpen,

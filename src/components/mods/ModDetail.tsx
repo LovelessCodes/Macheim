@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   Download,
   CheckCircle,
@@ -67,18 +66,17 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
       }
     }
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [pkg.full_name]);
 
-  const isInstalled = installedMods.some(
-    (m) => m.full_name === pkg.full_name
-  );
+  const isInstalled = installedMods.some((m) => m.full_name === pkg.full_name);
   const isInstalling = isInstallingMod === pkg.full_name;
 
   const latestVersion = detail?.versions?.[0];
-  const dependencies = latestVersion?.dependencies?.filter(
-    (d) => !d.startsWith("denikson-BepInExPack")
-  ) ?? [];
+  const dependencies =
+    latestVersion?.dependencies?.filter((d) => !d.startsWith("denikson-BepInExPack")) ?? [];
 
   const handleInstall = async () => {
     if (isInstalled || isInstalling) return;
@@ -299,8 +297,8 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
               <Button variant="outline-success" size="lg" disabled>
                 <CheckCircle />
                 Installed (v
-                {installedMods.find((m) => m.full_name === pkg.full_name)
-                  ?.version ?? pkg.version_number}
+                {installedMods.find((m) => m.full_name === pkg.full_name)?.version ??
+                  pkg.version_number}
                 )
               </Button>
               <Button variant="destructive" size="lg" onClick={handleUninstall}>

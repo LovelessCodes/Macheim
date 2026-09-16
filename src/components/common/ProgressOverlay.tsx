@@ -69,9 +69,7 @@ export default function ProgressOverlay() {
   const pct = progress.bytes_total
     ? Math.round((progress.bytes_downloaded / progress.bytes_total) * 100)
     : null;
-  const overallPct = progress.total > 0
-    ? Math.round((progress.current / progress.total) * 100)
-    : 0;
+  const overallPct = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[100] flex justify-center p-6">

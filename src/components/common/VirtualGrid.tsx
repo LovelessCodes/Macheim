@@ -1,5 +1,6 @@
-import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+
 import { ScrollArea } from "../ui/scroll-area";
 
 const ROW_GAP = 16;
@@ -41,6 +42,7 @@ export default function VirtualGrid<T>({
   }, []);
 
   const rowCount = Math.ceil(items.length / columns);
+  // oxlint-disable-next-line react/incompatible-library
   const rowVirtualizer = useVirtualizer({
     count: rowCount,
     getScrollElement: () => viewportRef.current,

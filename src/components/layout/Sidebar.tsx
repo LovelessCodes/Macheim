@@ -10,8 +10,7 @@ import {
   User,
   Wrench,
 } from "lucide-react";
-import { useAppStore } from "../../store/appStore";
-import type { Page } from "../../lib/types";
+
 import { launchModded, launchVanilla } from "../../lib/tauri";
 import { useAppVersion } from "../../hooks/use-app-version";
 import ProfileSelector from "../profiles/ProfileSelector";

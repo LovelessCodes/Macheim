@@ -43,9 +43,7 @@ export default function ConfigEditor() {
   const [isLoadingConfig, setIsLoadingConfig] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [editedEntries, setEditedEntries] = useState<Map<string, string>>(
-    new Map()
-  );
+  const [editedEntries, setEditedEntries] = useState<Map<string, string>>(new Map());
 
   // Load config file list
   useEffect(() => {
@@ -87,11 +85,7 @@ export default function ConfigEditor() {
     []
   );
 
-  const handleEntryChange = (
-    sectionName: string,
-    key: string,
-    value: string
-  ) => {
+  const handleEntryChange = (sectionName: string, key: string, value: string) => {
     const entryKey = `${sectionName}::${key}`;
     setEditedEntries((prev) => {
       const next = new Map(prev);
@@ -100,10 +94,7 @@ export default function ConfigEditor() {
     });
   };
 
-  const getEntryValue = (
-    sectionName: string,
-    entry: ConfigEntry
-  ): string => {
+  const getEntryValue = (sectionName: string, entry: ConfigEntry): string => {
     const key = `${sectionName}::${entry.key}`;
     return editedEntries.get(key) ?? entry.value;
   };
@@ -148,19 +139,14 @@ export default function ConfigEditor() {
 
   const hasChanges = editedEntries.size > 0;
 
-  const renderInput = (
-    section: ConfigSection,
-    entry: ConfigEntry
-  ) => {
+  const renderInput = (section: ConfigSection, entry: ConfigEntry) => {
     const value = getEntryValue(section.name, entry);
     const settingType = entry.setting_type?.toLowerCase() ?? "";
     const acceptableValues = entry.acceptable_values
       ?.split(",")
       .map((item) => item.trim())
       .filter(Boolean);
-    const rangeMatch = entry.acceptable_value_range?.match(
-      /^from\s+(.+?)\s+to\s+(.+)$/i
-    );
+    const rangeMatch = entry.acceptable_value_range?.match(/^from\s+(.+?)\s+to\s+(.+)$/i);
     const acceptableRange = rangeMatch
       ? ([rangeMatch[1].trim(), rangeMatch[2].trim()] as const)
       : null;
@@ -215,9 +201,7 @@ export default function ConfigEditor() {
           <Input
             type="number"
             value={value}
-            onChange={(e) =>
-              handleEntryChange(section.name, entry.key, e.target.value)
-            }
+            onChange={(e) => handleEntryChange(section.name, entry.key, e.target.value)}
             min={acceptableRange?.[0]}
             max={acceptableRange?.[1]}
             aria-label={entry.key}

@@ -1,5 +1,6 @@
-import { useRef, type ReactNode } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { useRef, type ReactNode } from "react";
+
 import { ScrollArea } from "../ui/scroll-area";
 
 const LIST_GAP = 8;
@@ -21,6 +22,7 @@ export default function VirtualList<T>({
   empty,
 }: VirtualListProps<T>) {
   const viewportRef = useRef<HTMLDivElement>(null);
+  // oxlint-disable-next-line react/incompatible-library
   const rowVirtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => viewportRef.current,

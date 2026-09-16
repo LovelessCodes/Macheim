@@ -19,6 +19,9 @@ import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { useModStore } from "../../store/modStore";
 import { toast } from "../ui/toast";
 import { confirm } from "@tauri-apps/plugin-dialog";
+import { Package, Trash2, Search, Power, PowerOff, RefreshCw, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import {
   getInstalledMods,
   toggleMod,
@@ -26,6 +29,9 @@ import {
   syncMods,
   listUnmanagedMods,
 } from "../../lib/tauri";
+import { useAppStore } from "../../store/appStore";
+import { useModStore } from "../../store/modStore";
+import { ListSkeleton } from "../common/LoadingSkeleton";
 
 type ModFilter = "all" | "enabled" | "disabled";
 
@@ -70,8 +76,8 @@ export default function InstalledModList() {
       await toggleMod(fullName, !currentEnabled);
       setInstalledMods(
         installedMods.map((m) =>
-          m.full_name === fullName ? { ...m, enabled: !currentEnabled } : m
-        )
+          m.full_name === fullName ? { ...m, enabled: !currentEnabled } : m,
+        ),
       );
     } catch (err) {
       toast.add({
