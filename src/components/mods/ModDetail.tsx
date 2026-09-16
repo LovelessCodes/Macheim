@@ -9,6 +9,7 @@ import {
   Layers,
   AlertTriangle,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { formatDate, formatDownloads } from "../../lib/format";
 import { installMod, uninstallMod, getInstalledMods, getPackageDetails } from "../../lib/tauri";
@@ -27,7 +28,6 @@ import {
   SheetTitle,
 } from "../ui/sheet";
 import { toast } from "../ui/toast";
-import { useEffect, useState } from "react";
 
 interface ModDetailProps {
   pkg: ThunderstorePackage;

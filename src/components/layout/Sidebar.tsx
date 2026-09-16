@@ -11,8 +11,11 @@ import {
   Wrench,
 } from "lucide-react";
 
+import { Page } from "@/lib/types";
+
 import { useAppVersion } from "../../hooks/use-app-version";
 import { launchModded, launchVanilla } from "../../lib/tauri";
+import { useAppStore } from "../../store/appStore";
 import ProfileSelector from "../profiles/ProfileSelector";
 import { Button } from "../ui/button";
 import {
@@ -30,8 +33,6 @@ import {
   SidebarSeparator,
 } from "../ui/sidebar";
 import { toast } from "../ui/toast";
-import { useAppStore } from "../../store/appStore";
-import { Page } from "@/lib/types";
 
 interface NavItem {
   page: Page;
