@@ -1,29 +1,35 @@
-import { confirm } from "@tauri-apps/plugin-dialog";
-import { Plus, Trash2, User, Check, X, Clock, Package } from "lucide-react";
 import { useEffect, useState } from "react";
-
-import { listProfiles, createProfile, switchProfile, deleteProfile } from "../../lib/tauri";
-import { useAppStore } from "../../store/appStore";
+import { cn } from "cn";
+import { confirm } from "@tauri-apps/plugin-dialog";
+import {
+  Plus,
+  Trash2,
+  User,
+  Check,
+  X,
+  Clock,
+  Package,
+  Loader2,
+} from "lucide-react";
 import { useProfileStore } from "../../store/profileStore";
-
-function formatDate(dateStr: string): string {
-  try {
-    return new Date(dateStr).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return dateStr;
-  }
-}
+import { formatDate } from "../../lib/format";
+import { toast } from "../ui/toast";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent } from "../ui/card";
+import { Input } from "../ui/input";
+import {
+  listProfiles,
+  createProfile,
+  switchProfile,
+  deleteProfile,
+} from "../../lib/tauri";
 
 export default function ProfileManager() {
   const profiles = useProfileStore((s) => s.profiles);
   const activeProfile = useProfileStore((s) => s.activeProfile);
   const setProfiles = useProfileStore((s) => s.setProfiles);
   const setActiveProfile = useProfileStore((s) => s.setActiveProfile);
-  const addToast = useAppStore((s) => s.addToast);
 
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -50,11 +56,11 @@ export default function ProfileManager() {
       setProfiles([...profiles, profile]);
       setNewName("");
       setIsCreating(false);
-      addToast({ type: "success", message: `Created profile "${name}"` });
+      toast.add({ type: "success", title: `Created profile "${name}"` });
     } catch (err) {
-      addToast({
+      toast.add({
         type: "error",
-        message: `Failed to create profile: ${err}`,
+        title: `Failed to create profile: ${err}`,
       });
     }
   };
@@ -64,11 +70,11 @@ export default function ProfileManager() {
     try {
       await switchProfile(name);
       setActiveProfile(name);
-      addToast({ type: "success", message: `Switched to "${name}"` });
+      toast.add({ type: "success", title: `Switched to "${name}"` });
     } catch (err) {
-      addToast({
+      toast.add({
         type: "error",
-        message: `Failed to switch profile: ${err}`,
+        title: `Failed to switch profile: ${err}`,
       });
     }
   };
@@ -77,14 +83,14 @@ export default function ProfileManager() {
     if (
       !(await confirm(
         `Remove profile "${name}"? Its files will be preserved in Macheim's deleted-profiles folder.`,
-        { title: "Remove profile", kind: "warning" },
+        { title: "Remove profile", kind: "warning" }
       ))
     )
       return;
     if (name === activeProfile) {
-      addToast({
+      toast.add({
         type: "warning",
-        message: "Cannot delete the active profile. Switch to another first.",
+        title: "Cannot delete the active profile. Switch to another first.",
       });
       return;
     }
@@ -93,160 +99,180 @@ export default function ProfileManager() {
     try {
       await deleteProfile(name);
       setProfiles(profiles.filter((p) => p.name !== name));
-      addToast({
+      toast.add({
         type: "info",
-        message: `Removed "${name}". Recoverable from the deleted-profiles data folder.`,
+        title: `Removed "${name}". Recoverable from the deleted-profiles data folder.`,
       });
     } catch (err) {
-      addToast({
+      toast.add({
         type: "error",
-        message: `Failed to delete profile: ${err}`,
+        title: `Failed to delete profile: ${err}`,
       });
     } finally {
       setDeletingProfile(null);
     }
   };
 
+  const cancelCreate = () => {
+    setIsCreating(false);
+    setNewName("");
+  };
+
   return (
-    <div className="max-w-2xl">
+    <div className="grid gap-4">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h3 className="text-base font-semibold text-[var(--color-text-primary)]">Mod Profiles</h3>
-          <p className="mt-0.5 text-sm text-[var(--color-text-muted)]">
+          <h3 className="text-base font-semibold text-foreground">
+            Mod Profiles
+          </h3>
+          <p className="mt-0.5 text-sm text-muted-foreground">
             Manage separate mod configurations for different playstyles.
           </p>
         </div>
-        <button
+        <Button
+          variant="accent-primary"
           onClick={() => setIsCreating(true)}
-          className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[var(--color-accent-primary)] px-3.5 py-2 text-sm font-medium text-white transition-all hover:bg-[var(--color-accent-primary-hover)] active:scale-[0.98]"
+          disabled={isCreating}
         >
-          <Plus size={16} />
+          <Plus />
           New Profile
-        </button>
+        </Button>
       </div>
 
       {/* Create form */}
       {isCreating && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-[var(--color-accent-primary)]/30 bg-[var(--color-accent-primary)]/5 p-3">
-          <input
-            type="text"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleCreate();
-              if (e.key === "Escape") {
-                setIsCreating(false);
-                setNewName("");
-              }
-            }}
-            placeholder="Profile name..."
-            autoFocus
-            className="flex-1 rounded-md border border-[var(--color-border-default)] bg-[var(--color-bg-input)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent-primary)] focus:outline-none"
-          />
-          <button
-            onClick={handleCreate}
-            disabled={!newName.trim()}
-            className="cursor-pointer rounded-md bg-[var(--color-accent-primary)] p-2 text-white transition-colors hover:bg-[var(--color-accent-primary-hover)] disabled:opacity-50"
-          >
-            <Check size={16} />
-          </button>
-          <button
-            onClick={() => {
-              setIsCreating(false);
-              setNewName("");
-            }}
-            className="cursor-pointer rounded-md p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-card)]"
-          >
-            <X size={16} />
-          </button>
-        </div>
+        <Card className="py-3 ring-accent-primary/30">
+          <CardContent className="flex items-center gap-2">
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleCreate();
+                if (e.key === "Escape") cancelCreate();
+              }}
+              placeholder="Profile name..."
+              aria-label="Profile name"
+              autoFocus
+              className="flex-1"
+            />
+            <Button
+              size="icon"
+              variant="accent-primary"
+              onClick={handleCreate}
+              disabled={!newName.trim()}
+              aria-label="Create profile"
+            >
+              <Check />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={cancelCreate}
+              aria-label="Cancel"
+            >
+              <X />
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       {/* Profile list */}
-      <div className="space-y-2">
-        {profiles.map((profile) => {
-          const isActive = profile.name === activeProfile;
-          const isDeleting = deletingProfile === profile.name;
-
-          return (
-            <div
-              key={profile.name}
-              className={`flex items-center gap-4 rounded-lg border p-4 transition-all ${
-                isActive
-                  ? "border-[var(--color-accent-primary)]/30 bg-[var(--color-accent-primary)]/5"
-                  : "border-[var(--color-border-subtle)] bg-[var(--color-bg-card)] hover:bg-[var(--color-bg-card-hover)]"
-              } `}
-            >
-              <div
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-                  isActive ? "bg-[var(--color-accent-primary)]/15" : "bg-[var(--color-bg-input)]"
-                } `}
-              >
-                <User
-                  size={18}
-                  className={
-                    isActive
-                      ? "text-[var(--color-accent-primary)]"
-                      : "text-[var(--color-text-muted)]"
-                  }
-                />
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-semibold text-[var(--color-text-primary)]">
-                    {profile.name}
-                  </h4>
-                  {isActive && (
-                    <span className="rounded-full bg-[var(--color-accent-primary)]/20 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-[var(--color-accent-primary)] uppercase">
-                      Active
-                    </span>
-                  )}
-                </div>
-                <div className="mt-0.5 flex items-center gap-3 text-xs text-[var(--color-text-muted)]">
-                  <span className="flex items-center gap-1">
-                    <Package size={11} />
-                    {profile.mods.length} mods
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock size={11} />
-                    Updated {formatDate(profile.updated_at)}
-                  </span>
-                </div>
-              </div>
-
-              {!isActive && (
-                <button
-                  onClick={() => handleSwitch(profile.name)}
-                  className="cursor-pointer rounded-md border border-[var(--color-border-default)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text-primary)]"
-                >
-                  Switch
-                </button>
-              )}
-
-              {!isActive && (
-                <button
-                  onClick={() => handleDelete(profile.name)}
-                  disabled={isDeleting}
-                  className="cursor-pointer rounded-lg p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-error)]/10 hover:text-[var(--color-error)] disabled:opacity-50"
-                  title="Delete profile"
-                >
-                  <Trash2 size={16} />
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {profiles.length === 0 && (
+      {profiles.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <User size={48} className="mb-4 text-[var(--color-text-muted)]" />
-          <h3 className="mb-1 text-lg font-semibold text-[var(--color-text-secondary)]">
+          <User size={48} className="mb-4 text-muted-foreground" />
+          <h3 className="mb-1 text-lg font-semibold text-foreground">
             No profiles
           </h3>
-          <p className="text-sm text-[var(--color-text-muted)]">Create a profile to get started.</p>
+          <p className="text-sm text-muted-foreground">
+            Create a profile to get started.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-2">
+          {profiles.map((profile) => {
+            const isActive = profile.name === activeProfile;
+            const isDeleting = deletingProfile === profile.name;
+
+            return (
+              <div
+                key={profile.name}
+                className={cn(
+                  "flex items-center gap-4 border p-4",
+                  isActive
+                    ? "border-accent-primary/30 bg-accent-primary/5"
+                    : "bg-card"
+                )}
+              >
+                <div
+                  className={cn(
+                    "flex size-10 shrink-0 items-center justify-center",
+                    isActive ? "bg-accent-primary/15" : "bg-muted"
+                  )}
+                >
+                  <User
+                    className={cn(
+                      "size-4",
+                      isActive
+                        ? "text-accent-primary"
+                        : "text-muted-foreground"
+                    )}
+                  />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h4 className="truncate text-sm font-semibold text-foreground">
+                      {profile.name}
+                    </h4>
+                    {isActive && (
+                      <Badge className="border-transparent bg-accent-primary/20 text-accent-primary">
+                        Active
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Package className="size-3" />
+                      {profile.mods.length} mods
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="size-3" />
+                      Updated {formatDate(profile.updated_at)}
+                    </span>
+                  </div>
+                </div>
+
+                {!isActive && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSwitch(profile.name)}
+                  >
+                    Switch
+                  </Button>
+                )}
+
+                {!isActive && (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => handleDelete(profile.name)}
+                    disabled={isDeleting}
+                    title="Delete profile"
+                    aria-label={`Delete profile ${profile.name}`}
+                    className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    {isDeleting ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Trash2 />
+                    )}
+                  </Button>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

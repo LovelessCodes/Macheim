@@ -1,5 +1,9 @@
 import { useEffect } from "react";
-
+import { useAppStore } from "./store/appStore";
+import { getGameStatus } from "./lib/tauri";
+import SetupWizard from "./components/setup/SetupWizard";
+import MainLayout from "./components/layout/MainLayout";
+import { Toaster } from "./components/ui/toast";
 import ProgressOverlay from "./components/common/ProgressOverlay";
 import ToastContainer from "./components/common/Toast";
 import MainLayout from "./components/layout/MainLayout";
@@ -33,7 +37,7 @@ export default function App() {
   return (
     <>
       {needsSetup ? <SetupWizard /> : <MainLayout />}
-      <ToastContainer />
+      <Toaster />
       <ProgressOverlay />
     </>
   );

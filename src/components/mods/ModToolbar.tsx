@@ -1,0 +1,90 @@
+import {
+  ArrowDownAZ,
+  ArrowDownNarrowWide,
+  ArrowUpNarrowWide,
+  Clock,
+  Flame,
+  Star,
+} from "lucide-react";
+import type { ReactNode } from "react";
+
+import type { SortDirection, SortOption } from "../../lib/types";
+import { Button } from "../ui/button";
+import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
+import ModSearchInput from "./ModSearchInput";
+
+const sortTabs: { value: SortOption; label: string; icon: typeof Flame }[] = [
+  { value: "downloads", label: "Popular", icon: Flame },
+  { value: "updated", label: "Newest", icon: Clock },
+  { value: "rating", label: "Top Rated", icon: Star },
+  { value: "name", label: "A-Z", icon: ArrowDownAZ },
+];
+
+interface ModToolbarProps {
+  search: string;
+  onSearchChange: (value: string) => void;
+  placeholder?: string;
+  sortBy: SortOption;
+  onSortByChange: (value: SortOption) => void;
+  sortDirection: SortDirection;
+  onSortDirectionChange: (value: SortDirection) => void;
+  children?: ReactNode;
+}
+
+export default function ModToolbar({
+  search,
+  onSearchChange,
+  placeholder = "Search...",
+  sortBy,
+  onSortByChange,
+  sortDirection,
+  onSortDirectionChange,
+  children,
+}: ModToolbarProps) {
+  return (
+    <div className="mb-4 flex shrink-0 flex-wrap items-center gap-3">
+      <ModSearchInput
+        value={search}
+        onChange={onSearchChange}
+        placeholder={placeholder}
+        className="w-full sm:w-72"
+      />
+
+      <ToggleGroup
+        variant="outline"
+        size="sm"
+        value={[sortBy]}
+        onValueChange={(value) => {
+          if (value[0]) onSortByChange(value[0] as SortOption);
+        }}
+        aria-label="Sort by"
+      >
+        {sortTabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <ToggleGroupItem key={tab.value} value={tab.value}>
+              <Icon />
+              {tab.label}
+            </ToggleGroupItem>
+          );
+        })}
+      </ToggleGroup>
+
+      <Button
+        variant="outline"
+        size="icon-sm"
+        onClick={() => onSortDirectionChange(sortDirection === "desc" ? "asc" : "desc")}
+        title={
+          sortDirection === "desc" ? "Sort direction: descending" : "Sort direction: ascending"
+        }
+        aria-label="Toggle sort direction"
+      >
+        {sortDirection === "desc" ? <ArrowDownNarrowWide /> : <ArrowUpNarrowWide />}
+      </Button>
+
+      {children && (
+        <div className="text-muted-foreground ms-auto flex items-center text-xs">{children}</div>
+      )}
+    </div>
+  );
+}

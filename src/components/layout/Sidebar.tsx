@@ -1,24 +1,40 @@
+import type { LucideIcon } from "lucide-react";
 import {
-  Package,
   Download,
+  FileText,
   Layers,
-  Settings,
+  Package,
   Play,
+  Settings,
+  Shield,
   User,
   Wrench,
-  FileText,
-  Shield,
 } from "lucide-react";
 
 import { launchModded, launchVanilla } from "../../lib/tauri";
-import type { Page } from "../../lib/types";
-import { useAppStore } from "../../store/appStore";
+import { useAppVersion } from "../../hooks/use-app-version";
 import ProfileSelector from "../profiles/ProfileSelector";
+import { toast } from "../ui/toast";
+import { Button } from "../ui/button";
+import {
+  Sidebar as SidebarRoot,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+  SidebarSeparator,
+} from "../ui/sidebar";
 
 interface NavItem {
   page: Page;
   label: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
 }
 
 const navItems: NavItem[] = [
@@ -34,16 +50,16 @@ const navItems: NavItem[] = [
 export default function Sidebar() {
   const currentPage = useAppStore((s) => s.currentPage);
   const setCurrentPage = useAppStore((s) => s.setCurrentPage);
-  const addToast = useAppStore((s) => s.addToast);
+  const version = useAppVersion();
 
   const handleLaunchModded = async () => {
     try {
       await launchModded();
-      addToast({ type: "success", message: "Launching Valheim (modded)..." });
+      toast.add({ type: "success", title: "Launching Valheim (modded)..." });
     } catch (err) {
-      addToast({
+      toast.add({
         type: "error",
-        message: `Failed to launch: ${err}`,
+        title: `Failed to launch: ${err}`,
       });
     }
   };
@@ -51,84 +67,100 @@ export default function Sidebar() {
   const handleLaunchVanilla = async () => {
     try {
       await launchVanilla();
-      addToast({ type: "success", message: "Launching Valheim (vanilla)..." });
+      toast.add({ type: "success", title: "Launching Valheim (vanilla)..." });
     } catch (err) {
-      addToast({
+      toast.add({
         type: "error",
-        message: `Failed to launch: ${err}`,
+        title: `Failed to launch: ${err}`,
       });
     }
   };
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-[var(--color-border-subtle)] bg-[var(--color-bg-sidebar)]">
-      {/* Logo / Title */}
-      <div className="border-b border-[var(--color-border-subtle)] px-5 py-5">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--color-accent-amber)] to-orange-700">
-            <Shield size={20} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-sm leading-tight font-bold tracking-wide text-[var(--color-text-primary)]">
-              MACHEIM
-            </h1>
-            <p className="text-[10px] font-medium tracking-widest text-[var(--color-accent-amber)] uppercase">
+    <SidebarRoot collapsible="icon">
+      <SidebarHeader
+        className="pt-8 select-none"
+        data-tauri-drag-region
+      >
+        <div
+          className="flex items-center gap-2.5 px-1 group-data-[collapsible=icon]:px-0 pointer-events-none"
+        >
+          <img src="/icon.png" alt="Macheim" className="size-8 shrink-0" />
+          <div className="grid min-w-0 flex-1 leading-tight group-data-[collapsible=icon]:hidden">
+            <span className="flex items-baseline gap-1.5">
+              <span className="truncate text-sm font-bold tracking-wide">
+                MACHEIM
+              </span>
+              {version && (
+                <span className="text-[10px] font-medium text-muted-foreground">
+                  v{version}
+                </span>
+              )}
+            </span>
+            <span className="truncate text-[10px] font-medium tracking-widest text-[var(--color-accent-amber)] uppercase">
               Mod Manager
-            </p>
+            </span>
           </div>
         </div>
-      </div>
+      </SidebarHeader>
 
-      {/* Profile Selector */}
-      <div className="border-b border-[var(--color-border-subtle)] px-3 py-3">
-        <ProfileSelector />
-      </div>
+      <SidebarSeparator />
 
-      {/* Navigation */}
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
-        {navItems.map((item) => {
-          const isActive = currentPage === item.page;
-          const Icon = item.icon;
+      <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+        <SidebarGroupContent>
+          <ProfileSelector />
+        </SidebarGroupContent>
+      </SidebarGroup>
 
-          return (
-            <button
-              key={item.page}
-              onClick={() => setCurrentPage(item.page)}
-              className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
-                isActive
-                  ? "bg-[var(--color-accent-primary)]/15 text-[var(--color-accent-primary)]"
-                  : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-card)] hover:text-[var(--color-text-primary)]"
-              } `}
-            >
-              <Icon
-                size={18}
-                className={
-                  isActive ? "text-[var(--color-accent-primary)]" : "text-[var(--color-text-muted)]"
-                }
-              />
-              {item.label}
-            </button>
-          );
-        })}
-      </nav>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <SidebarMenuItem key={item.page}>
+                    <SidebarMenuButton
+                      isActive={currentPage === item.page}
+                      tooltip={item.label}
+                      onClick={() => setCurrentPage(item.page)}
+                    >
+                      <Icon />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
 
-      {/* Launch Buttons */}
-      <div className="space-y-2 border-t border-[var(--color-border-subtle)] px-3 py-4">
-        <button
+      <SidebarFooter>
+        <Button
+          variant="amber"
+          className="w-full group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:px-0"
           onClick={handleLaunchModded}
-          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[var(--color-accent-amber)] to-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-orange-900/30 transition-all duration-150 hover:from-[var(--color-accent-amber-hover)] hover:to-orange-700 active:scale-[0.98]"
         >
-          <Play size={16} />
-          Play Modded
-        </button>
-        <button
+          <Play />
+          <span className="group-data-[collapsible=icon]:hidden">
+            Play Modded
+          </span>
+        </Button>
+        <Button
+          variant="outline"
+          className="w-full group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:px-0"
           onClick={handleLaunchVanilla}
-          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-[var(--color-border-default)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-all duration-150 hover:bg-[var(--color-bg-card)] hover:text-[var(--color-text-primary)] active:scale-[0.98]"
         >
-          <Wrench size={15} />
-          Play Vanilla
-        </button>
-      </div>
-    </aside>
+          <Wrench />
+          <span className="group-data-[collapsible=icon]:hidden">
+            Play Vanilla
+          </span>
+        </Button>
+      </SidebarFooter>
+
+      <SidebarRail />
+    </SidebarRoot>
   );
 }
