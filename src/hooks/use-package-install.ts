@@ -13,15 +13,15 @@ export function usePackageInstall(pkg: ThunderstorePackage, kind: "mod" | "modpa
   const isInstalled = installedMods.some((m) => m.full_name === pkg.full_name);
 
   const mutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (version: string) =>
       kind === "modpack"
-        ? installModpack(pkg.full_name, pkg.version_number)
-        : installMod(pkg.full_name, pkg.version_number),
-    onSuccess: async () => {
+        ? installModpack(pkg.full_name, version)
+        : installMod(pkg.full_name, version),
+    onSuccess: async (_data, version) => {
       await queryClient.invalidateQueries({ queryKey: installedModsQueryKey });
       toast.add({
         type: "success",
-        title: `Installed ${kind === "modpack" ? "modpack " : ""}${pkg.name}`,
+        title: `Installed ${kind === "modpack" ? "modpack " : ""}${pkg.name} v${version}`,
       });
     },
     onError: (err) => {
@@ -33,11 +33,12 @@ export function usePackageInstall(pkg: ThunderstorePackage, kind: "mod" | "modpa
   });
 
   const isInstalling = mutation.isPending;
+  const installingVersion = mutation.isPending ? mutation.variables : null;
 
-  const install = () => {
-    if (isInstalled || isInstalling) return;
-    mutation.mutate();
+  const install = (version: string = pkg.version_number) => {
+    if (isInstalling) return;
+    mutation.mutate(version);
   };
 
-  return { install, isInstalled, isInstalling };
+  return { install, isInstalled, isInstalling, installingVersion };
 }

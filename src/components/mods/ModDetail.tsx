@@ -13,9 +13,10 @@ import {
 import { useEffect, useState } from "react";
 
 import { useInstalledMods } from "../../hooks/use-installed-mods";
+import { usePackageInstall } from "../../hooks/use-package-install";
 import { formatDate, formatDownloads } from "../../lib/format";
 import { installedModsQueryKey, packageDetailQueryKey } from "../../lib/query-keys";
-import { installMod, uninstallMod, getPackageDetails } from "../../lib/tauri";
+import { uninstallMod, getPackageDetails } from "../../lib/tauri";
 import type { ThunderstorePackage } from "../../lib/types";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
@@ -39,7 +40,7 @@ interface ModDetailProps {
 
 export default function ModDetail({ pkg, onClose }: ModDetailProps) {
   const queryClient = useQueryClient();
-  const { data: installedMods = [] } = useInstalledMods();
+  const { install, isInstalled, isInstalling, installingVersion } = usePackageInstall(pkg);
 
   const {
     data: detail = null,
@@ -59,26 +60,12 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  const isInstalled = installedMods.some((m) => m.full_name === pkg.full_name);
+  const { data: installedMods = [] } = useInstalledMods();
   const installedVersion = installedMods.find((m) => m.full_name === pkg.full_name)?.version;
 
   const latestVersion = detail?.versions?.[0];
   const dependencies =
     latestVersion?.dependencies?.filter((d) => !d.startsWith("denikson-BepInExPack")) ?? [];
-
-  const installMutation = useMutation({
-    mutationFn: (version: string) => installMod(pkg.full_name, version),
-    onSuccess: async (_data, version) => {
-      await queryClient.invalidateQueries({ queryKey: installedModsQueryKey });
-      toast.add({ type: "success", title: `Installed ${pkg.name} v${version}` });
-    },
-    onError: (err) => {
-      toast.add({
-        type: "error",
-        title: `Failed to install ${pkg.name}: ${err}`,
-      });
-    },
-  });
 
   const uninstallMutation = useMutation({
     mutationFn: () => uninstallMod(pkg.full_name),
@@ -94,17 +81,13 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
     },
   });
 
-  const isInstalling = installMutation.isPending;
-  const installingVersion = installMutation.isPending ? installMutation.variables : null;
-
   const handleInstall = () => {
     if (isInstalled || isInstalling) return;
-    installMutation.mutate(pkg.version_number);
+    install(pkg.version_number);
   };
 
   const handleInstallVersion = (version: string) => {
-    if (isInstalling) return;
-    installMutation.mutate(version);
+    install(version);
   };
 
   const handleUninstall = () => {
