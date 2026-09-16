@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 import type { SortDirection, SortOption } from "../../lib/types";
 import { Button } from "../ui/button";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
+import CategoryFilter from "./CategoryFilter";
 import ModSearchInput from "./ModSearchInput";
 
 const sortTabs: { value: SortOption; label: string; icon: typeof Flame }[] = [
@@ -28,6 +29,9 @@ interface ModToolbarProps {
   onSortByChange: (value: SortOption) => void;
   sortDirection: SortDirection;
   onSortDirectionChange: (value: SortDirection) => void;
+  categories?: string[];
+  selectedCategories?: string[];
+  onSelectedCategoriesChange?: (value: string[]) => void;
   children?: ReactNode;
 }
 
@@ -39,6 +43,9 @@ export default function ModToolbar({
   onSortByChange,
   sortDirection,
   onSortDirectionChange,
+  categories,
+  selectedCategories,
+  onSelectedCategoriesChange,
   children,
 }: ModToolbarProps) {
   return (
@@ -49,6 +56,14 @@ export default function ModToolbar({
         placeholder={placeholder}
         className="w-full sm:w-72"
       />
+
+      {categories && categories.length > 0 && onSelectedCategoriesChange && (
+        <CategoryFilter
+          categories={categories}
+          value={selectedCategories ?? []}
+          onChange={onSelectedCategoriesChange}
+        />
+      )}
 
       <ToggleGroup
         variant="outline"

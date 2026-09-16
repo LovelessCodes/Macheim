@@ -1,5 +1,36 @@
 import type { SortDirection, SortOption, ThunderstorePackage } from "./types";
 
+export interface PackageFilter {
+  searchQuery?: string;
+  selectedCategories?: string[];
+}
+
+export function filterPackages(
+  packages: ThunderstorePackage[],
+  { searchQuery = "", selectedCategories = [] }: PackageFilter,
+): ThunderstorePackage[] {
+  let filtered = packages.filter((pkg) => !pkg.is_deprecated);
+
+  if (selectedCategories.length > 0) {
+    filtered = filtered.filter((pkg) =>
+      (pkg.categories ?? []).some((cat) => selectedCategories.includes(cat)),
+    );
+  }
+
+  const q = searchQuery.trim().toLowerCase();
+  if (q) {
+    filtered = filtered.filter(
+      (pkg) =>
+        pkg.name.toLowerCase().includes(q) ||
+        pkg.full_name.toLowerCase().includes(q) ||
+        pkg.owner.toLowerCase().includes(q) ||
+        (pkg.description ?? "").toLowerCase().includes(q),
+    );
+  }
+
+  return filtered;
+}
+
 export function sortPackages(
   packages: ThunderstorePackage[],
   sortBy: SortOption,

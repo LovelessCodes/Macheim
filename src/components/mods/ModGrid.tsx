@@ -1,55 +1,44 @@
 import { Package } from "lucide-react";
-import { useEffect } from "react";
+import { useMemo } from "react";
 
-import { fetchPackages } from "../../lib/tauri";
+import { usePackages } from "../../hooks/use-packages";
+import { filterPackages, sortPackages } from "../../lib/packages";
 import { useModStore } from "../../store/modStore";
 import { GridSkeleton } from "../common/LoadingSkeleton";
 import VirtualGrid from "../common/VirtualGrid";
 import { ScrollArea } from "../ui/scroll-area";
-import { toast } from "../ui/toast";
 import ModCard from "./ModCard";
 import ModToolbar from "./ModToolbar";
 
 export default function ModGrid() {
-  const packages = useModStore((s) => s.packages);
-  const isLoading = useModStore((s) => s.isLoadingPackages);
-  const setPackages = useModStore((s) => s.setPackages);
-  const setLoading = useModStore((s) => s.setLoadingPackages);
-  const getFilteredPackages = useModStore((s) => s.getFilteredPackages);
+  const { data: packages = [], isLoading } = usePackages();
   const searchQuery = useModStore((s) => s.searchQuery);
   const setSearchQuery = useModStore((s) => s.setSearchQuery);
+  const selectedCategories = useModStore((s) => s.selectedCategories);
+  const setSelectedCategories = useModStore((s) => s.setSelectedCategories);
   const sortBy = useModStore((s) => s.sortBy);
   const setSortBy = useModStore((s) => s.setSortBy);
   const sortDirection = useModStore((s) => s.sortDirection);
   const setSortDirection = useModStore((s) => s.setSortDirection);
 
-  useEffect(() => {
-    if (packages.length > 0) return;
+  const filtered = useMemo(
+    () =>
+      sortPackages(
+        filterPackages(packages, { searchQuery, selectedCategories }),
+        sortBy,
+        sortDirection,
+      ),
+    [packages, searchQuery, selectedCategories, sortBy, sortDirection],
+  );
 
-    let cancelled = false;
-    async function load() {
-      setLoading(true);
-      try {
-        const pkgs = await fetchPackages();
-        if (!cancelled) setPackages(pkgs);
-      } catch (err) {
-        if (!cancelled) {
-          toast.add({
-            type: "error",
-            title: `Failed to fetch packages: ${err}`,
-          });
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    for (const pkg of packages) {
+      if (pkg.is_deprecated) continue;
+      for (const cat of pkg.categories ?? []) set.add(cat);
     }
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [packages.length, setPackages, setLoading]);
-
-  const filtered = getFilteredPackages();
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [packages]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -61,11 +50,14 @@ export default function ModGrid() {
         onSortByChange={setSortBy}
         sortDirection={sortDirection}
         onSortDirectionChange={setSortDirection}
+        categories={categories}
+        selectedCategories={selectedCategories}
+        onSelectedCategoriesChange={setSelectedCategories}
       >
         {filtered.length.toLocaleString()} mods
       </ModToolbar>
 
-      {isLoading && packages.length === 0 ? (
+      {isLoading ? (
         <ScrollArea scrollFade className="min-h-0 flex-1">
           <GridSkeleton count={9} />
         </ScrollArea>
