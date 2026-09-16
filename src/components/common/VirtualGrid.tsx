@@ -2,6 +2,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { ScrollArea } from "../ui/scroll-area";
+import ScrollToTopButton from "./ScrollToTopButton";
 
 const ROW_GAP = 16;
 const DEFAULT_ROW_HEIGHT = 168;
@@ -82,6 +83,7 @@ export default function VirtualGrid<T>({
           })}
         </div>
       )}
+      <ScrollToTopButton viewportRef={viewportRef} />
     </ScrollArea>
   );
 }
