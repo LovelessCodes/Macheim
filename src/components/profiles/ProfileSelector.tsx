@@ -1,8 +1,7 @@
 import { Check, ChevronDown, User } from "lucide-react";
-import { useEffect } from "react";
 
-import { getActiveProfile, listProfiles, switchProfile } from "../../lib/tauri";
-import { useProfileStore } from "../../store/profileStore";
+import { useProfiles } from "../../hooks/use-profiles";
+import { switchProfile } from "../../lib/tauri";
 import { Button } from "../ui/button";
 import {
   DropdownMenu,
@@ -13,40 +12,14 @@ import {
 import { toast } from "../ui/toast";
 
 export default function ProfileSelector() {
-  const profiles = useProfileStore((s) => s.profiles);
-  const activeProfile = useProfileStore((s) => s.activeProfile);
-  const setProfiles = useProfileStore((s) => s.setProfiles);
-  const setActiveProfile = useProfileStore((s) => s.setActiveProfile);
-
-  // Load profiles on mount
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await listProfiles();
-        setProfiles(data);
-        setActiveProfile(await getActiveProfile());
-      } catch {
-        // Backend may not be ready; use defaults
-        setProfiles([
-          {
-            name: "Default",
-            mods: [],
-            description: "",
-            compatibility: { automatic: true, disabled_rules: [] },
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-        ]);
-      }
-    }
-    load();
-  }, [setProfiles, setActiveProfile]);
+  const { data } = useProfiles();
+  const profiles = data?.profiles ?? [];
+  const activeProfile = data?.activeProfile ?? "Default";
 
   const handleSwitch = async (name: string) => {
     if (name === activeProfile) return;
     try {
       await switchProfile(name);
-      setActiveProfile(name);
       toast.add({ type: "success", title: `Switched to profile "${name}"` });
     } catch (err) {
       toast.add({

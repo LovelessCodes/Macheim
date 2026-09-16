@@ -1,16 +1,13 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { cn } from "cn";
 import { Package, Trash2, Power, PowerOff, RefreshCw, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-import {
-  getInstalledMods,
-  toggleMod,
-  uninstallMod,
-  syncMods,
-  listUnmanagedMods,
-} from "../../lib/tauri";
-import { useModStore } from "../../store/modStore";
+import { useInstalledMods } from "../../hooks/use-installed-mods";
+import { installedModsQueryKey } from "../../lib/query-keys";
+import { toggleMod, uninstallMod, syncMods, listUnmanagedMods } from "../../lib/tauri";
+import type { InstalledMod } from "../../lib/types";
 import { ListSkeleton } from "../common/LoadingSkeleton";
 import VirtualList from "../common/VirtualList";
 import { Badge } from "../ui/badge";
@@ -25,48 +22,20 @@ import ModSearchInput from "./ModSearchInput";
 type ModFilter = "all" | "enabled" | "disabled";
 
 export default function InstalledModList() {
-  const installedMods = useModStore((s) => s.installedMods);
-  const setInstalledMods = useModStore((s) => s.setInstalledMods);
-  const isLoading = useModStore((s) => s.isLoadingInstalled);
-  const setLoading = useModStore((s) => s.setLoadingInstalled);
+  const queryClient = useQueryClient();
+  const { data: installedMods = [], isPending: isLoading } = useInstalledMods();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<ModFilter>("all");
   const [togglingMod, setTogglingMod] = useState<string | null>(null);
   const [uninstallingMod, setUninstallingMod] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      setLoading(true);
-      try {
-        const mods = await getInstalledMods();
-        if (!cancelled) setInstalledMods(mods);
-      } catch (err) {
-        if (!cancelled) {
-          toast.add({
-            type: "error",
-            title: `Failed to load installed mods: ${err}`,
-          });
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [setInstalledMods, setLoading]);
-
   const handleToggle = async (fullName: string, currentEnabled: boolean) => {
     setTogglingMod(fullName);
     try {
       await toggleMod(fullName, !currentEnabled);
-      setInstalledMods(
-        installedMods.map((m) =>
-          m.full_name === fullName ? { ...m, enabled: !currentEnabled } : m,
-        ),
+      queryClient.setQueryData<InstalledMod[]>(installedModsQueryKey, (prev) =>
+        prev?.map((m) => (m.full_name === fullName ? { ...m, enabled: !currentEnabled } : m)),
       );
     } catch (err) {
       toast.add({
@@ -82,7 +51,9 @@ export default function InstalledModList() {
     setUninstallingMod(fullName);
     try {
       await uninstallMod(fullName);
-      setInstalledMods(installedMods.filter((m) => m.full_name !== fullName));
+      queryClient.setQueryData<InstalledMod[]>(installedModsQueryKey, (prev) =>
+        prev?.filter((m) => m.full_name !== fullName),
+      );
       toast.add({ type: "info", title: `Uninstalled ${name}` });
     } catch (err) {
       toast.add({
@@ -118,8 +89,7 @@ export default function InstalledModList() {
         type: result.failed.length > 0 ? "warning" : "success",
         title: `Sync complete: ${msgs.join(", ") || "all up to date"}`,
       });
-      const mods = await getInstalledMods();
-      setInstalledMods(mods);
+      await queryClient.refetchQueries({ queryKey: installedModsQueryKey });
     } catch (err) {
       toast.add({ type: "error", title: `Sync failed: ${err}` });
     } finally {
@@ -194,7 +164,7 @@ export default function InstalledModList() {
 
       {/* Mod List */}
       {isLoading && installedMods.length === 0 ? (
-        <ScrollArea className="min-h-0 flex-1">
+        <ScrollArea scrollFade className="min-h-0 flex-1">
           <ListSkeleton rows={8} />
         </ScrollArea>
       ) : (
@@ -210,7 +180,6 @@ export default function InstalledModList() {
               )}
             >
               <ModIcon src={mod.icon} alt={mod.name} className="size-10" iconClassName="size-4" />
-
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <h4 className="text-foreground truncate text-sm font-semibold">{mod.name}</h4>

@@ -1,9 +1,10 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import { getInstalledMods, listUnmanagedMods, syncMods } from "../../lib/tauri";
-import { useModStore } from "../../store/modStore";
 import InstalledModList from "./InstalledModList";
 vi.mock("../../lib/tauri", () => ({
   getInstalledMods: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
@@ -26,16 +27,19 @@ const mod = {
   dependencies: [],
   installed_at: "",
 };
+function renderWithClient(ui: ReactNode) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
 beforeEach(() => {
   vi.clearAllMocks();
-  useModStore.setState({ installedMods: [], isLoadingInstalled: false });
   vi.mocked(getInstalledMods).mockResolvedValue([mod]);
   vi.mocked(listUnmanagedMods).mockResolvedValue(["Manual-Mod"]);
   vi.mocked(syncMods).mockResolvedValue({ cleaned: [], failed: [], reinstalled: [] });
 });
 afterEach(cleanup);
 test("search reads the Rust author field and does not blank", async () => {
-  render(<InstalledModList />);
+  renderWithClient(<InstalledModList />);
   await screen.findByText("by Therzie");
   fireEvent.change(screen.getByPlaceholderText("Search installed mods..."), {
     target: { value: "Therzie" },
@@ -48,7 +52,7 @@ test("search reads the Rust author field and does not blank", async () => {
 });
 test("canceling native cleanup confirmation makes no mutation", async () => {
   vi.mocked(confirm).mockResolvedValue(false);
-  render(<InstalledModList />);
+  renderWithClient(<InstalledModList />);
   await screen.findByText("Wizardry");
   fireEvent.click(screen.getByText("Sync & Clean"));
   await waitFor(() => expect(confirm).toHaveBeenCalled());
@@ -62,7 +66,7 @@ test("awaits confirmation before sending approved names", async () => {
       answer = resolve;
     }),
   );
-  render(<InstalledModList />);
+  renderWithClient(<InstalledModList />);
   await screen.findByText("Wizardry");
   fireEvent.click(screen.getByText("Sync & Clean"));
   await waitFor(() => expect(confirm).toHaveBeenCalled());

@@ -1,11 +1,13 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { cn } from "cn";
 import { Plus, Trash2, User, Check, X, Clock, Package, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
+import { useProfiles } from "../../hooks/use-profiles";
 import { formatDate } from "../../lib/format";
-import { listProfiles, createProfile, switchProfile, deleteProfile } from "../../lib/tauri";
-import { useProfileStore } from "../../store/profileStore";
+import { profilesQueryKey } from "../../lib/query-keys";
+import { createProfile, switchProfile, deleteProfile } from "../../lib/tauri";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent } from "../ui/card";
@@ -13,34 +15,22 @@ import { Input } from "../ui/input";
 import { toast } from "../ui/toast";
 
 export default function ProfileManager() {
-  const profiles = useProfileStore((s) => s.profiles);
-  const activeProfile = useProfileStore((s) => s.activeProfile);
-  const setProfiles = useProfileStore((s) => s.setProfiles);
-  const setActiveProfile = useProfileStore((s) => s.setActiveProfile);
+  const queryClient = useQueryClient();
+  const { data } = useProfiles();
+  const profiles = data?.profiles ?? [];
+  const activeProfile = data?.activeProfile ?? "Default";
 
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [deletingProfile, setDeletingProfile] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await listProfiles();
-        setProfiles(data);
-      } catch {
-        // ok
-      }
-    }
-    load();
-  }, [setProfiles]);
 
   const handleCreate = async () => {
     const name = newName.trim();
     if (!name) return;
 
     try {
-      const profile = await createProfile(name);
-      setProfiles([...profiles, profile]);
+      await createProfile(name);
+      await queryClient.invalidateQueries({ queryKey: profilesQueryKey });
       setNewName("");
       setIsCreating(false);
       toast.add({ type: "success", title: `Created profile "${name}"` });
@@ -56,7 +46,6 @@ export default function ProfileManager() {
     if (name === activeProfile) return;
     try {
       await switchProfile(name);
-      setActiveProfile(name);
       toast.add({ type: "success", title: `Switched to "${name}"` });
     } catch (err) {
       toast.add({
@@ -85,7 +74,7 @@ export default function ProfileManager() {
     setDeletingProfile(name);
     try {
       await deleteProfile(name);
-      setProfiles(profiles.filter((p) => p.name !== name));
+      await queryClient.invalidateQueries({ queryKey: profilesQueryKey });
       toast.add({
         type: "info",
         title: `Removed "${name}". Recoverable from the deleted-profiles data folder.`,

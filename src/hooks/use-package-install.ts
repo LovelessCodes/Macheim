@@ -1,15 +1,18 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
 import { toast } from "../components/ui/toast";
-import { getInstalledMods, installMod, installModpack } from "../lib/tauri";
+import { installedModsQueryKey } from "../lib/query-keys";
+import { installMod, installModpack } from "../lib/tauri";
 import type { ThunderstorePackage } from "../lib/types";
 import { useModStore } from "../store/modStore";
+import { useInstalledMods } from "./use-installed-mods";
 
 export function usePackageInstall(pkg: ThunderstorePackage, kind: "mod" | "modpack" = "mod") {
-  const installedMods = useModStore((s) => s.installedMods);
+  const queryClient = useQueryClient();
+  const { data: installedMods = [] } = useInstalledMods();
   const isInstallingMod = useModStore((s) => s.isInstallingMod);
   const setInstallingMod = useModStore((s) => s.setInstallingMod);
-  const setInstalledMods = useModStore((s) => s.setInstalledMods);
 
   const isInstalled = installedMods.some((m) => m.full_name === pkg.full_name);
   const isInstalling = isInstallingMod === pkg.full_name;
@@ -24,7 +27,7 @@ export function usePackageInstall(pkg: ThunderstorePackage, kind: "mod" | "modpa
       } else {
         await installMod(pkg.full_name, pkg.version_number);
       }
-      setInstalledMods(await getInstalledMods());
+      await queryClient.invalidateQueries({ queryKey: installedModsQueryKey });
       toast.add({
         type: "success",
         title: `Installed ${kind === "modpack" ? "modpack " : ""}${pkg.name}`,
@@ -44,8 +47,8 @@ export function usePackageInstall(pkg: ThunderstorePackage, kind: "mod" | "modpa
     pkg.version_number,
     isInstalled,
     isInstalling,
+    queryClient,
     setInstallingMod,
-    setInstalledMods,
   ]);
 
   return { install, isInstalled, isInstalling };

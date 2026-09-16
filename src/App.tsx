@@ -1,12 +1,11 @@
 import { listen } from "@tauri-apps/api/event";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import ProgressOverlay from "./components/common/ProgressOverlay";
 import MainLayout from "./components/layout/MainLayout";
 import SetupWizard from "./components/setup/SetupWizard";
 import { toast, Toaster } from "./components/ui/toast";
-import { detectGame } from "./lib/tauri";
-import { useAppStore } from "./store/appStore";
+import { useGameStatus } from "./hooks/use-game-status";
 
 interface CdnFallbackEvent {
   from: string;
@@ -14,11 +13,7 @@ interface CdnFallbackEvent {
 }
 
 export default function App() {
-  const gameStatus = useAppStore((s) => s.gameStatus);
-  const isInitialized = useAppStore((s) => s.isInitialized);
-  const setGameStatus = useAppStore((s) => s.setGameStatus);
-  const setInitialized = useAppStore((s) => s.setInitialized);
-  const [booting, setBooting] = useState(true);
+  const { data: gameStatus, isPending: booting } = useGameStatus();
 
   useEffect(() => {
     const unlisten = listen<CdnFallbackEvent>("cdn-fallback", (event) => {
@@ -37,24 +32,7 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    async function checkStatus() {
-      try {
-        const status = await detectGame();
-        setGameStatus(status);
-        if (status.installed && status.bepinex_installed) {
-          setInitialized(true);
-        }
-      } catch {
-        // Backend not ready; will show setup wizard
-      } finally {
-        setBooting(false);
-      }
-    }
-    checkStatus();
-  }, [setGameStatus, setInitialized]);
-
-  const needsSetup = !isInitialized || !gameStatus?.installed || !gameStatus?.bepinex_installed;
+  const needsSetup = !gameStatus?.installed || !gameStatus?.bepinex_installed;
 
   return (
     <>

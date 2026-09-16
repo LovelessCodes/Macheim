@@ -1,4 +1,6 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import { getCompatibility, applyCompatibility } from "../../lib/tauri";
@@ -8,6 +10,13 @@ vi.mock("../../lib/tauri", () => ({
   getCompatibility: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   applyCompatibility: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
 }));
+vi.mock("@tauri-apps/api/app", () => ({
+  getVersion: vi.fn<() => Promise<string>>().mockResolvedValue("1.1.0"),
+}));
+function renderWithClient(ui: ReactNode) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
 const status: CompatibilityStatus = {
   profile_name: "Friends",
   settings: { automatic: true, disabled_rules: [] },
@@ -31,7 +40,7 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 test("checking support is read-only and never claims a full shader scan", async () => {
-  render(<CompatibilityPage />);
+  renderWithClient(<CompatibilityPage />);
   await screen.findByText("Friends");
   expect(screen.getByText(/not every shader in the game/)).toBeTruthy();
   expect(applyCompatibility).not.toHaveBeenCalled();
@@ -41,7 +50,7 @@ test("automatic opt-out is scoped to the shown profile", async () => {
     ...status,
     settings: { automatic: false, disabled_rules: [] },
   });
-  render(<CompatibilityPage />);
+  renderWithClient(<CompatibilityPage />);
   await screen.findByText("Friends");
   fireEvent.click(
     screen.getByRole("checkbox", { name: "Automatically apply verified compatibility rules" }),
@@ -55,14 +64,14 @@ test("automatic opt-out is scoped to the shown profile", async () => {
 });
 test("game-running state blocks apply and disable controls", async () => {
   vi.mocked(getCompatibility).mockResolvedValue({ ...status, game_running: true });
-  render(<CompatibilityPage />);
+  renderWithClient(<CompatibilityPage />);
   await screen.findByText("Friends");
   expect((screen.getByText("Apply supported rules") as HTMLButtonElement).disabled).toBe(true);
   expect((screen.getByRole("checkbox") as HTMLInputElement).disabled).toBe(true);
 });
 test("backend errors remain visible without a blank screen", async () => {
   vi.mocked(getCompatibility).mockRejectedValue("Profile missing");
-  render(<CompatibilityPage />);
+  renderWithClient(<CompatibilityPage />);
   expect((await screen.findByRole("alert")).textContent).toContain("Profile missing");
   expect(screen.getByText("Check support")).toBeTruthy();
 });

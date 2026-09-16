@@ -9,9 +9,9 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+import { useGameStatus } from "../../hooks/use-game-status";
 import { createBackup, listBackups, restoreBackup } from "../../lib/tauri";
 import type { BackupInfo } from "../../lib/types";
-import { useAppStore } from "../../store/appStore";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
@@ -27,7 +27,7 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 }
 
 export default function SettingsPage() {
-  const gameStatus = useAppStore((s) => s.gameStatus);
+  const { data: gameStatus } = useGameStatus();
   const [backups, setBackups] = useState<BackupInfo[]>([]);
   const [backupsLoaded, setBackupsLoaded] = useState(false);
   const [isCreatingBackup, setIsCreatingBackup] = useState(false);

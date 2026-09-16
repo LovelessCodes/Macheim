@@ -1,8 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
-import { useAppStore } from "../store/appStore";
-import { useModStore } from "../store/modStore";
-import { useProfileStore } from "../store/profileStore";
+import { queryClient } from "./query-client";
+import { gameStatusQueryKey, installedModsQueryKey, profilesQueryKey } from "./query-keys";
 import type {
   GameStatus,
   ThunderstorePackage,
@@ -104,10 +103,9 @@ export async function createProfile(name: string): Promise<Profile> {
 
 export async function switchProfile(name: string): Promise<void> {
   await invoke("switch_profile", { name });
-  useProfileStore.getState().setActiveProfile(name);
-  useAppStore.getState().setGameStatus(await getGameStatus());
-  useModStore.getState().setInstalledMods(await getInstalledMods());
-  useProfileStore.getState().setProfiles(await listProfiles());
+  queryClient.setQueryData(gameStatusQueryKey, await getGameStatus());
+  await queryClient.invalidateQueries({ queryKey: installedModsQueryKey });
+  await queryClient.invalidateQueries({ queryKey: profilesQueryKey });
 }
 
 export async function getActiveProfile(): Promise<string> {
