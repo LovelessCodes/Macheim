@@ -212,8 +212,21 @@ async fn install_mod_inner(
         }
     }
 
-    // Install the target mod itself
-    if !installed_set.contains(&full_name) {
+    // Install the target mod itself. Reinstall when a different version is
+    // requested so users can switch between versions.
+    let installed_version = profile
+        .mods
+        .iter()
+        .find(|m| m.full_name == full_name)
+        .map(|m| m.version.as_str());
+    let version_changed = installed_version != Some(target_version);
+
+    if version_changed {
+        if installed_version.is_some() {
+            // Remove the old version's files so stale files don't linger.
+            mod_installer::uninstall_mod(&full_name, &game_root)?;
+        }
+
         emit_progress(
             &app,
             "downloading",
