@@ -30,6 +30,8 @@ import {
   SidebarSeparator,
 } from "../ui/sidebar";
 import { toast } from "../ui/toast";
+import { useAppStore } from "../../store/appStore";
+import { Page } from "@/lib/types";
 
 interface NavItem {
   page: Page;

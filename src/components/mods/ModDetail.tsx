@@ -27,6 +27,7 @@ import {
   SheetTitle,
 } from "../ui/sheet";
 import { toast } from "../ui/toast";
+import { useEffect, useState } from "react";
 
 interface ModDetailProps {
   pkg: ThunderstorePackage;
