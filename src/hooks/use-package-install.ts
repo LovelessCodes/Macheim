@@ -1,5 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { toast } from "../components/ui/toast";
 import { installedModsQueryKey } from "../lib/query-keys";
@@ -17,39 +16,32 @@ export function usePackageInstall(pkg: ThunderstorePackage, kind: "mod" | "modpa
   const isInstalled = installedMods.some((m) => m.full_name === pkg.full_name);
   const isInstalling = isInstallingMod === pkg.full_name;
 
-  const install = useCallback(async () => {
-    if (isInstalled || isInstalling) return;
-
-    setInstallingMod(pkg.full_name);
-    try {
-      if (kind === "modpack") {
-        await installModpack(pkg.full_name, pkg.version_number);
-      } else {
-        await installMod(pkg.full_name, pkg.version_number);
-      }
+  const mutation = useMutation({
+    mutationFn: () =>
+      kind === "modpack"
+        ? installModpack(pkg.full_name, pkg.version_number)
+        : installMod(pkg.full_name, pkg.version_number),
+    onMutate: () => setInstallingMod(pkg.full_name),
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: installedModsQueryKey });
       toast.add({
         type: "success",
         title: `Installed ${kind === "modpack" ? "modpack " : ""}${pkg.name}`,
       });
-    } catch (err) {
+    },
+    onError: (err) => {
       toast.add({
         type: "error",
         title: `Failed to install ${pkg.name}: ${err}`,
       });
-    } finally {
-      setInstallingMod(null);
-    }
-  }, [
-    kind,
-    pkg.full_name,
-    pkg.name,
-    pkg.version_number,
-    isInstalled,
-    isInstalling,
-    queryClient,
-    setInstallingMod,
-  ]);
+    },
+    onSettled: () => setInstallingMod(null),
+  });
+
+  const install = () => {
+    if (isInstalled || isInstalling || mutation.isPending) return;
+    mutation.mutate();
+  };
 
   return { install, isInstalled, isInstalling };
 }
