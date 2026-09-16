@@ -8,6 +8,9 @@ pub mod services;
 
 use models::ThunderstorePackage;
 
+/// App handle for emitting global events from services.
+pub static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle> = std::sync::OnceLock::new();
+
 /// Migrate app data from old directory name to new one.
 fn migrate_app_data_dir() {
     let home = match dirs::home_dir() {
@@ -94,6 +97,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .manage(Mutex::new(AppState::default()))
+        .setup(|app| {
+            let _ = APP_HANDLE.set(app.handle().clone());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             // Game detection
             commands::game::detect_game,
