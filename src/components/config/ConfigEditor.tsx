@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { cn } from "cn";
 import {
   FileText,
   Save,
@@ -8,8 +9,26 @@ import {
   Settings,
   AlertTriangle,
 } from "lucide-react";
-import { useAppStore } from "../../store/appStore";
 import { getConfigFiles, getConfig, saveConfig } from "../../lib/tauri";
+import { toast } from "../ui/toast";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Switch } from "../ui/switch";
+import { ScrollArea } from "../ui/scroll-area";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import type {
   ConfigFile,
   ConfigFileSummary,
@@ -18,8 +37,6 @@ import type {
 } from "../../lib/types";
 
 export default function ConfigEditor() {
-  const addToast = useAppStore((s) => s.addToast);
-
   const [configFiles, setConfigFiles] = useState<ConfigFileSummary[]>([]);
   const [selectedFile, setSelectedFile] = useState<ConfigFile | null>(null);
   const [isLoadingFiles, setIsLoadingFiles] = useState(true);
@@ -59,15 +76,15 @@ export default function ConfigEditor() {
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setConfigError(message);
-        addToast({
+        toast.add({
           type: "error",
-          message: `Failed to load config: ${message}`,
+          title: `Failed to load config: ${message}`,
         });
       } finally {
         setIsLoadingConfig(false);
       }
     },
-    [addToast]
+    []
   );
 
   const handleEntryChange = (
@@ -114,11 +131,11 @@ export default function ConfigEditor() {
       await saveConfig(updatedConfig);
       setSelectedFile(updatedConfig);
       setEditedEntries(new Map());
-      addToast({ type: "success", message: "Config saved." });
+      toast.add({ type: "success", title: "Config saved." });
     } catch (err) {
-      addToast({
+      toast.add({
         type: "error",
-        message: `Failed to save config: ${err}`,
+        title: `Failed to save config: ${err}`,
       });
     } finally {
       setIsSaving(false);
@@ -152,40 +169,37 @@ export default function ConfigEditor() {
     if (settingType === "boolean" || settingType === "bool") {
       const isTrue = value.toLowerCase() === "true";
       return (
-        <button
-          onClick={() =>
-            handleEntryChange(section.name, entry.key, isTrue ? "false" : "true")
+        <Switch
+          checked={isTrue}
+          onCheckedChange={(checked) =>
+            handleEntryChange(section.name, entry.key, checked ? "true" : "false")
           }
-          className={`relative w-10 h-5.5 rounded-full shrink-0 transition-colors cursor-pointer
-            ${isTrue ? "bg-[var(--color-accent-primary)]" : "bg-[var(--color-border-default)]"}
-          `}
-        >
-          <div
-            className={`absolute top-0.5 w-4.5 h-4.5 rounded-full bg-white shadow transition-transform
-              ${isTrue ? "translate-x-5" : "translate-x-0.5"}
-            `}
-          />
-        </button>
+          aria-label={entry.key}
+        />
       );
     }
 
     // Dropdown for acceptable values
     if (acceptableValues && acceptableValues.length > 0) {
       return (
-        <select
+        <Select
+          items={acceptableValues.map((av) => ({ label: av, value: av }))}
           value={value}
-          onChange={(e) =>
-            handleEntryChange(section.name, entry.key, e.target.value)
+          onValueChange={(next) =>
+            handleEntryChange(section.name, entry.key, String(next))
           }
-          className="px-2.5 py-1.5 rounded-md text-sm bg-[var(--color-bg-input)] border border-[var(--color-border-default)]
-            text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-primary)]"
         >
-          {acceptableValues.map((av) => (
-            <option key={av} value={av}>
-              {av}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="w-40" aria-label={entry.key}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {acceptableValues.map((av) => (
+              <SelectItem key={av} value={av}>
+                {av}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       );
     }
 
@@ -198,7 +212,7 @@ export default function ConfigEditor() {
     ) {
       return (
         <div className="flex items-center gap-2">
-          <input
+          <Input
             type="number"
             value={value}
             onChange={(e) =>
@@ -206,11 +220,11 @@ export default function ConfigEditor() {
             }
             min={acceptableRange?.[0]}
             max={acceptableRange?.[1]}
-            className="w-28 px-2.5 py-1.5 rounded-md text-sm bg-[var(--color-bg-input)] border border-[var(--color-border-default)]
-              text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-primary)]"
+            aria-label={entry.key}
+            className="w-28"
           />
           {acceptableRange && (
-            <span className="text-xs text-[var(--color-text-muted)]">
+            <span className="text-xs text-muted-foreground">
               [{acceptableRange[0]} - {acceptableRange[1]}]
             </span>
           )}
@@ -220,196 +234,181 @@ export default function ConfigEditor() {
 
     // Default: text input
     return (
-      <input
+      <Input
         type="text"
         value={value}
         onChange={(e) =>
           handleEntryChange(section.name, entry.key, e.target.value)
         }
-        className="w-60 px-2.5 py-1.5 rounded-md text-sm bg-[var(--color-bg-input)] border border-[var(--color-border-default)]
-          text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent-primary)]"
+        aria-label={entry.key}
+        className="w-60"
       />
     );
   };
 
   return (
-    <div className="flex gap-5 h-[calc(100vh-8rem)]">
+    <div className="flex h-full min-h-0 gap-5">
       {/* File list */}
-      <div className="w-64 shrink-0 rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-card)] overflow-hidden flex flex-col">
-        <div className="px-4 py-3 border-b border-[var(--color-border-subtle)]">
-          <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-            Config Files
-          </h3>
-        </div>
-        <div className="flex-1 overflow-y-auto">
+      <Card className="w-64 shrink-0 gap-0 overflow-hidden py-0">
+        <CardHeader className="border-b py-3">
+          <CardTitle className="text-sm">Config Files</CardTitle>
+        </CardHeader>
+        <ScrollArea scrollFade className="min-h-0 flex-1">
           {isLoadingFiles ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2
-                size={20}
-                className="animate-spin text-[var(--color-text-muted)]"
-              />
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
             </div>
           ) : configFiles.length === 0 ? (
             <div className="px-4 py-8 text-center">
-              <FileText
-                size={28}
-                className="mx-auto text-[var(--color-text-muted)] mb-2"
-              />
-              <p className="text-xs text-[var(--color-text-muted)]">
+              <FileText className="mx-auto mb-2 size-7 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">
                 No config files found. Install some mods first.
               </p>
             </div>
           ) : (
-            configFiles.map((file) => (
-              <button
-                key={file.filename}
-                onClick={() => handleSelectFile(file)}
-                className={`w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm transition-colors cursor-pointer
-                  ${
-                    selectedFile?.filename === file.filename
-                      ? "bg-[var(--color-accent-primary)]/10 text-[var(--color-accent-primary)] border-r-2 border-[var(--color-accent-primary)]"
-                      : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-card-hover)] hover:text-[var(--color-text-primary)]"
-                  }
-                `}
-              >
-                <FileText size={14} className="shrink-0" />
-                <span className="truncate">{file.filename}</span>
-                <ChevronRight size={12} className="ml-auto shrink-0 opacity-40" />
-              </button>
-            ))
+            configFiles.map((file) => {
+              const isActive = selectedFile?.filename === file.filename;
+              return (
+                <button
+                  key={file.filename}
+                  onClick={() => handleSelectFile(file)}
+                  className={cn(
+                    "flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm transition-colors",
+                    isActive
+                      ? "border-r-2 border-accent-primary bg-accent-primary/10 text-accent-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <FileText className="size-3.5 shrink-0" />
+                  <span className="truncate">{file.filename}</span>
+                  <ChevronRight className="ml-auto size-3 shrink-0 opacity-40" />
+                </button>
+              );
+            })
           )}
-        </div>
-      </div>
+        </ScrollArea>
+      </Card>
 
       {/* Editor */}
-      <div className="flex-1 rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-card)] overflow-hidden flex flex-col">
+      <Card className="min-w-0 flex-1 gap-0 overflow-hidden py-0">
         {isLoadingConfig ? (
-          <div className="flex-1 flex items-center justify-center">
-            <Loader2
-              size={24}
-              className="animate-spin text-[var(--color-text-muted)]"
-            />
+          <div className="flex flex-1 items-center justify-center">
+            <Loader2 className="size-6 animate-spin text-muted-foreground" />
           </div>
         ) : configError ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
-            <AlertTriangle
-              size={40}
-              className="text-[var(--color-accent-amber)] mb-3"
-            />
-            <h3 className="text-base font-semibold text-[var(--color-text-secondary)] mb-1">
+          <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+            <AlertTriangle className="mb-3 size-10 text-[var(--color-accent-amber)]" />
+            <h3 className="mb-1 text-base font-semibold text-foreground">
               Could not load config file
             </h3>
-            <p className="text-sm text-[var(--color-text-muted)] max-w-md break-words">
+            <p className="max-w-md break-words text-sm text-muted-foreground">
               {configError}
             </p>
           </div>
         ) : !selectedFile ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center">
-            <Settings
-              size={40}
-              className="text-[var(--color-text-muted)] mb-3"
-            />
-            <h3 className="text-base font-semibold text-[var(--color-text-secondary)] mb-1">
+          <div className="flex flex-1 flex-col items-center justify-center text-center">
+            <Settings className="mb-3 size-10 text-muted-foreground" />
+            <h3 className="mb-1 text-base font-semibold text-foreground">
               Select a config file
             </h3>
-            <p className="text-sm text-[var(--color-text-muted)]">
+            <p className="text-sm text-muted-foreground">
               Choose a config file from the left to edit its settings.
             </p>
           </div>
         ) : (
           <>
             {/* Editor header */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border-subtle)]">
-              <div>
-                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
+            <div className="flex items-center justify-between gap-4 border-b px-5 py-3">
+              <div className="min-w-0">
+                <CardTitle className="truncate text-sm">
                   {selectedFile.filename.replace(/\.cfg$/i, "")}
-                </h3>
-                <p className="text-xs text-[var(--color-text-muted)]">
+                </CardTitle>
+                <CardDescription className="truncate">
                   {selectedFile.filename}
-                </p>
+                </CardDescription>
               </div>
-              <div className="flex items-center gap-2">
-                <button
+              <div className="flex shrink-0 items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={handleReset}
                   disabled={!hasChanges}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium
-                    border border-[var(--color-border-default)] text-[var(--color-text-secondary)]
-                    hover:bg-[var(--color-bg-elevated)] disabled:opacity-40 transition-colors cursor-pointer"
                 >
-                  <RotateCcw size={13} />
+                  <RotateCcw />
                   Reset
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="accent-primary"
+                  size="sm"
                   onClick={handleSave}
                   disabled={!hasChanges || isSaving}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium
-                    bg-[var(--color-accent-primary)] text-white
-                    hover:bg-[var(--color-accent-primary-hover)] disabled:opacity-50 transition-colors cursor-pointer"
                 >
                   {isSaving ? (
-                    <Loader2 size={13} className="animate-spin" />
+                    <Loader2 className="animate-spin" />
                   ) : (
-                    <Save size={13} />
+                    <Save />
                   )}
                   Save
-                </button>
+                </Button>
               </div>
             </div>
 
             {/* Config entries */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
-              {selectedFile.sections.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <FileText
-                    size={28}
-                    className="text-[var(--color-text-muted)] mb-2"
-                  />
-                  <p className="text-sm text-[var(--color-text-muted)]">
-                    No editable settings found in this file.
-                  </p>
-                </div>
-              ) : (
-                selectedFile.sections.map((section) => (
-                  <div key={section.name}>
-                    <h4 className="text-xs font-bold text-[var(--color-accent-amber)] uppercase tracking-wider mb-3 pb-2 border-b border-[var(--color-border-subtle)]">
-                      {section.name}
-                    </h4>
-                    <div className="space-y-4">
-                      {section.entries.map((entry) => (
-                        <div
-                          key={`${section.name}-${entry.key}`}
-                          className="flex items-start justify-between gap-4"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-[var(--color-text-primary)]">
-                                {entry.key}
-                              </span>
-                              {entry.default_value && (
-                                <span className="text-[10px] text-[var(--color-text-muted)] font-mono">
-                                  default: {entry.default_value}
+            <ScrollArea scrollFade className="min-h-0 flex-1">
+              <div className="space-y-6 px-5 py-4">
+                {selectedFile.sections.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <FileText className="mb-2 size-7 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      No editable settings found in this file.
+                    </p>
+                  </div>
+                ) : (
+                  selectedFile.sections.map((section) => (
+                    <div key={section.name}>
+                      <h4 className="mb-3 border-b pb-2 text-xs font-bold tracking-wider text-[var(--color-accent-amber)] uppercase">
+                        {section.name}
+                      </h4>
+                      <div className="space-y-4">
+                        {section.entries.map((entry) => (
+                          <div
+                            key={`${section.name}-${entry.key}`}
+                            className="flex items-start justify-between gap-4"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-sm font-medium text-foreground">
+                                  {entry.key}
                                 </span>
+                                {entry.default_value && (
+                                  <Badge
+                                    variant="outline"
+                                    className="font-mono text-[10px]"
+                                  >
+                                    default: {entry.default_value}
+                                  </Badge>
+                                )}
+                              </div>
+                              {entry.description && (
+                                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                                  {entry.description}
+                                </p>
                               )}
                             </div>
-                            {entry.description && (
-                              <p className="text-xs text-[var(--color-text-muted)] mt-0.5 leading-relaxed">
-                                {entry.description}
-                              </p>
-                            )}
+                            <div className="shrink-0">
+                              {renderInput(section, entry)}
+                            </div>
                           </div>
-                          <div className="shrink-0">
-                            {renderInput(section, entry)}
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
           </>
         )}
-      </div>
+      </Card>
     </div>
   );
 }
