@@ -1,5 +1,6 @@
 import { RefreshCw } from "lucide-react";
 import { useAppStore } from "../../store/appStore";
+import { Button } from "../ui/button";
 
 const pageTitles: Record<string, string> = {
   browse: "Browse Mods",
@@ -21,28 +22,27 @@ export default function Header({ onRefresh, isRefreshing }: HeaderProps) {
   const currentPage = useAppStore((s) => s.currentPage);
 
   return (
-    <header className="h-14 shrink-0 flex items-center gap-4 px-6 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-primary)]">
-      <h2 className="text-lg font-semibold text-[var(--color-text-primary)] whitespace-nowrap">
+    <header
+      className="flex h-10 shrink-0 items-center gap-2 border-b px-4"
+      data-tauri-drag-region
+    >
+      <h2 className="text-base font-semibold text-foreground whitespace-nowrap">
         {pageTitles[currentPage] ?? "Macheim"}
       </h2>
 
       <div className="flex-1" />
 
       {onRefresh && (
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={onRefresh}
           disabled={isRefreshing}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm
-            text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]
-            hover:bg-[var(--color-bg-card)] transition-colors disabled:opacity-50 cursor-pointer"
           title="Refresh"
         >
-          <RefreshCw
-            size={16}
-            className={isRefreshing ? "animate-spin" : ""}
-          />
+          <RefreshCw className={isRefreshing ? "animate-spin" : undefined} />
           {isRefreshing ? "Refreshing..." : "Refresh"}
-        </button>
+        </Button>
       )}
     </header>
   );

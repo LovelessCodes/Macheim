@@ -1,13 +1,13 @@
-import { useEffect, useState } from "react";
-import { Package, ChevronDown } from "lucide-react";
+import { useEffect, useMemo } from "react";
+import { Package } from "lucide-react";
 import ModCard from "./ModCard";
-import ModSearch from "./ModSearch";
+import ModToolbar from "./ModToolbar";
+import VirtualGrid from "../common/VirtualGrid";
 import { GridSkeleton } from "../common/LoadingSkeleton";
+import { ScrollArea } from "../ui/scroll-area";
 import { useModStore } from "../../store/modStore";
-import { useAppStore } from "../../store/appStore";
 import { fetchPackages } from "../../lib/tauri";
-
-const PAGE_SIZE = 48;
+import { toast } from "../ui/toast";
 
 export default function ModGrid() {
   const packages = useModStore((s) => s.packages);
@@ -15,8 +15,12 @@ export default function ModGrid() {
   const setPackages = useModStore((s) => s.setPackages);
   const setLoading = useModStore((s) => s.setLoadingPackages);
   const getFilteredPackages = useModStore((s) => s.getFilteredPackages);
-  const addToast = useAppStore((s) => s.addToast);
-  const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
+  const searchQuery = useModStore((s) => s.searchQuery);
+  const setSearchQuery = useModStore((s) => s.setSearchQuery);
+  const sortBy = useModStore((s) => s.sortBy);
+  const setSortBy = useModStore((s) => s.setSortBy);
+  const sortDirection = useModStore((s) => s.sortDirection);
+  const setSortDirection = useModStore((s) => s.setSortDirection);
 
   useEffect(() => {
     if (packages.length > 0) return;
@@ -29,9 +33,9 @@ export default function ModGrid() {
         if (!cancelled) setPackages(pkgs);
       } catch (err) {
         if (!cancelled) {
-          addToast({
+          toast.add({
             type: "error",
-            message: `Failed to fetch packages: ${err}`,
+            title: `Failed to fetch packages: ${err}`,
           });
         }
       } finally {
@@ -42,67 +46,48 @@ export default function ModGrid() {
     return () => {
       cancelled = true;
     };
-  }, [packages.length, setPackages, setLoading, addToast]);
+  }, [packages.length, setPackages, setLoading]);
 
-  // Reset display count when search changes
-  const searchQuery = useModStore((s) => s.searchQuery);
-  useEffect(() => {
-    setDisplayCount(PAGE_SIZE);
-  }, [searchQuery]);
-
-  const filtered = getFilteredPackages();
-  const displayed = filtered.slice(0, displayCount);
-  const hasMore = displayCount < filtered.length;
-
-  if (isLoading && packages.length === 0) {
-    return (
-      <div>
-        <ModSearch />
-        <GridSkeleton count={9} />
-      </div>
-    );
-  }
+  const filtered = useMemo(
+    () => getFilteredPackages(),
+    [getFilteredPackages, packages, searchQuery, sortBy, sortDirection]
+  );
 
   return (
-    <div>
-      <ModSearch />
+    <div className="flex h-full min-h-0 flex-col">
+      <ModToolbar
+        search={searchQuery}
+        onSearchChange={setSearchQuery}
+        placeholder="Search mods..."
+        sortBy={sortBy}
+        onSortByChange={setSortBy}
+        sortDirection={sortDirection}
+        onSortDirectionChange={setSortDirection}
+      >
+        {filtered.length.toLocaleString()} mods
+      </ModToolbar>
 
-      {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <Package
-            size={48}
-            className="text-[var(--color-text-muted)] mb-4"
-          />
-          <h3 className="text-lg font-semibold text-[var(--color-text-secondary)] mb-1">
-            No mods found
-          </h3>
-          <p className="text-sm text-[var(--color-text-muted)]">
-            Try adjusting your search or refresh the package list.
-          </p>
-        </div>
+      {isLoading && packages.length === 0 ? (
+        <ScrollArea className="min-h-0 flex-1">
+          <GridSkeleton count={9} />
+        </ScrollArea>
       ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {displayed.map((pkg) => (
-              <ModCard key={pkg.full_name} pkg={pkg} />
-            ))}
-          </div>
-
-          {hasMore && (
-            <div className="flex justify-center mt-6 mb-4">
-              <button
-                onClick={() => setDisplayCount((c) => c + PAGE_SIZE)}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium
-                  bg-[var(--color-bg-card)] border border-[var(--color-border-default)]
-                  text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]
-                  hover:border-[var(--color-border-hover)] transition-all cursor-pointer"
-              >
-                <ChevronDown size={16} />
-                Load More ({(filtered.length - displayCount).toLocaleString()} remaining)
-              </button>
+        <VirtualGrid
+          items={filtered}
+          keyOf={(pkg) => pkg.full_name}
+          renderItem={(pkg) => <ModCard pkg={pkg} />}
+          empty={
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <Package size={48} className="mb-4 text-muted-foreground" />
+              <h3 className="mb-1 text-lg font-semibold text-foreground">
+                No mods found
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Try adjusting your search or refresh the package list.
+              </p>
             </div>
-          )}
-        </>
+          }
+        />
       )}
     </div>
   );

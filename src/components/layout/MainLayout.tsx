@@ -1,6 +1,8 @@
 import { useCallback } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import { SidebarInset, SidebarProvider } from "../ui/sidebar";
+import { ScrollArea } from "../ui/scroll-area";
 import ModGrid from "../mods/ModGrid";
 import InstalledModList from "../mods/InstalledModList";
 import ModpackBrowser from "../mods/ModpackBrowser";
@@ -13,11 +15,11 @@ import ModDetail from "../mods/ModDetail";
 import { useAppStore } from "../../store/appStore";
 import { useModStore } from "../../store/modStore";
 import { fetchPackages, getInstalledMods } from "../../lib/tauri";
+import { toast } from "../ui/toast";
 
 export default function MainLayout() {
   const activeProfile = useProfileStore(s => s.activeProfile);
   const currentPage = useAppStore((s) => s.currentPage);
-  const addToast = useAppStore((s) => s.addToast);
   const setPackages = useModStore((s) => s.setPackages);
   const setInstalledMods = useModStore((s) => s.setInstalledMods);
   const setLoadingPackages = useModStore((s) => s.setLoadingPackages);
@@ -34,9 +36,9 @@ export default function MainLayout() {
         const pkgs = await fetchPackages();
         setPackages(pkgs);
       } catch (err) {
-        addToast({
+        toast.add({
           type: "error",
-          message: `Failed to fetch packages: ${err}`,
+          title: `Failed to fetch packages: ${err}`,
         });
       } finally {
         setLoadingPackages(false);
@@ -47,9 +49,9 @@ export default function MainLayout() {
         const mods = await getInstalledMods();
         setInstalledMods(mods);
       } catch (err) {
-        addToast({
+        toast.add({
           type: "error",
-          message: `Failed to load installed mods: ${err}`,
+          title: `Failed to load installed mods: ${err}`,
         });
       } finally {
         setLoadingInstalled(false);
@@ -61,7 +63,6 @@ export default function MainLayout() {
     setPackages,
     setLoadingInstalled,
     setInstalledMods,
-    addToast,
   ]);
 
   const showRefresh =
@@ -92,16 +93,29 @@ export default function MainLayout() {
     }
   };
 
+  const page = renderPage();
+  const managesOwnScroll =
+    currentPage === "browse" ||
+    currentPage === "modpacks" ||
+    currentPage === "installed" ||
+    currentPage === "config";
+
   return (
-    <div className="flex h-screen w-screen overflow-hidden">
+    <SidebarProvider className="h-svh overflow-hidden">
       <Sidebar />
-      <div className="flex flex-col flex-1 min-w-0">
+      <SidebarInset data-tauri-drag-region={false} className="min-w-0 overflow-hidden">
         <Header
           onRefresh={showRefresh ? handleRefresh : undefined}
           isRefreshing={isRefreshing}
         />
-        <main className="flex-1 overflow-y-auto p-6">{renderPage()}</main>
-      </div>
+        {managesOwnScroll ? (
+          <div className="min-h-0 flex-1 p-6">{page}</div>
+        ) : (
+          <ScrollArea scrollFade className="min-h-0 flex-1">
+            <div className="p-6">{page}</div>
+          </ScrollArea>
+        )}
+      </SidebarInset>
 
       {selectedPackage && (
         <ModDetail
@@ -109,6 +123,6 @@ export default function MainLayout() {
           onClose={() => setSelectedPackage(null)}
         />
       )}
-    </div>
+    </SidebarProvider>
   );
 }

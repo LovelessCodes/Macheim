@@ -125,12 +125,5 @@ export type Page =
   | "compatibility"
   | "settings";
 
-export interface Toast {
-  id: string;
-  type: "success" | "error" | "info" | "warning";
-  message: string;
-  duration?: number;
-}
-
 export type SortOption = "downloads" | "rating" | "updated" | "name";
 export type SortDirection = "asc" | "desc";
