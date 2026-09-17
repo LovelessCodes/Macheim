@@ -247,24 +247,30 @@ export default function InstalledModList() {
                   className="data-checked:bg-[var(--color-success)]"
                 />
 
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void handleUninstall(mod, e.shiftKey);
-                  }}
-                  disabled={uninstallingFullName === mod.full_name}
-                  title="Uninstall (hold Shift to skip confirmation)"
-                  aria-label={`Uninstall ${mod.name}`}
-                  className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                >
-                  {uninstallingFullName === mod.full_name ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Trash2 />
-                  )}
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleUninstall(mod, e.shiftKey);
+                        }}
+                        disabled={uninstallingFullName === mod.full_name}
+                        aria-label={`Uninstall ${mod.name}`}
+                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      />
+                    }
+                  >
+                    {uninstallingFullName === mod.full_name ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Trash2 />
+                    )}
+                  </TooltipTrigger>
+                  <TooltipContent>Uninstall (hold Shift to skip confirmation)</TooltipContent>
+                </Tooltip>
               </div>
             );
           }}
