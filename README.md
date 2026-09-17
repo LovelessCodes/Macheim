@@ -4,8 +4,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS-blue.svg)](<>)
-[![Latest Release](https://img.shields.io/github/v/release/lofcgi/macheim)](https://github.com/lofcgi/macheim/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/lofcgi/macheim/total.svg)](https://github.com/lofcgi/macheim/releases)
+[![Latest Release](https://img.shields.io/github/v/release/LovelessCodes/macheim)](https://github.com/LovelessCodes/macheim/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/LovelessCodes/macheim/total.svg)](https://github.com/LovelessCodes/macheim/releases)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%20v2-orange.svg)](https://tauri.app)
 
 > [r2modman](https://github.com/ebkr/r2modmanPlus) and Thunderstore Mod Manager don't support macOS.
@@ -46,7 +46,7 @@ A native macOS mod manager for [Valheim](https://store.steampowered.com/app/8929
 
 ### Download
 
-1. Download `Macheim.dmg` from the [Releases](https://github.com/lofcgi/macheim/releases) page
+1. Download `Macheim.dmg` from the [Releases](https://github.com/LovelessCodes/macheim/releases) page
 2. Open the DMG and drag **Macheim** to your Applications folder
 3. **Important:** The app is ad-hoc signed, but not Apple-notarized, so macOS may block it. First try **System Settings → Privacy & Security → Open Anyway**. If macOS instead reports that the app is damaged, open Terminal and run:
    ```bash
@@ -59,7 +59,7 @@ A native macOS mod manager for [Valheim](https://store.steampowered.com/app/8929
 Prerequisites: [Bun](https://bun.sh/), current stable [Rust/Cargo](https://rustup.rs/), and Xcode Command Line Tools. The Tauri CLI is a project dependency. If the build says `cargo metadata` cannot be found, install Rust with rustup and restart your terminal.
 
 ```bash
-git clone https://github.com/lofcgi/macheim.git
+git clone https://github.com/LovelessCodes/macheim.git
 cd macheim
 bun install
 bun run test
