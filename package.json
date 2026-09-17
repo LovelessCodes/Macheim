@@ -16,7 +16,8 @@
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "lint": "oxlint",
-    "lint:fix": "oxlint --fix"
+    "lint:fix": "oxlint --fix",
+    "prepare": "husky"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -46,11 +47,18 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
+    "husky": "^9.1.7",
     "jsdom": "^30.0.1",
+    "lint-staged": "^17.5.1",
     "oxfmt": "^0.68.0",
     "oxlint": "^1.83.0",
+    "oxlint-tsgolint": "^7.0.2001",
     "typescript": "~7.0.2",
     "vite": "^8.3.0",
     "vitest": "^5.0.0"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,mjs,cjs}": "bun run lint",
+    "*": "oxfmt --no-error-on-unmatched-pattern"
   }
 }
