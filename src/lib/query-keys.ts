@@ -7,3 +7,4 @@ export const installedModsQueryKey = ["installed-mods"] as const;
 export const profilesQueryKey = ["profiles"] as const;
 export const appVersionQueryKey = ["app-version"] as const;
 export const compatibilityQueryKey = ["compatibility"] as const;
+export const backupsQueryKey = ["backups"] as const;
