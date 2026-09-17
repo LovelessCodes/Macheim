@@ -1,7 +1,6 @@
 import { Check, ChevronDown, User } from "lucide-react";
 
-import { useProfiles } from "../../hooks/use-profiles";
-import { switchProfile } from "../../lib/tauri";
+import { useProfiles, useSwitchProfile } from "../../hooks/use-profiles";
 import { Button } from "../ui/button";
 import {
   DropdownMenu,
@@ -9,24 +8,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { toast } from "../ui/toast";
 
 export default function ProfileSelector() {
   const { data } = useProfiles();
+  const switchProfileMutation = useSwitchProfile();
   const profiles = data?.profiles ?? [];
   const activeProfile = data?.activeProfile ?? "Default";
 
-  const handleSwitch = async (name: string) => {
+  const handleSwitch = (name: string) => {
     if (name === activeProfile) return;
-    try {
-      await switchProfile(name);
-      toast.add({ type: "success", title: `Switched to profile "${name}"` });
-    } catch (err) {
-      toast.add({
-        type: "error",
-        title: `Failed to switch profile: ${err}`,
-      });
-    }
+    switchProfileMutation.mutate(name);
   };
 
   return (

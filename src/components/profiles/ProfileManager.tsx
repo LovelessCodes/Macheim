@@ -1,13 +1,15 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { cn } from "cn";
 import { Plus, Trash2, User, Check, X, Clock, Package, Loader2 } from "lucide-react";
 import { useState } from "react";
 
-import { useProfiles } from "../../hooks/use-profiles";
+import {
+  useCreateProfile,
+  useDeleteProfile,
+  useProfiles,
+  useSwitchProfile,
+} from "../../hooks/use-profiles";
 import { formatDate } from "../../lib/format";
-import { profilesQueryKey } from "../../lib/query-keys";
-import { createProfile, switchProfile, deleteProfile } from "../../lib/tauri";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent } from "../ui/card";
@@ -15,54 +17,37 @@ import { Input } from "../ui/input";
 import { toast } from "../ui/toast";
 
 export default function ProfileManager() {
-  const queryClient = useQueryClient();
   const { data } = useProfiles();
+  const createProfileMutation = useCreateProfile();
+  const switchProfileMutation = useSwitchProfile();
+  const deleteProfileMutation = useDeleteProfile();
   const profiles = data?.profiles ?? [];
   const activeProfile = data?.activeProfile ?? "Default";
 
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState("");
-  const [deletingProfile, setDeletingProfile] = useState<string | null>(null);
+  const deletingProfile = deleteProfileMutation.isPending
+    ? (deleteProfileMutation.variables ?? null)
+    : null;
 
-  const handleCreate = async () => {
+  const handleCreate = () => {
     const name = newName.trim();
     if (!name) return;
 
-    try {
-      await createProfile(name);
-      await queryClient.invalidateQueries({ queryKey: profilesQueryKey });
-      setNewName("");
-      setIsCreating(false);
-      toast.add({ type: "success", title: `Created profile "${name}"` });
-    } catch (err) {
-      toast.add({
-        type: "error",
-        title: `Failed to create profile: ${err}`,
-      });
-    }
+    createProfileMutation.mutate(name, {
+      onSuccess: () => {
+        setNewName("");
+        setIsCreating(false);
+      },
+    });
   };
 
-  const handleSwitch = async (name: string) => {
+  const handleSwitch = (name: string) => {
     if (name === activeProfile) return;
-    try {
-      await switchProfile(name);
-      toast.add({ type: "success", title: `Switched to "${name}"` });
-    } catch (err) {
-      toast.add({
-        type: "error",
-        title: `Failed to switch profile: ${err}`,
-      });
-    }
+    switchProfileMutation.mutate(name);
   };
 
   const handleDelete = async (name: string) => {
-    if (
-      !(await confirm(
-        `Remove profile "${name}"? Its files will be preserved in Macheim's deleted-profiles folder.`,
-        { title: "Remove profile", kind: "warning" },
-      ))
-    )
-      return;
     if (name === activeProfile) {
       toast.add({
         type: "warning",
@@ -70,23 +55,15 @@ export default function ProfileManager() {
       });
       return;
     }
+    if (
+      !(await confirm(
+        `Remove profile "${name}"? Its files will be preserved in Macheim's deleted-profiles folder.`,
+        { title: "Remove profile", kind: "warning" },
+      ))
+    )
+      return;
 
-    setDeletingProfile(name);
-    try {
-      await deleteProfile(name);
-      await queryClient.invalidateQueries({ queryKey: profilesQueryKey });
-      toast.add({
-        type: "info",
-        title: `Removed "${name}". Recoverable from the deleted-profiles data folder.`,
-      });
-    } catch (err) {
-      toast.add({
-        type: "error",
-        title: `Failed to delete profile: ${err}`,
-      });
-    } finally {
-      setDeletingProfile(null);
-    }
+    deleteProfileMutation.mutate(name);
   };
 
   const cancelCreate = () => {
@@ -130,7 +107,7 @@ export default function ProfileManager() {
               size="icon"
               variant="accent-primary"
               onClick={handleCreate}
-              disabled={!newName.trim()}
+              disabled={!newName.trim() || createProfileMutation.isPending}
               aria-label="Create profile"
             >
               <Check />
