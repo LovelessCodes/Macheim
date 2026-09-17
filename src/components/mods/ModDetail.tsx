@@ -185,7 +185,7 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
                         key={v.version_number}
                         className={
                           i === 0
-                            ? "border-accent-primary/20 bg-accent-primary/10 flex items-center justify-between gap-2 border px-3 py-2 text-sm"
+                            ? "border-accent-primary/20 bg-accent-primary/10 flex items-center justify-between gap-2 border px-3 py-2 text-sm relative"
                             : "bg-muted flex items-center justify-between gap-2 px-3 py-2 text-sm"
                         }
                       >
@@ -194,7 +194,7 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
                             v{v.version_number}
                           </span>
                           {i === 0 && (
-                            <Badge className="bg-accent-primary border-transparent text-white">
+                            <Badge className="bg-accent-primary border-transparent text-white text-[9px] h-3 p-0 absolute top-0 left-0 opacity-75">
                               LATEST
                             </Badge>
                           )}
