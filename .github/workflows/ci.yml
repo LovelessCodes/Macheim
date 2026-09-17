@@ -15,10 +15,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  checks:
-    name: Checks
-    runs-on: macos-latest
-    timeout-minutes: 30
+  # Everything here is platform-independent, so it does not need a macOS runner.
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -33,22 +34,7 @@ jobs:
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
           restore-keys: ${{ runner.os }}-bun-
 
-      - name: Setup .NET for pure shader policy tests
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "9.0.x"
-
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: "./src-tauri -> target"
-
-      - name: Install frontend dependencies
+      - name: Install dependencies
         run: bun install --frozen-lockfile
 
       - name: Verify release metadata and bundled plugin
@@ -66,14 +52,67 @@ jobs:
       - name: Frontend tests
         run: bun run test
 
+  # Pure .NET shader policy tests; no game assets required.
+  compat:
+    name: Compatibility plugin
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Shader policy and pixel tests
+        run: dotnet run --project tools/item-material-compat/tests/PolicyTests.csproj -c Release
+
+  # Clippy runs `cargo check`; tests run a full build. Those artifacts are not
+  # interchangeable, so keeping them in one job just compiles every dependency
+  # twice, back to back. Split into parallel jobs with their own caches instead.
+  rust-lint:
+    name: Rust lint
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+          key: clippy
+
       - name: Check Rust formatting
         run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
 
       - name: Clippy
         run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
 
+  rust-test:
+    name: Rust tests
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+          key: test
+
       - name: Rust tests
         run: cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
-
-      - name: Shader policy and pixel tests (no game assets required)
-        run: dotnet run --project tools/item-material-compat/tests/PolicyTests.csproj -c Release
