@@ -163,20 +163,6 @@ arch -x86_64 env \
     )
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn console_flag_and_apostrophe_paths_survive_script_generation() {
-        let p = Path::new("/Volumes/Alice's Games/Valheim");
-        let script = build_launch_script(p, p, p, p);
-        assert!(script.contains("'\\''"));
-        assert!(script.contains(" -console\n"));
-        assert!(script.contains("arch -x86_64 env"));
-        assert_eq!(shell_quote(Path::new("/tmp/$value")), "'/tmp/$value'");
-    }
-}
-
 /// Launch Valheim vanilla (without mods) via Steam.
 pub fn launch_vanilla() -> AppResult<()> {
     info!("Launching Valheim vanilla via Steam...");
@@ -204,4 +190,18 @@ fn find_doorstop_lib(dir: &Path) -> Option<PathBuf> {
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn console_flag_and_apostrophe_paths_survive_script_generation() {
+        let p = Path::new("/Volumes/Alice's Games/Valheim");
+        let script = build_launch_script(p, p, p, p);
+        assert!(script.contains("'\\''"));
+        assert!(script.contains(" -console\n"));
+        assert!(script.contains("arch -x86_64 env"));
+        assert_eq!(shell_quote(Path::new("/tmp/$value")), "'/tmp/$value'");
+    }
 }

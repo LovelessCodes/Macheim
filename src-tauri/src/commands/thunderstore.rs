@@ -13,7 +13,10 @@ pub async fn fetch_packages(
     force_refresh: Option<bool>,
     state: tauri::State<'_, Mutex<AppState>>,
 ) -> AppResult<Vec<PackageListing>> {
-    info!("Command: fetch_packages (force={})", force_refresh.unwrap_or(false));
+    info!(
+        "Command: fetch_packages (force={})",
+        force_refresh.unwrap_or(false)
+    );
 
     let packages = package_sources::fetch_all_packages(force_refresh.unwrap_or(false)).await?;
 
@@ -21,9 +24,9 @@ pub async fn fetch_packages(
     let listings: Vec<PackageListing> = packages.iter().map(PackageListing::from).collect();
 
     // Cache in state
-    let mut state = state.lock().map_err(|e| {
-        AppError::Network(format!("Failed to lock state: {}", e))
-    })?;
+    let mut state = state
+        .lock()
+        .map_err(|e| AppError::Network(format!("Failed to lock state: {}", e)))?;
     state.package_cache = Some(packages);
     state.cache_updated_at = Some(chrono::Utc::now());
 
@@ -40,9 +43,9 @@ pub async fn get_package_details(
     // The frontend can serve listings from its persisted query cache without
     // calling fetch_packages this session, so the in-memory cache may be unset.
     {
-        let state = state.lock().map_err(|e| {
-            AppError::Network(format!("Failed to lock state: {}", e))
-        })?;
+        let state = state
+            .lock()
+            .map_err(|e| AppError::Network(format!("Failed to lock state: {}", e)))?;
 
         if let Some(packages) = state.package_cache.as_ref() {
             return thunderstore_client::find_package(packages, &full_name)
@@ -55,9 +58,9 @@ pub async fn get_package_details(
     let packages = package_sources::fetch_all_packages(false).await?;
     let found = thunderstore_client::find_package(&packages, &full_name).cloned();
 
-    let mut state = state.lock().map_err(|e| {
-        AppError::Network(format!("Failed to lock state: {}", e))
-    })?;
+    let mut state = state
+        .lock()
+        .map_err(|e| AppError::Network(format!("Failed to lock state: {}", e)))?;
     state.package_cache = Some(packages);
     state.cache_updated_at = Some(chrono::Utc::now());
 

@@ -30,7 +30,8 @@ pub fn check_bepinex_status(game_root: &Path) -> BepInExStatus {
     let run_script = game_root.join("run_bepinex.sh");
     let start_script = game_root.join("start_game_bepinex.sh");
 
-    let has_doorstop = doorstop_lib.exists() || doorstop_lib_alt.exists() || doorstop_lib_x64.exists();
+    let has_doorstop =
+        doorstop_lib.exists() || doorstop_lib_alt.exists() || doorstop_lib_x64.exists();
     let has_script = run_script.exists() || start_script.exists();
     let installed = bepinex_core.exists() && (has_doorstop || has_script);
 
@@ -57,10 +58,7 @@ pub fn check_bepinex_status(game_root: &Path) -> BepInExStatus {
 }
 
 /// Install BepInEx by downloading the Valheim pack from Thunderstore.
-pub async fn install_bepinex(
-    game_root: &Path,
-    packages: &[ThunderstorePackage],
-) -> AppResult<()> {
+pub async fn install_bepinex(game_root: &Path, packages: &[ThunderstorePackage]) -> AppResult<()> {
     info!("Installing BepInEx to: {}", game_root.display());
 
     // 1. Find the BepInEx package
@@ -72,9 +70,10 @@ pub async fn install_bepinex(
             ))
         })?;
 
-    let latest_version = bepinex_pkg.versions.first().ok_or_else(|| {
-        AppError::BepInEx("BepInEx package has no versions".to_string())
-    })?;
+    let latest_version = bepinex_pkg
+        .versions
+        .first()
+        .ok_or_else(|| AppError::BepInEx("BepInEx package has no versions".to_string()))?;
 
     info!(
         "Downloading BepInEx version {}...",
@@ -321,4 +320,3 @@ fn check_config_patched(cfg_path: &Path) -> bool {
         false
     }
 }
-

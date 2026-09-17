@@ -55,7 +55,7 @@ pub fn create_backup(profile_name: &str) -> AppResult<BackupInfo> {
     let profile_json = profile_dir.join("profile.json");
     if profile_json.exists() {
         let content = std::fs::read_to_string(&profile_json)?;
-        zip_writer.start_file("profile.json", options.clone())?;
+        zip_writer.start_file("profile.json", options)?;
         zip_writer.write_all(content.as_bytes())?;
     }
 
@@ -234,11 +234,11 @@ fn add_directory_to_zip<W: Write + std::io::Seek>(
         let zip_path = format!("{}/{}", prefix, name);
 
         if path.is_dir() {
-            zip_writer.add_directory(&zip_path, options.clone())?;
+            zip_writer.add_directory(&zip_path, *options)?;
             add_directory_to_zip(zip_writer, &path, &zip_path, options)?;
         } else {
             let content = std::fs::read(&path)?;
-            zip_writer.start_file(&zip_path, options.clone())?;
+            zip_writer.start_file(&zip_path, *options)?;
             zip_writer.write_all(&content)?;
         }
     }
