@@ -192,7 +192,7 @@ export default function InstalledModList() {
               <div
                 onClick={() => openDetail(mod)}
                 className={cn(
-                  "flex cursor-pointer items-center gap-4 border bg-card p-3 transition-colors hover:bg-muted/40",
+                  "flex cursor-pointer items-center gap-4 border bg-card p-3 pe-14 transition-colors hover:bg-muted/40",
                   !mod.enabled && "opacity-50",
                 )}
               >
