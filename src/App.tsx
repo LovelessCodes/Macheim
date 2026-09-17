@@ -2,9 +2,11 @@ import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
 
 import ProgressOverlay from "./components/common/ProgressOverlay";
+import DownloadQueuePanel from "./components/downloads/DownloadQueuePanel";
 import MainLayout from "./components/layout/MainLayout";
 import SetupWizard from "./components/setup/SetupWizard";
 import { toast, Toaster } from "./components/ui/toast";
+import { useDownloadQueueSync } from "./hooks/use-download-queue";
 import { useGameStatus } from "./hooks/use-game-status";
 import { useUpdaterStartup } from "./hooks/use-updater";
 
@@ -16,6 +18,7 @@ interface CdnFallbackEvent {
 export default function App() {
   const { data: gameStatus, isPending: booting } = useGameStatus();
   useUpdaterStartup();
+  useDownloadQueueSync();
 
   useEffect(() => {
     const unlisten = listen<CdnFallbackEvent>("cdn-fallback", (event) => {
@@ -41,6 +44,7 @@ export default function App() {
       {booting ? null : needsSetup ? <SetupWizard /> : <MainLayout />}
       <Toaster />
       <ProgressOverlay />
+      <DownloadQueuePanel />
     </>
   );
 }

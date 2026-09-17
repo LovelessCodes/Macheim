@@ -148,3 +148,61 @@ export type Page =
 
 export type SortOption = "downloads" | "rating" | "updated" | "name";
 export type SortDirection = "asc" | "desc";
+
+export type DownloadStatus =
+  | "queued"
+  | "downloading"
+  | "installing"
+  | "paused"
+  | "waiting_for_game"
+  | "waiting_for_network"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export type DownloadKind = "mod" | "modpack";
+
+export interface DownloadItem {
+  id: number;
+  full_name: string;
+  name: string;
+  version: string | null;
+  kind: DownloadKind;
+  status: DownloadStatus;
+  message: string;
+  current: number;
+  total: number;
+  bytes_downloaded: number;
+  bytes_total: number | null;
+  error: string | null;
+  retry_count: number;
+  installed_count: number;
+  queued_at: string;
+  finished_at: string | null;
+}
+
+export interface DownloadQueueSnapshot {
+  paused: boolean;
+  items: DownloadItem[];
+}
+
+/** Live byte progress for the item currently downloading or installing. */
+export interface ModProgressEvent {
+  /** Queue item the update belongs to; absent for non-queue downloads. */
+  item_id?: number | null;
+  stage: string;
+  mod_name: string;
+  current: number;
+  total: number;
+  bytes_downloaded: number;
+  bytes_total: number | null;
+  message: string;
+}
+
+export function isDownloadPending(status: DownloadStatus): boolean {
+  return status !== "completed" && status !== "failed" && status !== "cancelled";
+}
+
+export function isDownloadActive(status: DownloadStatus): boolean {
+  return status === "downloading" || status === "installing";
+}

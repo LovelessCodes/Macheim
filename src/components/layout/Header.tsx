@@ -1,7 +1,13 @@
-import { Download, Loader2, RefreshCw, RotateCcw } from "lucide-react";
+import { Clock, Download, Loader2, Pause, RefreshCw, RotateCcw } from "lucide-react";
 
 import { useUpdater } from "../../hooks/use-updater";
 import { useAppStore } from "../../store/appStore";
+import {
+  useDownloadIndicator,
+  usePendingDownloadCount,
+  useDownloadStore,
+} from "../../store/downloadStore";
+import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 
 const pageTitles: Record<string, string> = {
@@ -23,6 +29,10 @@ interface HeaderProps {
 export default function Header({ onRefresh, isRefreshing }: HeaderProps) {
   const currentPage = useAppStore((s) => s.currentPage);
   const { status, version, progress, install, restart } = useUpdater();
+
+  const activeDownload = useDownloadIndicator();
+  const pendingDownloads = usePendingDownloadCount();
+  const openDownloads = useDownloadStore((s) => s.setPanelOpen);
 
   const updateButton =
     status === "available" ? (
@@ -52,6 +62,20 @@ export default function Header({ onRefresh, isRefreshing }: HeaderProps) {
       </Button>
     ) : null;
 
+  const isWaiting =
+    activeDownload === "waiting_for_game" || activeDownload === "waiting_for_network";
+
+  const downloadIcon =
+    activeDownload === "active" ? (
+      <Loader2 className="animate-spin" />
+    ) : isWaiting ? (
+      <Clock />
+    ) : activeDownload === "paused" ? (
+      <Pause />
+    ) : (
+      <Download />
+    );
+
   return (
     <header className="flex h-10 shrink-0 items-center gap-2 border-b px-4" data-tauri-drag-region>
       {updateButton && <div className="mr-1 flex items-center">{updateButton}</div>}
@@ -61,6 +85,21 @@ export default function Header({ onRefresh, isRefreshing }: HeaderProps) {
       </h2>
 
       <div className="flex-1" />
+
+      <Button
+        variant={isWaiting ? "outline-warning" : "ghost"}
+        size="sm"
+        onClick={() => openDownloads(true)}
+        title="Downloads"
+      >
+        {downloadIcon}
+        Downloads
+        {pendingDownloads > 0 && (
+          <Badge variant="secondary" className="h-4 px-1.5 text-[10px] tabular-nums">
+            {pendingDownloads}
+          </Badge>
+        )}
+      </Button>
 
       {onRefresh && (
         <Button

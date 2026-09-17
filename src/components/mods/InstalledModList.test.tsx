@@ -11,6 +11,7 @@ void mock.module("../../lib/tauri", () => ({
   syncMods: mock(() => Promise.resolve({ cleaned: [], failed: [], reinstalled: [] })),
   toggleMod: mock(() => Promise.resolve()),
   uninstallMod: mock(() => Promise.resolve()),
+  enqueueInstall: mock(() => Promise.resolve({})),
 }));
 void mock.module("@tauri-apps/plugin-dialog", () => ({
   confirm: mock(() => Promise.resolve(false)),

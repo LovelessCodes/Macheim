@@ -25,9 +25,7 @@ pub fn is_game_running() -> AppResult<bool> {
 
 pub fn ensure_game_stopped() -> AppResult<()> {
     if is_game_running()? {
-        return Err(AppError::Mod(
-            "Quit Valheim before changing mods, profiles or compatibility patches.".into(),
-        ));
+        return Err(AppError::GameRunning);
     }
     Ok(())
 }

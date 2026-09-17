@@ -10,7 +10,9 @@ use crate::AppState;
 #[tauri::command]
 pub async fn launch_modded(state: tauri::State<'_, Mutex<AppState>>) -> AppResult<()> {
     info!("Command: launch_modded");
-    let _operation = crate::lock_operation(&state)?;
+    // Wait for an in-flight queued install step instead of failing; downloads
+    // themselves do not hold the lock, so this stays responsive.
+    let _operation = crate::lock_operation_wait(&state).await?;
     launcher::ensure_game_stopped()?;
 
     let game_path = {

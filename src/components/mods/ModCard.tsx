@@ -1,9 +1,11 @@
-import { Download, CheckCircle, Loader2 } from "lucide-react";
+import { CheckCircle, Clock, Download, Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { usePackageInstall } from "../../hooks/use-package-install";
+import { downloadStatusLabel } from "../../lib/downloads";
 import { formatDownloads } from "../../lib/format";
 import type { ThunderstorePackage } from "../../lib/types";
+import { useDownloadStore } from "../../store/downloadStore";
 import { useModStore } from "../../store/modStore";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -24,10 +26,18 @@ export default function ModCard({
   showVersion = true,
 }: ModCardProps) {
   const setSelectedPackage = useModStore((s) => s.setSelectedPackage);
-  const { install, isInstalled, isInstalling } = usePackageInstall(pkg, kind);
+  const openDownloads = useDownloadStore((s) => s.setPanelOpen);
+  const { install, isInstalled, isQueued, isInstalling, queueStatus } = usePackageInstall(
+    pkg,
+    kind,
+  );
 
   const handleInstall = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isQueued) {
+      openDownloads(true);
+      return;
+    }
     install();
   };
 
@@ -73,9 +83,10 @@ export default function ModCard({
 
         <Button
           size="sm"
-          variant={isInstalled ? "outline-success" : isInstalling ? "secondary" : "accent-primary"}
+          variant={isInstalled ? "outline-success" : isQueued ? "secondary" : "accent-primary"}
           onClick={handleInstall}
-          disabled={isInstalled || isInstalling}
+          disabled={isInstalled}
+          title={isQueued ? "Open downloads" : undefined}
         >
           {isInstalled ? (
             <>
@@ -85,7 +96,12 @@ export default function ModCard({
           ) : isInstalling ? (
             <>
               <Loader2 className="animate-spin" />
-              Installing
+              {downloadStatusLabel(queueStatus ?? "installing")}
+            </>
+          ) : isQueued ? (
+            <>
+              <Clock />
+              {downloadStatusLabel(queueStatus ?? "queued")}
             </>
           ) : (
             "Install"

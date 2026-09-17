@@ -15,10 +15,12 @@ import { useEffect, useState } from "react";
 import { useInstalledMods } from "../../hooks/use-installed-mods";
 import { useModUninstall } from "../../hooks/use-mod-uninstall";
 import { usePackageInstall } from "../../hooks/use-package-install";
+import { downloadStatusLabel } from "../../lib/downloads";
 import { formatDate, formatDownloads } from "../../lib/format";
 import { packageDetailQueryKey } from "../../lib/query-keys";
 import { getPackageDetails } from "../../lib/tauri";
 import type { ThunderstorePackage } from "../../lib/types";
+import { useDownloadStore } from "../../store/downloadStore";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -39,8 +41,10 @@ interface ModDetailProps {
 }
 
 export default function ModDetail({ pkg, onClose }: ModDetailProps) {
-  const { install, isInstalled, isInstalling, installingVersion } = usePackageInstall(pkg);
+  const { install, isInstalled, isQueued, isInstalling, queueStatus, queuedVersion } =
+    usePackageInstall(pkg);
   const { uninstall } = useModUninstall();
+  const openDownloads = useDownloadStore((s) => s.setPanelOpen);
 
   const {
     data: detail = null,
@@ -68,7 +72,11 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
     latestVersion?.dependencies?.filter((d) => !d.startsWith("denikson-BepInExPack")) ?? [];
 
   const handleInstall = () => {
-    if (isInstalled || isInstalling) return;
+    if (isInstalled) return;
+    if (isQueued) {
+      openDownloads(true);
+      return;
+    }
     install(pkg.version_number);
   };
 
@@ -195,7 +203,7 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
                 <div className="space-y-1.5">
                   {detail.versions.slice(0, 15).map((v, i) => {
                     const isCurrent = v.version_number === installedVersion;
-                    const isVersionInstalling = installingVersion === v.version_number;
+                    const isVersionQueued = queuedVersion === v.version_number;
                     return (
                       <div
                         key={v.version_number}
@@ -228,14 +236,21 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
                               variant="outline-accent-primary"
                               size="sm"
                               onClick={() => handleInstallVersion(v.version_number)}
-                              disabled={isInstalling}
+                              disabled={isVersionQueued || isInstalling}
+                              title={isVersionQueued ? "Manage in Downloads" : undefined}
                             >
-                              {isVersionInstalling ? (
-                                <Loader2 className="animate-spin" />
+                              {isVersionQueued ? (
+                                isInstalling ? (
+                                  <Loader2 className="animate-spin" />
+                                ) : (
+                                  <Clock />
+                                )
                               ) : (
                                 <Download />
                               )}
-                              Install
+                              {isVersionQueued
+                                ? downloadStatusLabel(queueStatus ?? "queued")
+                                : "Install"}
                             </Button>
                           )}
                         </div>
@@ -287,16 +302,16 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
             </div>
           ) : (
             <Button
-              variant="accent-primary"
+              variant={isQueued ? "secondary" : "accent-primary"}
               size="lg"
               className="w-full"
               onClick={handleInstall}
-              disabled={isInstalling}
+              title={isQueued ? "Open downloads" : undefined}
             >
-              {isInstalling ? (
+              {isQueued ? (
                 <>
-                  <Loader2 className="animate-spin" />
-                  Installing...
+                  {isInstalling ? <Loader2 className="animate-spin" /> : <Clock />}
+                  {downloadStatusLabel(queueStatus ?? "queued")}
                 </>
               ) : (
                 <>

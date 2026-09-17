@@ -11,6 +11,9 @@ import type {
   BackupInfo,
   CompatibilityStatus,
   CompatibilitySettings,
+  DownloadItem,
+  DownloadKind,
+  DownloadQueueSnapshot,
 } from "./types";
 
 // ── Game Detection ──────────────────────────────────────────────
@@ -41,10 +44,6 @@ export async function getPackageDetails(fullName: string): Promise<PackageDetail
 
 // ── Mod Management ──────────────────────────────────────────────
 
-export async function installMod(fullName: string, version: string): Promise<InstalledMod[]> {
-  return invoke<InstalledMod[]>("install_mod", { fullName, version });
-}
-
 export async function uninstallMod(fullName: string): Promise<void> {
   return invoke("uninstall_mod", { fullName });
 }
@@ -57,8 +56,55 @@ export async function getInstalledMods(): Promise<InstalledMod[]> {
   return invoke<InstalledMod[]>("get_installed_mods");
 }
 
-export async function installModpack(fullName: string, _version?: string): Promise<InstalledMod[]> {
-  return invoke<InstalledMod[]>("install_modpack", { fullName });
+// ── Download Queue ──────────────────────────────────────────────
+
+export async function getDownloadQueue(): Promise<DownloadQueueSnapshot> {
+  return invoke<DownloadQueueSnapshot>("get_download_queue");
+}
+
+export async function enqueueInstall(
+  fullName: string,
+  name: string,
+  version: string | null,
+  kind: DownloadKind = "mod",
+): Promise<DownloadItem> {
+  return invoke<DownloadItem>("enqueue_install", { fullName, name, version, kind });
+}
+
+export async function pauseDownload(id: number): Promise<DownloadQueueSnapshot> {
+  return invoke<DownloadQueueSnapshot>("pause_download", { id });
+}
+
+export async function resumeDownload(id: number): Promise<DownloadQueueSnapshot> {
+  return invoke<DownloadQueueSnapshot>("resume_download", { id });
+}
+
+export async function cancelDownload(id: number): Promise<DownloadQueueSnapshot> {
+  return invoke<DownloadQueueSnapshot>("cancel_download", { id });
+}
+
+export async function retryDownload(id: number): Promise<DownloadQueueSnapshot> {
+  return invoke<DownloadQueueSnapshot>("retry_download", { id });
+}
+
+export async function removeDownload(id: number): Promise<DownloadQueueSnapshot> {
+  return invoke<DownloadQueueSnapshot>("remove_download", { id });
+}
+
+export async function pauseAllDownloads(): Promise<DownloadQueueSnapshot> {
+  return invoke<DownloadQueueSnapshot>("pause_all_downloads");
+}
+
+export async function resumeAllDownloads(): Promise<DownloadQueueSnapshot> {
+  return invoke<DownloadQueueSnapshot>("resume_all_downloads");
+}
+
+export async function cancelAllDownloads(): Promise<DownloadQueueSnapshot> {
+  return invoke<DownloadQueueSnapshot>("cancel_all_downloads");
+}
+
+export async function clearFinishedDownloads(): Promise<DownloadQueueSnapshot> {
+  return invoke<DownloadQueueSnapshot>("clear_finished_downloads");
 }
 
 export interface SyncResult {
