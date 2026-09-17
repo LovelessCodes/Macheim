@@ -6,18 +6,72 @@ on:
       - main
   pull_request:
   workflow_call:
+    inputs:
+      full:
+        description: Run every job regardless of which files changed
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # Maps changed files to the jobs worth running. Skipped when the workflow is
+  # called with full=true (releases) so tag builds always verify everything.
+  changes:
+    name: Detect changes
+    if: ${{ !inputs.full }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      rust: ${{ steps.filter.outputs.rust }}
+      compat: ${{ steps.filter.outputs.compat }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Filter changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - "src/**"
+              - "index.html"
+              - "public/**"
+              - "package.json"
+              - "bun.lock"
+              - "bunfig.toml"
+              - "vite.config.ts"
+              - "tsconfig.json"
+              - "tsconfig.node.json"
+              - "components.json"
+              - ".oxlintrc.json"
+              - ".oxfmtrc.json"
+              - "scripts/**"
+              - "compatibility/**"
+              - "tools/item-material-compat/**"
+              - ".github/workflows/ci.yml"
+            rust:
+              - "src-tauri/**"
+              - "scripts/build-compatibility.sh"
+              - ".github/workflows/ci.yml"
+            compat:
+              - "tools/item-material-compat/**"
+              - "compatibility/**"
+              - ".github/workflows/ci.yml"
+
   # Everything here is platform-independent, so it does not need a macOS runner.
   frontend:
     name: Frontend
+    needs: changes
+    if: ${{ always() && (inputs.full || needs.changes.outputs.frontend == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -55,6 +109,8 @@ jobs:
   # Pure .NET shader policy tests; no game assets required.
   compat:
     name: Compatibility plugin
+    needs: changes
+    if: ${{ always() && (inputs.full || needs.changes.outputs.compat == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -74,6 +130,8 @@ jobs:
   # twice, back to back. Split into parallel jobs with their own caches instead.
   rust-lint:
     name: Rust lint
+    needs: changes
+    if: ${{ always() && (inputs.full || needs.changes.outputs.rust == 'true') }}
     runs-on: macos-latest
     timeout-minutes: 30
     steps:
@@ -99,6 +157,8 @@ jobs:
 
   rust-test:
     name: Rust tests
+    needs: changes
+    if: ${{ always() && (inputs.full || needs.changes.outputs.rust == 'true') }}
     runs-on: macos-latest
     timeout-minutes: 30
     steps:

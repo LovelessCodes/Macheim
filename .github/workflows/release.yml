@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -17,6 +18,9 @@ jobs:
   verify:
     name: Verify
     uses: ./.github/workflows/ci.yml
+    with:
+      # Tags are not path-filtered: a release always verifies every job.
+      full: true
 
   release:
     name: Build (${{ matrix.label }})
