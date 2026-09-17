@@ -57,3 +57,36 @@ export function usePackageInstall(pkg: ThunderstorePackage, kind: "mod" | "modpa
 
   return { install: installVersion, isInstalled, isInstalling, installingVersion };
 }
+
+export function useUpdateMods() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    // The backend serializes operations, so install one at a time.
+    mutationFn: async (targets: { fullName: string; version: string }[]) => {
+      const failed: string[] = [];
+      for (const target of targets) {
+        try {
+          await installMod(target.fullName, target.version);
+        } catch {
+          failed.push(target.fullName);
+        }
+      }
+      return { total: targets.length, failed };
+    },
+    onSuccess: async ({ total, failed }) => {
+      await queryClient.invalidateQueries({ queryKey: installedModsQueryKey });
+      const updated = total - failed.length;
+      toast.add({
+        type: failed.length > 0 ? "warning" : "success",
+        title:
+          failed.length > 0
+            ? `Updated ${updated}/${total} mods (${failed.length} failed)`
+            : `Updated ${total} mod${total === 1 ? "" : "s"}`,
+      });
+    },
+    onError: (err) => {
+      toast.add({ type: "error", title: `Update failed: ${err}` });
+    },
+  });
+}

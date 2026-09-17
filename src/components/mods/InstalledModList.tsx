@@ -1,12 +1,12 @@
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { cn } from "cn";
 import { ArrowUpCircle, Package, Trash2, Power, PowerOff, RefreshCw, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useInstalledMods } from "../../hooks/use-installed-mods";
 import { useModToggle } from "../../hooks/use-mod-toggle";
 import { useModUninstall } from "../../hooks/use-mod-uninstall";
-import { useModInstall } from "../../hooks/use-package-install";
+import { useModInstall, useUpdateMods } from "../../hooks/use-package-install";
 import { usePackages } from "../../hooks/use-packages";
 import { useSyncMods } from "../../hooks/use-sync-mods";
 import { listUnmanagedMods } from "../../lib/tauri";
@@ -31,6 +31,7 @@ export default function InstalledModList() {
   const { data: packages = [] } = usePackages();
   const { uninstall, uninstallingFullName } = useModUninstall();
   const { install, installingFullName } = useModInstall();
+  const updateModsMutation = useUpdateMods();
   const toggleModMutation = useModToggle();
   const syncModsMutation = useSyncMods();
   const setSelectedPackage = useModStore((s) => s.setSelectedPackage);
@@ -41,9 +42,30 @@ export default function InstalledModList() {
     ? (toggleModMutation.variables?.fullName ?? null)
     : null;
   const syncing = syncModsMutation.isPending;
+  const updatingAll = updateModsMutation.isPending;
+
+  const packageByFullName = useMemo(
+    () => new Map(packages.map((pkg) => [pkg.full_name, pkg])),
+    [packages],
+  );
+
+  const updatable = useMemo(
+    () =>
+      installedMods.flatMap((mod) => {
+        const pkg = packageByFullName.get(mod.full_name);
+        return pkg && pkg.version_number !== mod.version
+          ? [{ fullName: mod.full_name, version: pkg.version_number }]
+          : [];
+      }),
+    [installedMods, packageByFullName],
+  );
+
+  const handleUpdateAll = () => {
+    updateModsMutation.mutate(updatable);
+  };
 
   const openDetail = (mod: InstalledMod) => {
-    const pkg = packages.find((p) => p.full_name === mod.full_name);
+    const pkg = packageByFullName.get(mod.full_name);
     if (!pkg) {
       toast.add({
         type: "info",
@@ -150,7 +172,18 @@ export default function InstalledModList() {
               {disabledCount} disabled
             </span>
           )}
-          <Button variant="amber" size="sm" onClick={handleSync} disabled={syncing}>
+          {updatable.length > 0 && (
+            <Button
+              variant="accent-primary"
+              size="sm"
+              onClick={handleUpdateAll}
+              disabled={updatingAll || syncing}
+            >
+              {updatingAll ? <Loader2 className="animate-spin" /> : <ArrowUpCircle />}
+              Update All ({updatable.length})
+            </Button>
+          )}
+          <Button variant="amber" size="sm" onClick={handleSync} disabled={syncing || updatingAll}>
             {syncing ? <Loader2 className="animate-spin" /> : <RefreshCw />}
             Sync & Clean
           </Button>
@@ -168,7 +201,7 @@ export default function InstalledModList() {
           keyOf={(mod) => mod.full_name}
           estimateRowHeight={66}
           renderItem={(mod) => {
-            const pkg = packages.find((p) => p.full_name === mod.full_name);
+            const pkg = packageByFullName.get(mod.full_name);
             const isUpdating = installingFullName === mod.full_name;
             return (
               <div
@@ -201,7 +234,7 @@ export default function InstalledModList() {
                         <Button
                           variant="outline-accent-primary"
                           size="icon-sm"
-                          disabled={isUpdating}
+                          disabled={isUpdating || updatingAll}
                           aria-label={`Update ${mod.name} to v${pkg.version_number}`}
                           onClick={(e) => {
                             e.stopPropagation();
