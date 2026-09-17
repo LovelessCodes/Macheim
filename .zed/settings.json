@@ -33,7 +33,8 @@
             "name": "oxfmt"
           }
         }
-      ]
+      ],
+      "language_servers": ["!biome", "!eslint", "..."]
     },
     "HTML": {
       "format_on_save": "on",
@@ -46,7 +47,8 @@
             "name": "oxfmt"
           }
         }
-      ]
+      ],
+      "language_servers": ["!biome", "!eslint", "..."]
     },
     "JavaScript": {
       "format_on_save": "on",
@@ -62,7 +64,8 @@
         {
           "code_action": "source.fixAll.oxc"
         }
-      ]
+      ],
+      "language_servers": ["!typescript-language-server", "vtsls", "!biome", "!eslint", "..."]
     },
     "JSON": {
       "format_on_save": "on",
@@ -75,7 +78,8 @@
             "name": "oxfmt"
           }
         }
-      ]
+      ],
+      "language_servers": ["!biome", "!eslint", "..."]
     },
     "JSONC": {
       "format_on_save": "on",
@@ -88,7 +92,8 @@
             "name": "oxfmt"
           }
         }
-      ]
+      ],
+      "language_servers": ["!biome", "!eslint", "..."]
     },
     "Markdown": {
       "format_on_save": "on",
@@ -101,7 +106,8 @@
             "name": "oxfmt"
           }
         }
-      ]
+      ],
+      "language_servers": ["!biome", "!eslint", "..."]
     },
     "TypeScript": {
       "format_on_save": "on",
@@ -114,7 +120,8 @@
             "name": "oxfmt"
           }
         }
-      ]
+      ],
+      "language_servers": ["!typescript-language-server", "vtsls", "!biome", "!eslint", "..."]
     },
     "TSX": {
       "format_on_save": "on",
@@ -127,7 +134,8 @@
             "name": "oxfmt"
           }
         }
-      ]
+      ],
+      "language_servers": ["!typescript-language-server", "vtsls", "!biome", "!eslint", "..."]
     },
     "YAML": {
       "format_on_save": "on",
@@ -140,7 +148,8 @@
             "name": "oxfmt"
           }
         }
-      ]
+      ],
+      "language_servers": ["!biome", "!eslint", "..."]
     }
   }
 }
