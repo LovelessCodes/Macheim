@@ -171,7 +171,7 @@ async fn install_mod_inner(
                     total_items,
                     downloaded,
                     total,
-                    &format!("Downloading..."),
+                    "Downloading...",
                 );
             })),
         )

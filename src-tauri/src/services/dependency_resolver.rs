@@ -30,10 +30,8 @@ pub fn resolve_dependencies(
         target_full_name, target_version
     );
 
-    let package_map: HashMap<&str, &ThunderstorePackage> = packages
-        .iter()
-        .map(|p| (p.full_name.as_str(), p))
-        .collect();
+    let package_map: HashMap<&str, &ThunderstorePackage> =
+        packages.iter().map(|p| (p.full_name.as_str(), p)).collect();
 
     // Build the dependency graph using BFS
     let mut graph: HashMap<String, Vec<String>> = HashMap::new();
@@ -53,10 +51,7 @@ pub fn resolve_dependencies(
         .find(|v| v.version_number == target_version)
         .or_else(|| target_pkg.versions.first())
         .ok_or_else(|| {
-            AppError::DependencyResolution(format!(
-                "No versions found for '{}'",
-                target_full_name
-            ))
+            AppError::DependencyResolution(format!("No versions found for '{}'", target_full_name))
         })?;
 
     // Initialize graph with the target's direct dependencies
@@ -152,7 +147,7 @@ pub fn resolve_dependencies(
     }
 
     // Calculate in-degrees
-    for (_, deps) in &graph {
+    for deps in graph.values() {
         for dep in deps {
             *in_degree.entry(dep.clone()).or_insert(0) += 1;
         }

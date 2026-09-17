@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use regex::Regex;
 use tracing::{debug, info, warn};
@@ -19,7 +19,9 @@ pub fn detect_valheim() -> AppResult<PathBuf> {
         debug!("Checking Steam library: {}", lib_path.display());
 
         // Check for Valheim app manifest
-        let manifest = lib_path.join("steamapps").join(format!("appmanifest_{}.acf", VALHEIM_APP_ID));
+        let manifest = lib_path
+            .join("steamapps")
+            .join(format!("appmanifest_{}.acf", VALHEIM_APP_ID));
         if manifest.exists() {
             let valheim_path = lib_path
                 .join("steamapps")
@@ -43,11 +45,9 @@ pub fn detect_valheim() -> AppResult<PathBuf> {
 
     // 2. Try default Steam location directly
     let default_path = get_default_valheim_path();
-    if default_path.exists() {
-        if validate_valheim_app(&default_path) {
-            info!("Found Valheim at default path: {}", default_path.display());
-            return Ok(default_path);
-        }
+    if default_path.exists() && validate_valheim_app(&default_path) {
+        info!("Found Valheim at default path: {}", default_path.display());
+        return Ok(default_path);
     }
 
     // 3. Try without .app extension (some installs have just the directory)
@@ -74,12 +74,12 @@ pub fn detect_valheim() -> AppResult<PathBuf> {
 
 /// Get the root directory containing the valheim.app (or the game dir itself).
 /// This is where BepInEx files go.
-pub fn get_valheim_root(game_path: &PathBuf) -> PathBuf {
+pub fn get_valheim_root(game_path: &Path) -> PathBuf {
     if game_path.extension().map(|e| e == "app").unwrap_or(false) {
         // game_path is valheim.app, parent is the Valheim root
         game_path.parent().unwrap_or(game_path).to_path_buf()
     } else {
-        game_path.clone()
+        game_path.to_path_buf()
     }
 }
 
@@ -133,7 +133,7 @@ fn get_default_valheim_path() -> PathBuf {
 }
 
 /// Validate the app bundle by checking Info.plist for the correct CFBundleIdentifier.
-fn validate_valheim_app(app_path: &PathBuf) -> bool {
+fn validate_valheim_app(app_path: &Path) -> bool {
     let info_plist = app_path.join("Contents/Info.plist");
     if !info_plist.exists() {
         debug!("Info.plist not found at {}", info_plist.display());
@@ -177,7 +177,11 @@ pub struct GameStatus {
     pub active_profile: String,
 }
 
-pub fn get_game_status_info(game_path: &Option<PathBuf>, bepinex_installed: bool, active_profile: &str) -> GameStatus {
+pub fn get_game_status_info(
+    game_path: &Option<PathBuf>,
+    bepinex_installed: bool,
+    active_profile: &str,
+) -> GameStatus {
     match game_path {
         Some(path) => GameStatus {
             installed: true,

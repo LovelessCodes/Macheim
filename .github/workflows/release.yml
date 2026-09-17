@@ -4,22 +4,33 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  verify:
+    name: Verify
+    uses: ./.github/workflows/ci.yml
+
   release:
-    permissions:
-      contents: write
+    name: Build (${{ matrix.label }})
+    needs: verify
+    runs-on: macos-latest
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-latest
-            args: --target aarch64-apple-darwin
-          - platform: macos-latest
-            args: --target x86_64-apple-darwin
-
-    runs-on: ${{ matrix.platform }}
-
+          - target: aarch64-apple-darwin
+            label: Apple Silicon
+          - target: x86_64-apple-darwin
+            label: Intel
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,34 +38,26 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
+      - name: Cache Bun downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
+          targets: ${{ matrix.target }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
+          key: ${{ matrix.target }}
 
       - name: Install frontend dependencies
-        run: bun install
-
-      - name: Verify release metadata and bundled plugin
-        run: bun run verify:release
-
-      - name: Regression tests
-        run: |
-          bun run test
-          cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
-
-      - name: Setup .NET for pure shader policy tests
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "9.0.x"
-
-      - name: Shader policy and pixel tests (no game assets required)
-        run: dotnet run --project tools/item-material-compat/tests/PolicyTests.csproj -c Release
+        run: bun install --frozen-lockfile
 
       - name: Build and release
         uses: tauri-apps/tauri-action@v1
@@ -66,19 +69,16 @@ jobs:
           releaseBody: |
             ## Macheim ${{ github.ref_name }}
 
-            Valheim Mod Manager for macOS.
+            Valheim Mod Manager for macOS — a fork of [lofcgi/macheim](https://github.com/lofcgi/macheim)
+            with quality-of-life and visual improvements.
 
-            ### What's new in 1.1.0
-            - Mac Compatibility: version-pinned rules for four tested VES/Wizardry item effects, with profile-level and per-rule opt-out.
-            - Config editor and installed-mod search blank-screen fixes.
-            - Native Sync & Clean confirmation and recoverable cleanup; disabled mods stay disabled.
-            - Safer profile preservation and persistent active profile; console enabled when launching modded.
+            See the [commits in this release](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
+            for everything that changed.
 
             ### Compatibility limits
-            The bundled visual patch targets Valheim 0.221.12 / Unity 6000.0.61f1 / Metal and requires ShaderHelperForMac 3.3.0.
-            It does not fix every mod, monster, building or UI icon. Unknown versions are skipped.
-            Macheim's Apple Silicon app still launches the modded game through Rosetta.
-            See the repository's RELEASE-1.1.0.md for the issue/PR audit and known limitations.
+            The bundled visual patch targets Valheim 0.221.12 / Unity 6000.0.61f1 / Metal and requires
+            ShaderHelperForMac 3.3.0. It does not fix every mod, monster, building or UI icon. Unknown
+            versions are skipped. Macheim's Apple Silicon app still launches the modded game through Rosetta.
 
             ### Installation
             1. Download the `.dmg` file for your Mac
@@ -99,4 +99,4 @@ jobs:
             **Intel Mac:** Download the DMG ending in `_x64.dmg`
           releaseDraft: true
           prerelease: false
-          args: ${{ matrix.args }}
+          args: --target ${{ matrix.target }}

@@ -14,9 +14,9 @@ pub async fn get_config_files(
     state: tauri::State<'_, Mutex<AppState>>,
 ) -> AppResult<Vec<ConfigFileSummary>> {
     let game_path = {
-        let state = state.lock().map_err(|e| {
-            AppError::Mod(format!("Failed to lock state: {}", e))
-        })?;
+        let state = state
+            .lock()
+            .map_err(|e| AppError::Mod(format!("Failed to lock state: {}", e)))?;
         state
             .game_path
             .clone()
@@ -36,10 +36,7 @@ pub async fn get_config(
     let config_path = PathBuf::from(&path);
 
     if !config_path.exists() {
-        return Err(AppError::Mod(format!(
-            "Config file not found: {}",
-            path
-        )));
+        return Err(AppError::Mod(format!("Config file not found: {}", path)));
     }
 
     config_editor::parse_config_file(&config_path)

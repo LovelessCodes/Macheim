@@ -37,11 +37,7 @@ pub fn remove_quarantine(path: &Path) -> AppResult<()> {
         let stderr = String::from_utf8_lossy(&output.stderr);
         // xattr returns error if attribute doesn't exist, which is fine
         if !stderr.contains("No such xattr") {
-            warn!(
-                "xattr removal warning for {}: {}",
-                path.display(),
-                stderr
-            );
+            warn!("xattr removal warning for {}: {}", path.display(), stderr);
         }
     }
 
@@ -76,10 +72,8 @@ fn visit_dylibs(dir: &Path) -> AppResult<()> {
         if path.is_dir() {
             visit_dylibs(&path)?;
         } else if let Some(ext) = path.extension() {
-            if ext == "dylib" || ext == "so" {
-                if has_quarantine(&path) {
-                    remove_quarantine(&path)?;
-                }
+            if (ext == "dylib" || ext == "so") && has_quarantine(&path) {
+                remove_quarantine(&path)?;
             }
         }
     }

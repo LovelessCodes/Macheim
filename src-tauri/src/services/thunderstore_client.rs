@@ -145,9 +145,9 @@ pub async fn download_mod_with_progress(
                 AppError::Network(format!("Redirect from {} had no Location header", url))
             })?;
 
-        url = url
-            .join(location)
-            .map_err(|e| AppError::Network(format!("Invalid redirect URL '{}': {}", location, e)))?;
+        url = url.join(location).map_err(|e| {
+            AppError::Network(format!("Invalid redirect URL '{}': {}", location, e))
+        })?;
     };
 
     if !response.status().is_success() {
@@ -165,7 +165,8 @@ pub async fn download_mod_with_progress(
 
     use futures_util::StreamExt;
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|e| AppError::Network(format!("Download stream error: {}", e)))?;
+        let chunk =
+            chunk.map_err(|e| AppError::Network(format!("Download stream error: {}", e)))?;
         bytes.extend_from_slice(&chunk);
         if let Some(ref cb) = progress {
             cb(bytes.len() as u64, total_size);
@@ -196,9 +197,10 @@ mod tests {
 
     #[test]
     fn leaves_other_hosts_untouched() {
-        let mut url =
-            reqwest::Url::parse("https://thunderstore.io/package/download/denikson/BepInExPack_Valheim/5.4.2350/")
-                .unwrap();
+        let mut url = reqwest::Url::parse(
+            "https://thunderstore.io/package/download/denikson/BepInExPack_Valheim/5.4.2350/",
+        )
+        .unwrap();
 
         assert!(!replace_primary_cdn(&mut url));
         assert_eq!(url.host_str(), Some("thunderstore.io"));

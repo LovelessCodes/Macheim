@@ -4,10 +4,15 @@ version = "1.1.0"
 description = "Valheim Mod Manager for macOS"
 authors = ["iyeonsang"]
 license = "MIT"
-repository = "https://github.com/lofcgi/macheim"
+repository = "https://github.com/LovelessCodes/macheim"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lints.clippy]
+# install/emit helpers pass many explicit arguments; splitting them into structs
+# would be a larger refactor than the current call sites justify.
+too_many_arguments = "allow"
 
 [lib]
 # The `_lib` suffix may seem redundant but it is necessary
