@@ -39,10 +39,6 @@ export async function fetchPackages(): Promise<ThunderstorePackage[]> {
   return invoke<ThunderstorePackage[]>("fetch_packages");
 }
 
-export async function searchPackages(query: string): Promise<ThunderstorePackage[]> {
-  return invoke<ThunderstorePackage[]>("search_packages", { query });
-}
-
 export async function getPackageDetails(fullName: string): Promise<PackageDetail> {
   return invoke<PackageDetail>("get_package_details", { fullName });
 }
