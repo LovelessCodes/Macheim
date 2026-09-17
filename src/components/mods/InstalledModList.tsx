@@ -69,7 +69,7 @@ export default function InstalledModList() {
     if (!pkg) {
       toast.add({
         type: "info",
-        title: `No Thunderstore listing found for ${mod.name}`,
+        title: `No store listing found for ${mod.name}`,
       });
       return;
     }

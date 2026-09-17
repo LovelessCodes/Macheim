@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 
 import { usePackages } from "../../hooks/use-packages";
 import { formatDate } from "../../lib/format";
-import { sortPackages } from "../../lib/packages";
+import { isModpackCategory, sortPackages } from "../../lib/packages";
 import type { SortDirection, SortOption, ThunderstorePackage } from "../../lib/types";
 import { GridSkeleton } from "../common/LoadingSkeleton";
 import VirtualGrid from "../common/VirtualGrid";
@@ -13,11 +13,10 @@ import ModToolbar from "./ModToolbar";
 
 function isModpack(pkg: ThunderstorePackage): boolean {
   if (pkg.is_deprecated) return false;
-  const cats = (pkg.categories ?? []).map((c) => c.toLowerCase());
   const nameL = pkg.name.toLowerCase();
   const descL = (pkg.description ?? "").toLowerCase();
   return (
-    cats.includes("modpacks") ||
+    isModpackCategory(pkg) ||
     nameL.includes("modpack") ||
     nameL.includes("mod pack") ||
     descL.includes("modpack")
@@ -92,7 +91,7 @@ export default function ModpackBrowser() {
               <p className="text-muted-foreground text-sm">
                 {search
                   ? "Try a different search term."
-                  : "Modpacks will appear here when available on Thunderstore."}
+                  : "Modpacks will appear here when available."}
               </p>
             </div>
           }

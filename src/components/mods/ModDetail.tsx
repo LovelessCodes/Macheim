@@ -80,7 +80,13 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
     uninstall(pkg.full_name, pkg.name);
   };
 
-  const thunderstoreUrl = `https://thunderstore.io/c/valheim/p/${pkg.owner}/${pkg.name}/`;
+  const isHexium = pkg.source === "hexium";
+  const sourceLabel = isHexium ? "Hexium" : "Thunderstore";
+  const packageUrl =
+    pkg.package_url ||
+    (isHexium
+      ? `https://valheim.hexium.gg/mods/${pkg.owner}/${pkg.name}`
+      : `https://thunderstore.io/c/valheim/p/${pkg.owner}/${pkg.name}/`);
 
   return (
     <Sheet
@@ -105,7 +111,17 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
               <ModIcon src={pkg.icon} alt={pkg.name} className="size-20" iconClassName="size-8" />
               <div className="min-w-0">
                 <h3 className="text-foreground text-xl font-bold">{pkg.name}</h3>
-                <p className="text-muted-foreground mt-0.5 text-sm">by {pkg.owner}</p>
+                <div className="mt-0.5 flex items-center gap-2">
+                  <p className="text-muted-foreground text-sm">by {pkg.owner}</p>
+                  {isHexium && (
+                    <Badge
+                      variant="outline"
+                      className="border-accent-primary/40 text-accent-primary"
+                    >
+                      Hexium
+                    </Badge>
+                  )}
+                </div>
                 <div className="text-muted-foreground mt-2.5 flex flex-wrap items-center gap-4 text-xs">
                   <span className="flex items-center gap-1">
                     <Download className="size-3.5" />
@@ -294,10 +310,10 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
             variant="outline"
             size="lg"
             className="w-full"
-            render={<a href={thunderstoreUrl} target="_blank" rel="noopener noreferrer" />}
+            render={<a href={packageUrl} target="_blank" rel="noopener noreferrer" />}
           >
             <ExternalLink />
-            View on Thunderstore
+            View on {sourceLabel}
           </Button>
         </SheetFooter>
       </SheetContent>

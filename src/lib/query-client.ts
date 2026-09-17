@@ -49,7 +49,7 @@ export const persistOptions: Omit<PersistQueryClientOptions, "queryClient"> = {
   persister,
   maxAge: DAY,
   // Bump to drop any previously persisted cache after a schema change.
-  buster: "v1",
+  buster: "v2",
   dehydrateOptions: {
     // Only the (large, slow) Thunderstore package list is worth persisting.
     shouldDehydrateQuery: (query) => query.queryKey[0] === packagesQueryKey[0],

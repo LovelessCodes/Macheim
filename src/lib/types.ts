@@ -1,7 +1,10 @@
+export type PackageSource = "thunderstore" | "hexium";
+
 export interface ThunderstorePackage {
   name: string;
   full_name: string;
   owner: string;
+  package_url: string;
   description: string;
   version_number: string;
   rating_score: number;
@@ -10,6 +13,7 @@ export interface ThunderstorePackage {
   icon: string;
   categories: string[];
   date_updated: string;
+  source: PackageSource;
 }
 
 export interface PackageVersion {
@@ -34,6 +38,7 @@ export interface PackageDetail {
   rating_score: number;
   versions: PackageVersion[];
   categories: string[];
+  source: PackageSource;
 }
 
 export interface InstalledMod {

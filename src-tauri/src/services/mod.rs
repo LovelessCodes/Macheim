@@ -5,8 +5,11 @@ pub mod config_editor;
 pub mod dependency_resolver;
 pub mod game_detector;
 pub mod gatekeeper;
+pub mod hexium_client;
 pub mod launcher;
 pub mod mod_installer;
+pub mod package_cache;
+pub mod package_sources;
 pub mod profile_manager;
 pub mod thunderstore_client;
 

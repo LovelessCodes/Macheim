@@ -7,7 +7,8 @@ use tracing::info;
 use crate::error::{AppError, AppResult};
 use crate::models::InstalledMod;
 use crate::services::{
-    dependency_resolver, game_detector, mod_installer, profile_manager, thunderstore_client,
+    dependency_resolver, game_detector, mod_installer, package_sources, profile_manager,
+    thunderstore_client,
 };
 use crate::AppState;
 
@@ -69,7 +70,7 @@ async fn install_mod_inner(
             .ok_or_else(|| AppError::Mod("Game path not set".to_string()))?;
 
         let packages = state
-            .thunderstore_cache
+            .package_cache
             .clone()
             .ok_or_else(|| AppError::Mod("Package cache not loaded".to_string()))?;
 
@@ -453,7 +454,7 @@ async fn sync_mods_inner(
             .game_path
             .clone()
             .ok_or_else(|| AppError::Mod("Game not set".into()))?;
-        let pkgs = s.thunderstore_cache.clone();
+        let pkgs = s.package_cache.clone();
         (gp, pkgs, s.active_profile.clone())
     };
 
@@ -470,11 +471,11 @@ async fn sync_mods_inner(
                 None,
                 "Fetching package list...",
             );
-            let p = thunderstore_client::fetch_packages(false).await?;
+            let p = package_sources::fetch_all_packages(false).await?;
             let mut s = state
                 .lock()
                 .map_err(|e| AppError::Mod(format!("Lock: {}", e)))?;
-            s.thunderstore_cache = Some(p.clone());
+            s.package_cache = Some(p.clone());
             p
         }
     };

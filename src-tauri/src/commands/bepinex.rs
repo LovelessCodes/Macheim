@@ -5,7 +5,7 @@ use tracing::info;
 use crate::error::{AppError, AppResult};
 use crate::services::bepinex_installer::{self, BepInExStatus};
 use crate::services::game_detector;
-use crate::services::thunderstore_client;
+use crate::services::package_sources;
 use crate::AppState;
 
 /// Install BepInEx to the Valheim directory.
@@ -29,19 +29,19 @@ pub async fn install_bepinex(state: tauri::State<'_, Mutex<AppState>>) -> AppRes
         let s = state
             .lock()
             .map_err(|e| AppError::BepInEx(format!("Failed to lock state: {}", e)))?;
-        s.thunderstore_cache.clone()
+        s.package_cache.clone()
     };
 
     let packages = match packages {
         Some(pkgs) => pkgs,
         None => {
-            info!("Thunderstore cache not loaded, fetching packages first...");
-            let pkgs = thunderstore_client::fetch_packages(false).await?;
+            info!("Package cache not loaded, fetching packages first...");
+            let pkgs = package_sources::fetch_all_packages(false).await?;
             // Update cache in state
             let mut s = state
                 .lock()
                 .map_err(|e| AppError::BepInEx(format!("Failed to lock state: {}", e)))?;
-            s.thunderstore_cache = Some(pkgs.clone());
+            s.package_cache = Some(pkgs.clone());
             s.cache_updated_at = Some(chrono::Utc::now());
             pkgs
         }

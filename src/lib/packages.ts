@@ -5,10 +5,11 @@ export interface PackageFilter {
   selectedCategories?: string[];
 }
 
-export const MODPACKS_CATEGORY = "modpacks";
-
 export function isModpackCategory(pkg: ThunderstorePackage): boolean {
-  return (pkg.categories ?? []).some((cat) => cat.toLowerCase() === MODPACKS_CATEGORY);
+  return (pkg.categories ?? []).some((cat) => {
+    const normalized = cat.toLowerCase();
+    return normalized === "modpack" || normalized === "modpacks";
+  });
 }
 
 export function filterPackages(
