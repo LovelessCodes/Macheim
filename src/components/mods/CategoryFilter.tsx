@@ -1,5 +1,6 @@
 import { ListFilter } from "lucide-react";
 
+import { useComboboxAnchor } from "../../hooks/use-combobox-anchor";
 import {
   Combobox,
   ComboboxChip,
@@ -10,7 +11,6 @@ import {
   ComboboxItem,
   ComboboxList,
   ComboboxValue,
-  useComboboxAnchor,
 } from "../ui/combobox";
 
 interface CategoryFilterProps {

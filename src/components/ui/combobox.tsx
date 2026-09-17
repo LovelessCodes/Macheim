@@ -1,7 +1,6 @@
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { cn } from "cn";
 import { CheckIcon, XIcon } from "lucide-react";
-import { useRef } from "react";
 
 const Combobox = ComboboxPrimitive.Root;
 const ComboboxValue = ComboboxPrimitive.Value;
@@ -134,10 +133,6 @@ function ComboboxItem({ className, children, ...props }: ComboboxPrimitive.Item.
   );
 }
 
-function useComboboxAnchor() {
-  return useRef<HTMLDivElement | null>(null);
-}
-
 export {
   Combobox,
   ComboboxValue,
@@ -148,5 +143,4 @@ export {
   ComboboxEmpty,
   ComboboxList,
   ComboboxItem,
-  useComboboxAnchor,
 };
