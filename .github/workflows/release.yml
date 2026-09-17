@@ -72,37 +72,28 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Macheim ${{ github.ref_name }}"
-          releaseBody: |
-            ## Macheim ${{ github.ref_name }}
-
-            Valheim Mod Manager for macOS — a fork of [lofcgi/macheim](https://github.com/lofcgi/macheim)
-            with quality-of-life and visual improvements.
-
-            See the [commits in this release](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
-            for everything that changed.
-
-            ### Compatibility limits
-            The bundled visual patch targets Valheim 0.221.12 / Unity 6000.0.61f1 / Metal and requires
-            ShaderHelperForMac 3.3.0. It does not fix every mod, monster, building or UI icon. Unknown
-            versions are skipped. Macheim's Apple Silicon app still launches the modded game through Rosetta.
-
-            ### Installation
-            1. Download the `.dmg` file for your Mac
-            2. Open and drag **Macheim** to Applications
-            3. Open **System Settings → Privacy & Security** and click **Open Anyway** if macOS blocks the app
-
-            This release is ad-hoc signed, but not Apple-notarized. If macOS reports that
-            Macheim is damaged and does not offer **Open Anyway**, run:
-
-            ```sh
-            xattr -cr /Applications/Macheim.app
-            ```
-
-            Then open Macheim normally. Only use this command after confirming that you
-            downloaded the app from this repository's Releases page.
-
-            **Apple Silicon (M1/M2/M3/M4):** Download `aarch64.dmg`
-            **Intel Mac:** Download the DMG ending in `_x64.dmg`
+          # The notes job below replaces this placeholder with the CHANGELOG section.
+          releaseBody: "Release notes are generated from CHANGELOG.md."
           releaseDraft: true
           prerelease: false
           args: --target ${{ matrix.target }}
+
+  notes:
+    name: Release notes
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Generate release notes from CHANGELOG.md
+        run: bun scripts/release-notes.ts --tag "${{ github.ref_name }}" > release-notes.md
+
+      - name: Publish release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ github.ref_name }}" --repo "${{ github.repository }}" --notes-file release-notes.md
