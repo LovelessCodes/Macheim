@@ -2,7 +2,7 @@ import { Package } from "lucide-react";
 import { useMemo } from "react";
 
 import { usePackages } from "../../hooks/use-packages";
-import { filterPackages, sortPackages } from "../../lib/packages";
+import { filterPackages, isModpackCategory, sortPackages } from "../../lib/packages";
 import { useModStore } from "../../store/modStore";
 import { GridSkeleton } from "../common/LoadingSkeleton";
 import VirtualGrid from "../common/VirtualGrid";
@@ -34,7 +34,7 @@ export default function ModGrid() {
   const categories = useMemo(() => {
     const set = new Set<string>();
     for (const pkg of packages) {
-      if (pkg.is_deprecated) continue;
+      if (pkg.is_deprecated || isModpackCategory(pkg)) continue;
       for (const cat of pkg.categories ?? []) set.add(cat);
     }
     return [...set].sort((a, b) => a.localeCompare(b));

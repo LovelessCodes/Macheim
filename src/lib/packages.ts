@@ -5,11 +5,18 @@ export interface PackageFilter {
   selectedCategories?: string[];
 }
 
+export const MODPACKS_CATEGORY = "modpacks";
+
+export function isModpackCategory(pkg: ThunderstorePackage): boolean {
+  return (pkg.categories ?? []).some((cat) => cat.toLowerCase() === MODPACKS_CATEGORY);
+}
+
 export function filterPackages(
   packages: ThunderstorePackage[],
   { searchQuery = "", selectedCategories = [] }: PackageFilter,
 ): ThunderstorePackage[] {
-  let filtered = packages.filter((pkg) => !pkg.is_deprecated);
+  // Browse Mods excludes modpacks (they have their own page).
+  let filtered = packages.filter((pkg) => !pkg.is_deprecated && !isModpackCategory(pkg));
 
   if (selectedCategories.length > 0) {
     filtered = filtered.filter((pkg) =>
