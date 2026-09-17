@@ -4,7 +4,12 @@ import { useMemo, useState } from "react";
 import { usePackages } from "../../hooks/use-packages";
 import { formatDate } from "../../lib/format";
 import { isModpackCategory, sortPackages } from "../../lib/packages";
-import type { SortDirection, SortOption, ThunderstorePackage } from "../../lib/types";
+import type {
+  PackageSourceFilter,
+  SortDirection,
+  SortOption,
+  ThunderstorePackage,
+} from "../../lib/types";
 import { GridSkeleton } from "../common/LoadingSkeleton";
 import VirtualGrid from "../common/VirtualGrid";
 import { ScrollArea } from "../ui/scroll-area";
@@ -27,6 +32,7 @@ export default function ModpackBrowser() {
   const { data: packages = [], isLoading } = usePackages();
 
   const [search, setSearch] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<PackageSourceFilter>("all");
   const [sortBy, setSortBy] = useState<SortOption>("downloads");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
@@ -34,6 +40,7 @@ export default function ModpackBrowser() {
     const q = search.trim().toLowerCase();
     const matching = packages.filter((pkg) => {
       if (!isModpack(pkg)) return false;
+      if (sourceFilter !== "all" && pkg.source !== sourceFilter) return false;
       if (!q) return true;
       return (
         pkg.name.toLowerCase().includes(q) ||
@@ -42,7 +49,7 @@ export default function ModpackBrowser() {
       );
     });
     return sortPackages(matching, sortBy, sortDirection);
-  }, [packages, search, sortBy, sortDirection]);
+  }, [packages, search, sourceFilter, sortBy, sortDirection]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -54,6 +61,8 @@ export default function ModpackBrowser() {
         onSortByChange={setSortBy}
         sortDirection={sortDirection}
         onSortDirectionChange={setSortDirection}
+        sourceFilter={sourceFilter}
+        onSourceFilterChange={setSourceFilter}
       >
         {modpacks.length.toLocaleString()} modpacks
       </ModToolbar>

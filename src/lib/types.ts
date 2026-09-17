@@ -1,4 +1,5 @@
 export type PackageSource = "thunderstore" | "hexium";
+export type PackageSourceFilter = PackageSource | "all";
 
 export interface ThunderstorePackage {
   name: string;

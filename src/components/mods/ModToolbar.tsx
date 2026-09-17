@@ -8,11 +8,12 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
-import type { SortDirection, SortOption } from "../../lib/types";
+import type { PackageSourceFilter, SortDirection, SortOption } from "../../lib/types";
 import { Button } from "../ui/button";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import CategoryFilter from "./CategoryFilter";
 import ModSearchInput from "./ModSearchInput";
+import SourceFilter from "./SourceFilter";
 
 const sortTabs: { value: SortOption; label: string; icon: typeof Flame }[] = [
   { value: "downloads", label: "Popular", icon: Flame },
@@ -32,6 +33,8 @@ interface ModToolbarProps {
   categories?: string[];
   selectedCategories?: string[];
   onSelectedCategoriesChange?: (value: string[]) => void;
+  sourceFilter?: PackageSourceFilter;
+  onSourceFilterChange?: (value: PackageSourceFilter) => void;
   children?: ReactNode;
 }
 
@@ -46,6 +49,8 @@ export default function ModToolbar({
   categories,
   selectedCategories,
   onSelectedCategoriesChange,
+  sourceFilter,
+  onSourceFilterChange,
   children,
 }: ModToolbarProps) {
   return (
@@ -56,6 +61,10 @@ export default function ModToolbar({
         placeholder={placeholder}
         className="w-full sm:w-72"
       />
+
+      {onSourceFilterChange && (
+        <SourceFilter value={sourceFilter ?? "all"} onChange={onSourceFilterChange} />
+      )}
 
       {categories && categories.length > 0 && onSelectedCategoriesChange && (
         <CategoryFilter

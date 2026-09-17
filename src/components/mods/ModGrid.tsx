@@ -16,6 +16,8 @@ export default function ModGrid() {
   const setSearchQuery = useModStore((s) => s.setSearchQuery);
   const selectedCategories = useModStore((s) => s.selectedCategories);
   const setSelectedCategories = useModStore((s) => s.setSelectedCategories);
+  const selectedSource = useModStore((s) => s.selectedSource);
+  const setSelectedSource = useModStore((s) => s.setSelectedSource);
   const sortBy = useModStore((s) => s.sortBy);
   const setSortBy = useModStore((s) => s.setSortBy);
   const sortDirection = useModStore((s) => s.sortDirection);
@@ -24,11 +26,11 @@ export default function ModGrid() {
   const filtered = useMemo(
     () =>
       sortPackages(
-        filterPackages(packages, { searchQuery, selectedCategories }),
+        filterPackages(packages, { searchQuery, selectedCategories, selectedSource }),
         sortBy,
         sortDirection,
       ),
-    [packages, searchQuery, selectedCategories, sortBy, sortDirection],
+    [packages, searchQuery, selectedCategories, selectedSource, sortBy, sortDirection],
   );
 
   const categories = useMemo(() => {
@@ -53,6 +55,8 @@ export default function ModGrid() {
         categories={categories}
         selectedCategories={selectedCategories}
         onSelectedCategoriesChange={setSelectedCategories}
+        sourceFilter={selectedSource}
+        onSourceFilterChange={setSelectedSource}
       >
         {filtered.length.toLocaleString()} mods
       </ModToolbar>
