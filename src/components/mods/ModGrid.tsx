@@ -59,7 +59,7 @@ export default function ModGrid() {
 
       {isLoading ? (
         <ScrollArea scrollFade className="min-h-0 flex-1">
-          <GridSkeleton count={9} />
+          <GridSkeleton count={20} />
         </ScrollArea>
       ) : (
         <VirtualGrid
