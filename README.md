@@ -155,6 +155,18 @@ installations can never be updated again. `bun run verify:release` fails if
 Because releases start as drafts, the updater only sees a version after the release
 is published. Users on older builds will then be offered it on their next launch.
 
+### Release notes (maintainers)
+
+Every release is documented in [CHANGELOG.md](CHANGELOG.md). Add a `## [x.y.z]` section
+for the new version before tagging - `verify:release` fails on a tag without one, and the
+Release workflow turns that section into the GitHub release body via
+`bun run notes --tag vx.y.z` (compatibility and installation notes are appended
+automatically). Preview the rendered body locally before releasing:
+
+```bash
+bun run notes --tag v1.2.1
+```
+
 ## Mac Compatibility (1.1.0)
 
 Open **Mac Compatibility → Check support** to inspect the bundled catalog and the

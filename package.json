@@ -11,6 +11,7 @@
     "build": "tsc && vite build",
     "test": "bun test --isolate",
     "verify:release": "bun scripts/verify-release.ts",
+    "notes": "bun scripts/release-notes.ts",
     "release": "bun scripts/release.ts",
     "preview": "vite preview",
     "tauri": "tauri",

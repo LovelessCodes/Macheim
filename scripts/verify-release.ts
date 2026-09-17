@@ -42,8 +42,14 @@ assert.ok(
   setupWizard.includes("useAppVersion"),
   "Setup version label must come from the app version at runtime",
 );
-if (process.env.GITHUB_REF_TYPE === "tag")
+if (process.env.GITHUB_REF_TYPE === "tag") {
   assert.equal(process.env.GITHUB_REF_NAME, `v${pkg.version}`, "Tag must match packaged version");
+  const changelog = readFileSync("CHANGELOG.md", "utf8");
+  assert.ok(
+    new RegExp(`^## \\[${pkg.version.replace(/\./g, "\\.")}\\]`, "m").test(changelog),
+    `CHANGELOG.md must have a section for ${pkg.version} before tagging`,
+  );
+}
 assert.equal(tauri.bundle.macOS.signingIdentity, "-", "Ad-hoc signing required");
 assert.equal(tauri.bundle.createUpdaterArtifacts, true, "Updater artifacts required");
 assert.ok(tauri.plugins.updater.pubkey.length > 0, "Updater public key required");
