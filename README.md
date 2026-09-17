@@ -45,6 +45,7 @@ independently.
 - **Backup & restore** - Back up profile metadata and configs (not mod binaries or worlds); restore into a separate profile
 - **Sync & Clean** - Re-download missing enabled mod files; confirm before moving unmanaged folders to recoverable storage
 - **Play Modded** - Launch Valheim with mods, automatically handles Rosetta for Apple Silicon
+- **In-app updates** - Quiet background update checks; a new version is downloaded and installed only when you choose, then applied on restart
 - **Dark viking-themed UI** - Built for the Valheim aesthetic
 - **Lightweight** - 5.7MB DMG, 16MB app (vs Electron-based alternatives at ~1.3GB)
 
@@ -126,6 +127,33 @@ and a SHA-256/source manifest. Building the manager does not require Valheim or
 .NET. To rebuild the plugin itself, install .NET 9 and Valheim/BepInEx locally,
 then run `sh scripts/build-compatibility.sh`. No game or third-party reference DLLs
 are redistributed. See [compatibility details](tools/item-material-compat/README.md).
+
+### Update signing (maintainers)
+
+Updates are signed with a minisign keypair so clients only install builds from this
+repository. The public key lives in `src-tauri/tauri.conf.json`; the private key must
+never be committed. Releases are advertised through the
+`latest.json` asset that `tauri-action` publishes, which the app fetches from
+`releases/latest/download/latest.json`.
+
+Set up a fresh keypair once (skip if `~/.tauri/macheim.key` already exists):
+
+```bash
+bunx tauri signer generate -w ~/.tauri/macheim.key
+```
+
+Then store both values as GitHub Actions secrets:
+
+- `TAURI_SIGNING_PRIVATE_KEY` - contents of `~/.tauri/macheim.key`
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` - the password chosen above (empty if none)
+
+Paste the matching `~/.tauri/macheim.key.pub` contents into `plugins.updater.pubkey`
+in `src-tauri/tauri.conf.json`. **Back up the private key**: losing it means existing
+installations can never be updated again. `bun run verify:release` fails if
+`createUpdaterArtifacts` is off, or if the pubkey or endpoints are missing.
+
+Because releases start as drafts, the updater only sees a version after the release
+is published. Users on older builds will then be offered it on their next launch.
 
 ## Mac Compatibility (1.1.0)
 

@@ -9,7 +9,8 @@ interface PackageJson {
 
 interface TauriConfig {
   version: string;
-  bundle: { macOS: { signingIdentity: string } };
+  bundle: { macOS: { signingIdentity: string }; createUpdaterArtifacts: boolean };
+  plugins: { updater: { pubkey: string; endpoints: string[] } };
 }
 
 interface Catalog {
@@ -44,6 +45,9 @@ assert.ok(
 if (process.env.GITHUB_REF_TYPE === "tag")
   assert.equal(process.env.GITHUB_REF_NAME, `v${pkg.version}`, "Tag must match packaged version");
 assert.equal(tauri.bundle.macOS.signingIdentity, "-", "Ad-hoc signing required");
+assert.equal(tauri.bundle.createUpdaterArtifacts, true, "Updater artifacts required");
+assert.ok(tauri.plugins.updater.pubkey.length > 0, "Updater public key required");
+assert.ok(tauri.plugins.updater.endpoints.length > 0, "Updater endpoint required");
 
 const catalog = json<Catalog>("compatibility/catalog.json");
 const pluginSource = readFileSync("tools/item-material-compat/ItemMaterialCompat.cs", "utf8");
