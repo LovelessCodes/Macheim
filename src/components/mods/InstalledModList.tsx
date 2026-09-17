@@ -1,11 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { cn } from "cn";
-import { Package, Trash2, Power, PowerOff, RefreshCw, Loader2 } from "lucide-react";
+import { ArrowUpCircle, Package, Trash2, Power, PowerOff, RefreshCw, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 import { useInstalledMods } from "../../hooks/use-installed-mods";
 import { useModUninstall } from "../../hooks/use-mod-uninstall";
+import { useModInstall } from "../../hooks/use-package-install";
 import { usePackages } from "../../hooks/use-packages";
 import { installedModsQueryKey } from "../../lib/query-keys";
 import { toggleMod, syncMods, listUnmanagedMods } from "../../lib/tauri";
@@ -19,6 +20,7 @@ import { ScrollArea } from "../ui/scroll-area";
 import { Switch } from "../ui/switch";
 import { toast } from "../ui/toast";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import ModIcon from "./ModIcon";
 import ModSearchInput from "./ModSearchInput";
 
@@ -29,6 +31,7 @@ export default function InstalledModList() {
   const { data: installedMods = [], isPending: isLoading } = useInstalledMods();
   const { data: packages = [] } = usePackages();
   const { uninstall, uninstallingFullName } = useModUninstall();
+  const { install, installingFullName } = useModInstall();
   const setSelectedPackage = useModStore((s) => s.setSelectedPackage);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<ModFilter>("all");
@@ -171,60 +174,90 @@ export default function InstalledModList() {
           items={filtered}
           keyOf={(mod) => mod.full_name}
           estimateRowHeight={66}
-          renderItem={(mod) => (
-            <div
-              onClick={() => openDetail(mod)}
-              title="View versions"
-              className={cn(
-                "flex cursor-pointer items-center gap-4 border bg-card p-3 transition-colors hover:bg-muted/40",
-                !mod.enabled && "opacity-50",
-              )}
-            >
-              <ModIcon src={mod.icon} alt={mod.name} className="size-10" iconClassName="size-4" />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <h4 className="text-foreground truncate text-sm font-semibold">{mod.name}</h4>
-                  <Badge variant="outline" className="shrink-0">
-                    v{mod.version}
-                  </Badge>
-                  {!mod.enabled && (
-                    <Badge variant="secondary" className="shrink-0">
-                      Disabled
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-muted-foreground truncate text-xs">by {mod.author}</p>
-              </div>
-
-              <Switch
-                checked={mod.enabled}
-                disabled={togglingMod === mod.full_name}
-                onCheckedChange={() => handleToggle(mod.full_name, mod.enabled)}
-                onClick={(e) => e.stopPropagation()}
-                aria-label={`${mod.enabled ? "Disable" : "Enable"} ${mod.name}`}
-                className="data-checked:bg-[var(--color-success)]"
-              />
-
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  uninstall(mod.full_name, mod.name);
-                }}
-                disabled={uninstallingFullName === mod.full_name}
-                title="Uninstall"
-                aria-label={`Uninstall ${mod.name}`}
-                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-              >
-                {uninstallingFullName === mod.full_name ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <Trash2 />
+          renderItem={(mod) => {
+            const pkg = packages.find((p) => p.full_name === mod.full_name);
+            const isUpdating = installingFullName === mod.full_name;
+            return (
+              <div
+                onClick={() => openDetail(mod)}
+                title="View versions"
+                className={cn(
+                  "flex cursor-pointer items-center gap-4 border bg-card p-3 transition-colors hover:bg-muted/40",
+                  !mod.enabled && "opacity-50",
                 )}
-              </Button>
-            </div>
-          )}
+              >
+                <ModIcon src={mod.icon} alt={mod.name} className="size-10" iconClassName="size-4" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-foreground truncate text-sm font-semibold">{mod.name}</h4>
+                    <Badge variant="outline" className="shrink-0">
+                      v{mod.version}
+                    </Badge>
+                    {!mod.enabled && (
+                      <Badge variant="secondary" className="shrink-0">
+                        Disabled
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-muted-foreground truncate text-xs">by {mod.author}</p>
+                </div>
+
+                {pkg && pkg.version_number !== mod.version && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant="outline-accent-primary"
+                          size="icon-sm"
+                          disabled={isUpdating}
+                          aria-label={`Update ${mod.name} to v${pkg.version_number}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            install({
+                              fullName: mod.full_name,
+                              name: mod.name,
+                              version: pkg.version_number,
+                            });
+                          }}
+                        />
+                      }
+                    >
+                      {isUpdating ? <Loader2 className="animate-spin" /> : <ArrowUpCircle />}
+                    </TooltipTrigger>
+                    <TooltipContent>Update to v{pkg.version_number}</TooltipContent>
+                  </Tooltip>
+                )}
+
+                <Switch
+                  checked={mod.enabled}
+                  disabled={togglingMod === mod.full_name}
+                  onCheckedChange={() => handleToggle(mod.full_name, mod.enabled)}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`${mod.enabled ? "Disable" : "Enable"} ${mod.name}`}
+                  className="data-checked:bg-[var(--color-success)]"
+                />
+
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    uninstall(mod.full_name, mod.name);
+                  }}
+                  disabled={uninstallingFullName === mod.full_name}
+                  title="Uninstall"
+                  aria-label={`Uninstall ${mod.name}`}
+                  className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                >
+                  {uninstallingFullName === mod.full_name ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Trash2 />
+                  )}
+                </Button>
+              </div>
+            );
+          }}
           empty={
             installedMods.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">

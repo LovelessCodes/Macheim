@@ -6,39 +6,54 @@ import { installMod, installModpack } from "../lib/tauri";
 import type { ThunderstorePackage } from "../lib/types";
 import { useInstalledMods } from "./use-installed-mods";
 
-export function usePackageInstall(pkg: ThunderstorePackage, kind: "mod" | "modpack" = "mod") {
-  const queryClient = useQueryClient();
-  const { data: installedMods = [] } = useInstalledMods();
+interface InstallTarget {
+  fullName: string;
+  name: string;
+  version: string;
+  kind?: "mod" | "modpack";
+}
 
-  const isInstalled = installedMods.some((m) => m.full_name === pkg.full_name);
+export function useModInstall() {
+  const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (version: string) =>
-      kind === "modpack"
-        ? installModpack(pkg.full_name, version)
-        : installMod(pkg.full_name, version),
-    onSuccess: async (_data, version) => {
+    mutationFn: ({ fullName, version, kind = "mod" }: InstallTarget) =>
+      kind === "modpack" ? installModpack(fullName, version) : installMod(fullName, version),
+    onSuccess: async (_data, { name, version, kind = "mod" }) => {
       await queryClient.invalidateQueries({ queryKey: installedModsQueryKey });
       toast.add({
         type: "success",
-        title: `Installed ${kind === "modpack" ? "modpack " : ""}${pkg.name} v${version}`,
+        title: `Installed ${kind === "modpack" ? "modpack " : ""}${name} v${version}`,
       });
     },
-    onError: (err) => {
+    onError: (err, { name }) => {
       toast.add({
         type: "error",
-        title: `Failed to install ${pkg.name}: ${err}`,
+        title: `Failed to install ${name}: ${err}`,
       });
     },
   });
 
-  const isInstalling = mutation.isPending;
-  const installingVersion = mutation.isPending ? mutation.variables : null;
+  return {
+    install: (target: InstallTarget) => {
+      if (mutation.isPending) return;
+      mutation.mutate(target);
+    },
+    isInstalling: mutation.isPending,
+    installingFullName: mutation.isPending ? (mutation.variables?.fullName ?? null) : null,
+    installingVersion: mutation.isPending ? (mutation.variables?.version ?? null) : null,
+  };
+}
 
-  const install = (version: string = pkg.version_number) => {
-    if (isInstalling) return;
-    mutation.mutate(version);
+export function usePackageInstall(pkg: ThunderstorePackage, kind: "mod" | "modpack" = "mod") {
+  const { install, isInstalling, installingVersion } = useModInstall();
+  const { data: installedMods = [] } = useInstalledMods();
+
+  const isInstalled = installedMods.some((m) => m.full_name === pkg.full_name);
+
+  const installVersion = (version: string = pkg.version_number) => {
+    install({ fullName: pkg.full_name, name: pkg.name, version, kind });
   };
 
-  return { install, isInstalled, isInstalling, installingVersion };
+  return { install: installVersion, isInstalled, isInstalling, installingVersion };
 }
