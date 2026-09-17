@@ -62,9 +62,28 @@ function parseLevel(arg: string): Level {
   abort(`Unknown release type "${arg}". Use current, patch, minor or major.`);
 }
 
+function upstreamRemote(branch: string): string | null {
+  const result = spawnSync(
+    "git",
+    ["rev-parse", "--abbrev-ref", "--symbolic-full-name", `${branch}@{u}`],
+    { encoding: "utf8" },
+  );
+  const upstream = result.stdout.trim();
+  return upstream ? upstream.split("/")[0] : null;
+}
+
 const args = process.argv.slice(2);
+const flagValue = (name: string): string | undefined => {
+  const index = args.indexOf(name);
+  return index === -1 ? undefined : args[index + 1];
+};
+
 const dryRun = args.includes("--dry-run");
-const levelArg = args.find((arg) => !arg.startsWith("--"));
+const remoteArg = flagValue("--remote");
+if (args.includes("--remote") && !remoteArg) abort("--remote needs a remote name.");
+
+const consumed = new Set(["--remote", remoteArg]);
+const levelArg = args.find((arg) => !arg.startsWith("--") && !consumed.has(arg));
 
 const current = JSON.parse(readFileSync("package.json", "utf8")).version as string;
 const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -101,12 +120,24 @@ const tag = `v${next}`;
 const bump = next !== current;
 
 const branch = git("rev-parse", "--abbrev-ref", "HEAD");
+const remote = remoteArg ?? upstreamRemote(branch);
+if (!remote)
+  abort(
+    `Branch "${branch}" has no upstream remote. Push it first:\n  git push -u <remote> ${branch}`,
+  );
+if (spawnSync("git", ["remote", "get-url", remote], { stdio: "ignore" }).status !== 0)
+  abort(
+    `Remote "${remote}" does not exist. Available remotes: ${git("remote").split("\n").join(", ")}`,
+  );
+
 const existingTag = spawnSync("git", ["rev-parse", "-q", "--verify", `refs/tags/${tag}^{commit}`], {
   encoding: "utf8",
 }).stdout.trim();
 if (existingTag) {
   if (existingTag === git("rev-parse", "HEAD") && !bump)
-    abort(`Tag ${tag} already exists at HEAD. Push it with:\n  git push origin ${branch} ${tag}`);
+    abort(
+      `Tag ${tag} already exists at HEAD. Push it with:\n  git push ${remote} ${branch} ${tag}`,
+    );
   abort(`Tag ${tag} already exists.`);
 }
 const dirty = status().split("\n").filter(Boolean);
@@ -127,7 +158,7 @@ console.log(
   `  commit   ${bump || dirtyVersionFiles.length ? `chore: release ${tag}` : "none (tree clean)"}`,
 );
 console.log(`  tag      ${tag}`);
-console.log(`  push     ${branch} + ${tag} to origin`);
+console.log(`  push     ${branch} + ${tag} to ${remote}`);
 
 if (dryRun) {
   console.log("\nDry run: nothing changed.");
@@ -164,9 +195,9 @@ if (changed.length) {
 }
 stream("git", ["tag", "-a", tag, "-m", tag]);
 
-console.log(`\nPushing ${branch} and ${tag}...`);
-stream("git", ["push", "origin", "HEAD"]);
-stream("git", ["push", "origin", tag]);
+console.log(`\nPushing ${branch} and ${tag} to ${remote}...`);
+stream("git", ["push", remote, "HEAD"]);
+stream("git", ["push", remote, tag]);
 console.log(
   `\nReleased ${tag}. The Release workflow will now build and publish the draft release.`,
 );
