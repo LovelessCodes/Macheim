@@ -3,7 +3,7 @@
 ### Valheim Mod Manager for macOS
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-macOS-blue.svg)](<>)
+![Platform](https://img.shields.io/badge/platform-macOS-blue.svg)
 [![Latest Release](https://img.shields.io/github/v/release/LovelessCodes/macheim)](https://github.com/LovelessCodes/macheim/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/LovelessCodes/macheim/total.svg)](https://github.com/LovelessCodes/macheim/releases)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%20v2-orange.svg)](https://tauri.app)
@@ -12,6 +12,19 @@
 > **Macheim** fills that gap.
 
 A native macOS mod manager for [Valheim](https://store.steampowered.com/app/892970/Valheim/), built with Tauri v2. Browse, install, and manage mods from [Thunderstore](https://thunderstore.io/c/valheim/) with a single click. No terminal required.
+
+## About this fork
+
+This is a fork of [lofcgi/macheim](https://github.com/lofcgi/macheim), the original project
+by [@lofcgi](https://github.com/lofcgi). All of the core functionality — Valheim detection,
+BepInEx management, Thunderstore browsing and installs, profiles, backups, modpack support,
+and the Mac Compatibility system — comes from upstream and is credited to its author.
+
+This fork keeps that base and layers on a large set of **quality-of-life and visual
+improvements**, focused on making the browsing and mod-management experience faster and
+more pleasant to use. See [What's different in this fork](#whats-different-in-this-fork).
+Bug reports about upstream behaviour are best filed upstream; this fork is maintained
+independently.
 
 ## Screenshots
 
@@ -35,6 +48,45 @@ A native macOS mod manager for [Valheim](https://store.steampowered.com/app/8929
 - **Dark viking-themed UI** - Built for the Valheim aesthetic
 - **Lightweight** - 5.7MB DMG, 16MB app (vs Electron-based alternatives at ~1.3GB)
 
+## What's different in this fork
+
+### Browsing
+
+- **Multiple mod sources** - Browse Thunderstore and [Hexium](https://hexium.gg/) in one
+  list, or filter to a single source (Thunderstore / Hexium / All sources)
+- **Multi-select category filters** - Combine several categories instead of one, with
+  selected chips collapsing into a "first +N" summary
+- **Modpacks split out** - Modpacks are excluded from Browse Mods and live in their own tab
+- **Persistent package cache** - Thunderstore package data is cached locally, so repeat
+  visits load instantly
+- **Resilient icons** - Failed CDN icons fall back automatically instead of rendering broken
+- **Polished browsing** - Virtualized lists, scroll fade, scroll-to-top button, staggered
+  loading skeletons, and a richer empty/loading state
+
+### Mod management
+
+- **Update detection & "Update All"** - Installed mods are checked against latest versions,
+  with a one-click bulk update for everything that's outdated
+- **Version history & downgrades** - Open a mod's Version History to install or switch to an
+  older release directly from the detail panel
+- **Safer uninstalls** - Uninstalling from the installed list asks for confirmation first
+  (hold Shift to skip)
+- **Clearer installed list** - Outdated versions are badged, row actions use tooltips, and
+  the scroll-to-top button no longer overlaps row controls
+
+### Under the hood
+
+- **TanStack Query data layer** - Fetching, caching, and mutations were migrated to TanStack
+  Query (with persisted cache), which is the foundation for the offline-friendly cache and
+  consistent loading states above
+- **Bun toolchain** - Package management, scripts, and CI moved from npm/Node to
+  [Bun](https://bun.sh/)
+- **Linting & formatting** - oxlint (type-aware) and oxfmt, wired up through Husky and
+  lint-staged on commit
+
+Upstream features that this fork does **not** change: BepInEx/Rosetta launch handling,
+Mac Compatibility rules, profile/recovery semantics, and the backup format.
+
 ## Requirements
 
 - **macOS 12+** (Monterey or later)
@@ -46,7 +98,7 @@ A native macOS mod manager for [Valheim](https://store.steampowered.com/app/8929
 
 ### Download
 
-1. Download `Macheim.dmg` from the [Releases](https://github.com/LovelessCodes/macheim/releases) page
+1. Download `Macheim.dmg` from this fork's [Releases](https://github.com/LovelessCodes/macheim/releases) page
 2. Open the DMG and drag **Macheim** to your Applications folder
 3. **Important:** The app is ad-hoc signed, but not Apple-notarized, so macOS may block it. First try **System Settings → Privacy & Security → Open Anyway**. If macOS instead reports that the app is damaged, open Terminal and run:
    ```bash
@@ -95,8 +147,6 @@ patch to Valheim **0.221.12**, Unity **6000.0.61f1**, and macOS Metal.
 - The plugin clones runtime materials/textures; upstream mod assets are unchanged.
 - No universal repair, all-mod scanner, creature/building/UI fixes, or Windows visual parity is promised.
 - Logs are shown locally, never uploaded. A missing log entry is not a compatibility pass.
-
-See [the 1.1.0 release audit](RELEASE-1.1.0.md) for issue/PR coverage and remaining limitations.
 
 ### Profile and recovery notes
 
@@ -147,13 +197,15 @@ After BepInEx installation, macOS may block some libraries. Macheim automaticall
 
 ## Tech Stack
 
-| Layer     | Technology                                |
-| --------- | ----------------------------------------- |
-| Framework | [Tauri v2](https://tauri.app/)            |
-| Backend   | Rust (28 source files, 25 Tauri commands) |
-| Frontend  | React 19 + TypeScript + Tailwind CSS v4   |
-| State     | Zustand                                   |
-| UI Icons  | Lucide React                              |
+| Layer     | Technology                              |
+| --------- | --------------------------------------- |
+| Framework | [Tauri v2](https://tauri.app/)          |
+| Backend   | Rust (Tauri commands)                   |
+| Frontend  | React 19 + TypeScript + Tailwind CSS v4 |
+| Data      | TanStack Query (persisted cache)        |
+| State     | Zustand                                 |
+| UI Icons  | Lucide React                            |
+| Tooling   | Bun, oxlint, oxfmt, Husky, lint-staged  |
 
 ## How It Works
 
@@ -174,14 +226,20 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+If your change is a fix or improvement to upstream behaviour rather than a fork
+quality-of-life/visual feature, consider opening it against
+[lofcgi/macheim](https://github.com/lofcgi/macheim) as well, so everyone benefits.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
+- [lofcgi](https://github.com/lofcgi) - Author of the original [macheim](https://github.com/lofcgi/macheim) project this fork is based on
 - [Tauri](https://tauri.app/) - Lightweight app framework
 - [BepInEx](https://github.com/BepInEx/BepInEx) - Unity mod loader framework
 - [Thunderstore](https://thunderstore.io/) - Mod repository and API
+- [Hexium](https://hexium.gg/) - Additional mod source
 - [r2modmanPlus](https://github.com/ebkr/r2modmanPlus) - Inspiration for this project
 - The Valheim modding community
