@@ -110,7 +110,7 @@ export default function InstalledModList() {
         approvedUnmanaged: doClean ? unmanaged : [],
       });
     } catch (err) {
-      toast.add({ type: "error", title: `Sync failed: ${err}` });
+      toast.add({ type: "error", title: `Sync failed: ${String(err)}` });
     }
   };
 
