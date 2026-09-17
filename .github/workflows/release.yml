@@ -16,55 +16,7 @@ concurrency:
 jobs:
   verify:
     name: Verify
-    runs-on: macos-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Cache Bun downloads
-        uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
-
-      - name: Setup .NET for pure shader policy tests
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "9.0.x"
-
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: "./src-tauri -> target"
-
-      - name: Install frontend dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Verify release metadata and bundled plugin
-        run: bun run verify:release
-
-      - name: Lint
-        run: bun run lint
-
-      - name: Check formatting
-        run: bun run fmt:check
-
-      - name: Frontend tests
-        run: bun run test
-
-      - name: Rust tests
-        run: cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
-
-      - name: Shader policy and pixel tests (no game assets required)
-        run: dotnet run --project tools/item-material-compat/tests/PolicyTests.csproj -c Release
+    uses: ./.github/workflows/ci.yml
 
   release:
     name: Build (${{ matrix.label }})
