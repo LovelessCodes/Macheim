@@ -2,11 +2,29 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 
-const json = (path) => JSON.parse(readFileSync(path, "utf8"));
-const hash = (path) => createHash("sha256").update(readFileSync(path)).digest("hex");
-const pkg = json("package.json");
+interface PackageJson {
+  name: string;
+  version: string;
+}
+
+interface TauriConfig {
+  version: string;
+  bundle: { macOS: { signingIdentity: string } };
+}
+
+interface Catalog {
+  plugin_version: string;
+  game_version: string;
+  unity_version: string;
+  rules: { version: string; prefabs: string[] }[];
+}
+
+const json = <T>(path: string): T => JSON.parse(readFileSync(path, "utf8")) as T;
+const hash = (path: string): string =>
+  createHash("sha256").update(readFileSync(path)).digest("hex");
+const pkg = json<PackageJson>("package.json");
 const lock = readFileSync("bun.lock", "utf8");
-const tauri = json("src-tauri/tauri.conf.json");
+const tauri = json<TauriConfig>("src-tauri/tauri.conf.json");
 const cargo = readFileSync("src-tauri/Cargo.toml", "utf8").match(/^version = "([^"]+)"/m)?.[1];
 const cargoLock = readFileSync("src-tauri/Cargo.lock", "utf8").match(
   /name = "macheim"\nversion = "([^"]+)"/,
@@ -27,7 +45,7 @@ if (process.env.GITHUB_REF_TYPE === "tag")
   assert.equal(process.env.GITHUB_REF_NAME, `v${pkg.version}`, "Tag must match packaged version");
 assert.equal(tauri.bundle.macOS.signingIdentity, "-", "Ad-hoc signing required");
 
-const catalog = json("compatibility/catalog.json");
+const catalog = json<Catalog>("compatibility/catalog.json");
 const pluginSource = readFileSync("tools/item-material-compat/ItemMaterialCompat.cs", "utf8");
 assert.ok(pluginSource.includes(`"${catalog.plugin_version}")]`), "Plugin/catalog versions match");
 assert.ok(
@@ -57,7 +75,7 @@ if (process.argv.includes("--record-plugin-build")) {
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
 } else
   assert.deepEqual(
-    json(manifestPath),
+    json<unknown>(manifestPath),
     manifest,
     "Rebuild and record the plugin after changing its source",
   );
