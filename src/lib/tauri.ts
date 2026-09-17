@@ -29,10 +29,6 @@ export async function installBepinex(): Promise<void> {
   return invoke("install_bepinex");
 }
 
-export async function getBepinexStatus(): Promise<boolean> {
-  return invoke<boolean>("get_bepinex_status");
-}
-
 // ── Thunderstore Packages ───────────────────────────────────────
 
 export async function fetchPackages(): Promise<ThunderstorePackage[]> {

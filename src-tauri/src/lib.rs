@@ -108,7 +108,6 @@ pub fn run() {
             commands::game::set_game_path,
             // BepInEx management
             commands::bepinex::install_bepinex,
-            commands::bepinex::get_bepinex_status,
             commands::bepinex::uninstall_bepinex,
             // Thunderstore
             commands::thunderstore::fetch_packages,

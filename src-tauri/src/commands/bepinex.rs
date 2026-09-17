@@ -62,24 +62,6 @@ pub async fn install_bepinex(state: tauri::State<'_, Mutex<AppState>>) -> AppRes
     Ok(status)
 }
 
-/// Get current BepInEx installation status.
-#[tauri::command]
-pub async fn get_bepinex_status(
-    state: tauri::State<'_, Mutex<AppState>>,
-) -> AppResult<BepInExStatus> {
-    let state = state
-        .lock()
-        .map_err(|e| AppError::BepInEx(format!("Failed to lock state: {}", e)))?;
-
-    let game_path = state
-        .game_path
-        .as_ref()
-        .ok_or_else(|| AppError::BepInEx("Game path not set".to_string()))?;
-
-    let game_root = game_detector::get_valheim_root(game_path);
-    Ok(bepinex_installer::check_bepinex_status(&game_root))
-}
-
 /// Uninstall BepInEx from the Valheim directory.
 #[tauri::command]
 pub async fn uninstall_bepinex(
