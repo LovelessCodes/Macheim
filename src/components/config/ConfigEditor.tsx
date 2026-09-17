@@ -1,4 +1,3 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "cn";
 import {
   FileText,
@@ -11,9 +10,7 @@ import {
 } from "lucide-react";
 import { useState, useCallback } from "react";
 
-import { useConfig, useConfigFiles } from "../../hooks/use-config";
-import { configQueryKey } from "../../lib/query-keys";
-import { saveConfig } from "../../lib/tauri";
+import { useConfig, useConfigFiles, useSaveConfig } from "../../hooks/use-config";
 import type { ConfigFile, ConfigFileSummary, ConfigEntry, ConfigSection } from "../../lib/types";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -21,11 +18,10 @@ import { Card, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
 import { ScrollArea } from "../ui/scroll-area";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../ui/select";
-import { toast } from "../ui/toast";
 
 export default function ConfigEditor() {
-  const queryClient = useQueryClient();
   const { data: configFiles = [], isPending: isLoadingFiles } = useConfigFiles();
+  const saveConfigMutation = useSaveConfig();
 
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const {
@@ -36,7 +32,6 @@ export default function ConfigEditor() {
   const isLoadingConfig = selectedPath !== null && isConfigPending;
   const configError = configErrorObj ? String(configErrorObj) : null;
 
-  const [isSaving, setIsSaving] = useState(false);
   const [editedEntries, setEditedEntries] = useState<Map<string, string>>(new Map());
 
   const handleSelectFile = useCallback((file: ConfigFileSummary) => {
@@ -58,38 +53,27 @@ export default function ConfigEditor() {
     return editedEntries.get(key) ?? entry.value;
   };
 
-  const handleSave = async () => {
-    if (!selectedFile || !selectedPath) return;
+  const handleSave = () => {
+    if (!selectedFile) return;
 
-    setIsSaving(true);
-    try {
-      const updatedConfig: ConfigFile = {
-        ...selectedFile,
-        sections: selectedFile.sections.map((section) => ({
-          ...section,
-          entries: section.entries.map((entry) => {
-            const key = `${section.name}::${entry.key}`;
-            const newVal = editedEntries.get(key);
-            return {
-              ...entry,
-              value: newVal ?? entry.value,
-            };
-          }),
-        })),
-      };
+    const updatedConfig: ConfigFile = {
+      ...selectedFile,
+      sections: selectedFile.sections.map((section) => ({
+        ...section,
+        entries: section.entries.map((entry) => {
+          const key = `${section.name}::${entry.key}`;
+          const newVal = editedEntries.get(key);
+          return {
+            ...entry,
+            value: newVal ?? entry.value,
+          };
+        }),
+      })),
+    };
 
-      await saveConfig(updatedConfig);
-      queryClient.setQueryData(configQueryKey(selectedPath), updatedConfig);
-      setEditedEntries(new Map());
-      toast.add({ type: "success", title: "Config saved." });
-    } catch (err) {
-      toast.add({
-        type: "error",
-        title: `Failed to save config: ${err}`,
-      });
-    } finally {
-      setIsSaving(false);
-    }
+    saveConfigMutation.mutate(updatedConfig, {
+      onSuccess: () => setEditedEntries(new Map()),
+    });
   };
 
   const handleReset = () => {
@@ -268,9 +252,9 @@ export default function ConfigEditor() {
                   variant="accent-primary"
                   size="sm"
                   onClick={handleSave}
-                  disabled={!hasChanges || isSaving}
+                  disabled={!hasChanges || saveConfigMutation.isPending}
                 >
-                  {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
+                  {saveConfigMutation.isPending ? <Loader2 className="animate-spin" /> : <Save />}
                   Save
                 </Button>
               </div>
