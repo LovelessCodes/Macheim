@@ -1,25 +1,27 @@
 import { Layers, Star } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
+import { usePackages } from "../../hooks/use-packages";
 import { formatDate } from "../../lib/format";
-import { sortPackages } from "../../lib/packages";
-import { fetchPackages } from "../../lib/tauri";
-import type { SortDirection, SortOption, ThunderstorePackage } from "../../lib/types";
-import { useModStore } from "../../store/modStore";
+import { isModpackCategory, sortPackages } from "../../lib/packages";
+import type {
+  PackageSourceFilter,
+  SortDirection,
+  SortOption,
+  ThunderstorePackage,
+} from "../../lib/types";
 import { GridSkeleton } from "../common/LoadingSkeleton";
 import VirtualGrid from "../common/VirtualGrid";
 import { ScrollArea } from "../ui/scroll-area";
-import { toast } from "../ui/toast";
 import ModCard from "./ModCard";
 import ModToolbar from "./ModToolbar";
 
 function isModpack(pkg: ThunderstorePackage): boolean {
   if (pkg.is_deprecated) return false;
-  const cats = (pkg.categories ?? []).map((c) => c.toLowerCase());
   const nameL = pkg.name.toLowerCase();
   const descL = (pkg.description ?? "").toLowerCase();
   return (
-    cats.includes("modpacks") ||
+    isModpackCategory(pkg) ||
     nameL.includes("modpack") ||
     nameL.includes("mod pack") ||
     descL.includes("modpack")
@@ -27,44 +29,18 @@ function isModpack(pkg: ThunderstorePackage): boolean {
 }
 
 export default function ModpackBrowser() {
-  const packages = useModStore((s) => s.packages);
-  const isLoading = useModStore((s) => s.isLoadingPackages);
-  const setPackages = useModStore((s) => s.setPackages);
-  const setLoading = useModStore((s) => s.setLoadingPackages);
+  const { data: packages = [], isLoading } = usePackages();
 
   const [search, setSearch] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<PackageSourceFilter>("all");
   const [sortBy, setSortBy] = useState<SortOption>("downloads");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-
-  useEffect(() => {
-    if (packages.length > 0) return;
-    let cancelled = false;
-    async function load() {
-      setLoading(true);
-      try {
-        const pkgs = await fetchPackages();
-        if (!cancelled) setPackages(pkgs);
-      } catch (err) {
-        if (!cancelled) {
-          toast.add({
-            type: "error",
-            title: `Failed to fetch packages: ${err}`,
-          });
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [packages.length, setPackages, setLoading]);
 
   const modpacks = useMemo(() => {
     const q = search.trim().toLowerCase();
     const matching = packages.filter((pkg) => {
       if (!isModpack(pkg)) return false;
+      if (sourceFilter !== "all" && pkg.source !== sourceFilter) return false;
       if (!q) return true;
       return (
         pkg.name.toLowerCase().includes(q) ||
@@ -73,7 +49,7 @@ export default function ModpackBrowser() {
       );
     });
     return sortPackages(matching, sortBy, sortDirection);
-  }, [packages, search, sortBy, sortDirection]);
+  }, [packages, search, sourceFilter, sortBy, sortDirection]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -85,13 +61,15 @@ export default function ModpackBrowser() {
         onSortByChange={setSortBy}
         sortDirection={sortDirection}
         onSortDirectionChange={setSortDirection}
+        sourceFilter={sourceFilter}
+        onSourceFilterChange={setSourceFilter}
       >
         {modpacks.length.toLocaleString()} modpacks
       </ModToolbar>
 
-      {isLoading && packages.length === 0 ? (
-        <ScrollArea className="min-h-0 flex-1">
-          <GridSkeleton count={6} />
+      {isLoading ? (
+        <ScrollArea scrollFade className="min-h-0 flex-1">
+          <GridSkeleton count={20} />
         </ScrollArea>
       ) : (
         <VirtualGrid
@@ -122,7 +100,7 @@ export default function ModpackBrowser() {
               <p className="text-muted-foreground text-sm">
                 {search
                   ? "Try a different search term."
-                  : "Modpacks will appear here when available on Thunderstore."}
+                  : "Modpacks will appear here when available."}
               </p>
             </div>
           }

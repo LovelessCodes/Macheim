@@ -1,20 +1,32 @@
-import { confirm } from "@tauri-apps/plugin-dialog";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, mock, test, type Mock } from "bun:test";
 
-import { getInstalledMods, listUnmanagedMods, syncMods } from "../../lib/tauri";
-import { useModStore } from "../../store/modStore";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
+
+void mock.module("../../lib/tauri", () => ({
+  fetchPackages: mock(() => Promise.resolve([])),
+  getInstalledMods: mock(() => Promise.resolve([])),
+  listUnmanagedMods: mock(() => Promise.resolve([])),
+  syncMods: mock(() => Promise.resolve({ cleaned: [], failed: [], reinstalled: [] })),
+  toggleMod: mock(() => Promise.resolve()),
+  uninstallMod: mock(() => Promise.resolve()),
+}));
+void mock.module("@tauri-apps/plugin-dialog", () => ({
+  confirm: mock(() => Promise.resolve(false)),
+}));
+
+import { confirm } from "@tauri-apps/plugin-dialog";
+
+import { fetchPackages, getInstalledMods, listUnmanagedMods, syncMods } from "../../lib/tauri";
 import InstalledModList from "./InstalledModList";
-vi.mock("../../lib/tauri", () => ({
-  getInstalledMods: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
-  listUnmanagedMods: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
-  syncMods: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
-  toggleMod: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
-  uninstallMod: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
-}));
-vi.mock("@tauri-apps/plugin-dialog", () => ({
-  confirm: vi.fn<(...args: unknown[]) => Promise<boolean>>(),
-}));
+
+const fetchPackagesMock = fetchPackages as Mock<typeof fetchPackages>;
+const getInstalledModsMock = getInstalledMods as Mock<typeof getInstalledMods>;
+const listUnmanagedModsMock = listUnmanagedMods as Mock<typeof listUnmanagedMods>;
+const syncModsMock = syncMods as Mock<typeof syncMods>;
+const confirmMock = confirm as Mock<typeof confirm>;
+
 const mod = {
   full_name: "Therzie-Wizardry",
   author: "Therzie",
@@ -26,16 +38,20 @@ const mod = {
   dependencies: [],
   installed_at: "",
 };
+function renderWithClient(ui: ReactNode) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
 beforeEach(() => {
-  vi.clearAllMocks();
-  useModStore.setState({ installedMods: [], isLoadingInstalled: false });
-  vi.mocked(getInstalledMods).mockResolvedValue([mod]);
-  vi.mocked(listUnmanagedMods).mockResolvedValue(["Manual-Mod"]);
-  vi.mocked(syncMods).mockResolvedValue({ cleaned: [], failed: [], reinstalled: [] });
+  mock.clearAllMocks();
+  fetchPackagesMock.mockResolvedValue([]);
+  getInstalledModsMock.mockResolvedValue([mod]);
+  listUnmanagedModsMock.mockResolvedValue(["Manual-Mod"]);
+  syncModsMock.mockResolvedValue({ cleaned: [], failed: [], reinstalled: [] });
 });
 afterEach(cleanup);
 test("search reads the Rust author field and does not blank", async () => {
-  render(<InstalledModList />);
+  renderWithClient(<InstalledModList />);
   await screen.findByText("by Therzie");
   fireEvent.change(screen.getByPlaceholderText("Search installed mods..."), {
     target: { value: "Therzie" },
@@ -47,8 +63,8 @@ test("search reads the Rust author field and does not blank", async () => {
   expect(screen.queryByText("Wizardry")).toBeNull();
 });
 test("canceling native cleanup confirmation makes no mutation", async () => {
-  vi.mocked(confirm).mockResolvedValue(false);
-  render(<InstalledModList />);
+  confirmMock.mockResolvedValue(false);
+  renderWithClient(<InstalledModList />);
   await screen.findByText("Wizardry");
   fireEvent.click(screen.getByText("Sync & Clean"));
   await waitFor(() => expect(confirm).toHaveBeenCalled());
@@ -57,12 +73,12 @@ test("canceling native cleanup confirmation makes no mutation", async () => {
 });
 test("awaits confirmation before sending approved names", async () => {
   let answer!: (value: boolean) => void;
-  vi.mocked(confirm).mockReturnValue(
+  confirmMock.mockReturnValue(
     new Promise((resolve) => {
       answer = resolve;
     }),
   );
-  render(<InstalledModList />);
+  renderWithClient(<InstalledModList />);
   await screen.findByText("Wizardry");
   fireEvent.click(screen.getByText("Sync & Clean"));
   await waitFor(() => expect(confirm).toHaveBeenCalled());

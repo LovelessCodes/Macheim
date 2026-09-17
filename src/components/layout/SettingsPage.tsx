@@ -9,13 +9,11 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
-import { createBackup, listBackups, restoreBackup } from "../../lib/tauri";
-import type { BackupInfo } from "../../lib/types";
-import { useAppStore } from "../../store/appStore";
+import { useBackups, useCreateBackup, useRestoreBackup } from "../../hooks/use-backups";
+import { useGameStatus } from "../../hooks/use-game-status";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
-import { toast } from "../ui/toast";
 
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -27,42 +25,11 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 }
 
 export default function SettingsPage() {
-  const gameStatus = useAppStore((s) => s.gameStatus);
-  const [backups, setBackups] = useState<BackupInfo[]>([]);
-  const [backupsLoaded, setBackupsLoaded] = useState(false);
-  const [isCreatingBackup, setIsCreatingBackup] = useState(false);
-
-  const loadBackups = async () => {
-    try {
-      const data = await listBackups();
-      setBackups(data);
-      setBackupsLoaded(true);
-    } catch {
-      toast.add({ type: "error", title: "Could not load backups." });
-    }
-  };
-
-  const handleCreateBackup = async () => {
-    setIsCreatingBackup(true);
-    try {
-      await createBackup();
-      toast.add({ type: "success", title: "Backup created." });
-      await loadBackups();
-    } catch (err) {
-      toast.add({ type: "error", title: `Backup failed: ${err}` });
-    } finally {
-      setIsCreatingBackup(false);
-    }
-  };
-
-  const handleRestore = async (filename: string) => {
-    try {
-      await restoreBackup(filename);
-      toast.add({ type: "success", title: "Backup restored." });
-    } catch (err) {
-      toast.add({ type: "error", title: `Restore failed: ${err}` });
-    }
-  };
+  const { data: gameStatus } = useGameStatus();
+  const [backupsRequested, setBackupsRequested] = useState(false);
+  const { data: backups = [] } = useBackups(backupsRequested);
+  const createBackupMutation = useCreateBackup();
+  const restoreBackupMutation = useRestoreBackup();
 
   return (
     <div className="grid gap-6">
@@ -151,22 +118,25 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="flex flex-wrap gap-2">
-            {!backupsLoaded && (
-              <Button variant="outline" size="sm" onClick={loadBackups}>
+            {!backupsRequested && (
+              <Button variant="outline" size="sm" onClick={() => setBackupsRequested(true)}>
                 Load Backups
               </Button>
             )}
             <Button
               variant="accent-primary"
               size="sm"
-              onClick={handleCreateBackup}
-              disabled={isCreatingBackup}
+              onClick={() => {
+                setBackupsRequested(true);
+                createBackupMutation.mutate();
+              }}
+              disabled={createBackupMutation.isPending}
             >
-              {isCreatingBackup ? <Loader2 className="animate-spin" /> : <Archive />}
-              {isCreatingBackup ? "Creating..." : "Create Backup"}
+              {createBackupMutation.isPending ? <Loader2 className="animate-spin" /> : <Archive />}
+              {createBackupMutation.isPending ? "Creating..." : "Create Backup"}
             </Button>
           </div>
-          {backupsLoaded && backups.length === 0 && (
+          {backupsRequested && backups.length === 0 && (
             <p className="text-muted-foreground text-sm">No backups found.</p>
           )}
           {backups.length > 0 && (
@@ -183,10 +153,16 @@ export default function SettingsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleRestore(b.filename)}
+                    onClick={() => restoreBackupMutation.mutate(b.filename)}
+                    disabled={restoreBackupMutation.isPending}
                     title={`Restore ${b.profile_name}`}
                   >
-                    <Download />
+                    {restoreBackupMutation.isPending &&
+                    restoreBackupMutation.variables === b.filename ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Download />
+                    )}
                     Restore
                   </Button>
                 </div>

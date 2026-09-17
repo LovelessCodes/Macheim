@@ -1,4 +1,48 @@
-import type { SortDirection, SortOption, ThunderstorePackage } from "./types";
+import type { PackageSourceFilter, SortDirection, SortOption, ThunderstorePackage } from "./types";
+
+export interface PackageFilter {
+  searchQuery?: string;
+  selectedCategories?: string[];
+  selectedSource?: PackageSourceFilter;
+}
+
+export function isModpackCategory(pkg: ThunderstorePackage): boolean {
+  return (pkg.categories ?? []).some((cat) => {
+    const normalized = cat.toLowerCase();
+    return normalized === "modpack" || normalized === "modpacks";
+  });
+}
+
+export function filterPackages(
+  packages: ThunderstorePackage[],
+  { searchQuery = "", selectedCategories = [], selectedSource = "all" }: PackageFilter,
+): ThunderstorePackage[] {
+  // Browse Mods excludes modpacks (they have their own page).
+  let filtered = packages.filter((pkg) => !pkg.is_deprecated && !isModpackCategory(pkg));
+
+  if (selectedSource !== "all") {
+    filtered = filtered.filter((pkg) => pkg.source === selectedSource);
+  }
+
+  if (selectedCategories.length > 0) {
+    filtered = filtered.filter((pkg) =>
+      (pkg.categories ?? []).some((cat) => selectedCategories.includes(cat)),
+    );
+  }
+
+  const q = searchQuery.trim().toLowerCase();
+  if (q) {
+    filtered = filtered.filter(
+      (pkg) =>
+        pkg.name.toLowerCase().includes(q) ||
+        pkg.full_name.toLowerCase().includes(q) ||
+        pkg.owner.toLowerCase().includes(q) ||
+        (pkg.description ?? "").toLowerCase().includes(q),
+    );
+  }
+
+  return filtered;
+}
 
 export function sortPackages(
   packages: ThunderstorePackage[],

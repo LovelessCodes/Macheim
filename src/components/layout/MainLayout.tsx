@@ -1,9 +1,10 @@
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
-import { fetchPackages, getInstalledMods } from "../../lib/tauri";
+import { useProfiles } from "../../hooks/use-profiles";
+import { installedModsQueryKey, packagesQueryKey } from "../../lib/query-keys";
 import { useAppStore } from "../../store/appStore";
 import { useModStore } from "../../store/modStore";
-import { useProfileStore } from "../../store/profileStore";
 import CompatibilityPage from "../compatibility/CompatibilityPage";
 import ConfigEditor from "../config/ConfigEditor";
 import InstalledModList from "../mods/InstalledModList";
@@ -13,57 +14,33 @@ import ModpackBrowser from "../mods/ModpackBrowser";
 import ProfileManager from "../profiles/ProfileManager";
 import { ScrollArea } from "../ui/scroll-area";
 import { SidebarInset, SidebarProvider } from "../ui/sidebar";
-import { toast } from "../ui/toast";
 import Header from "./Header";
 import SettingsPage from "./SettingsPage";
 import Sidebar from "./Sidebar";
 
 export default function MainLayout() {
-  const activeProfile = useProfileStore((s) => s.activeProfile);
+  const { data: profileData } = useProfiles();
+  const activeProfile = profileData?.activeProfile ?? "Default";
   const currentPage = useAppStore((s) => s.currentPage);
-  const setPackages = useModStore((s) => s.setPackages);
-  const setInstalledMods = useModStore((s) => s.setInstalledMods);
-  const setLoadingPackages = useModStore((s) => s.setLoadingPackages);
-  const setLoadingInstalled = useModStore((s) => s.setLoadingInstalled);
-  const isLoadingPackages = useModStore((s) => s.isLoadingPackages);
-  const isLoadingInstalled = useModStore((s) => s.isLoadingInstalled);
+  const queryClient = useQueryClient();
   const selectedPackage = useModStore((s) => s.selectedPackage);
   const setSelectedPackage = useModStore((s) => s.setSelectedPackage);
 
+  const fetchingPackages = useIsFetching({ queryKey: packagesQueryKey });
+  const fetchingInstalled = useIsFetching({ queryKey: installedModsQueryKey });
+
   const handleRefresh = useCallback(async () => {
     if (currentPage === "browse" || currentPage === "modpacks") {
-      setLoadingPackages(true);
-      try {
-        const pkgs = await fetchPackages();
-        setPackages(pkgs);
-      } catch (err) {
-        toast.add({
-          type: "error",
-          title: `Failed to fetch packages: ${err}`,
-        });
-      } finally {
-        setLoadingPackages(false);
-      }
+      await queryClient.refetchQueries({ queryKey: packagesQueryKey });
     } else if (currentPage === "installed") {
-      setLoadingInstalled(true);
-      try {
-        const mods = await getInstalledMods();
-        setInstalledMods(mods);
-      } catch (err) {
-        toast.add({
-          type: "error",
-          title: `Failed to load installed mods: ${err}`,
-        });
-      } finally {
-        setLoadingInstalled(false);
-      }
+      await queryClient.refetchQueries({ queryKey: installedModsQueryKey });
     }
-  }, [currentPage, setLoadingPackages, setPackages, setLoadingInstalled, setInstalledMods]);
+  }, [currentPage, queryClient]);
 
   const showRefresh =
     currentPage === "browse" || currentPage === "installed" || currentPage === "modpacks";
 
-  const isRefreshing = isLoadingPackages || isLoadingInstalled;
+  const isRefreshing = fetchingPackages > 0 || fetchingInstalled > 0;
 
   const renderPage = () => {
     switch (currentPage) {

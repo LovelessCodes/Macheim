@@ -7,7 +7,8 @@ use tracing::info;
 use crate::error::{AppError, AppResult};
 use crate::models::InstalledMod;
 use crate::services::{
-    dependency_resolver, game_detector, mod_installer, profile_manager, thunderstore_client,
+    dependency_resolver, game_detector, mod_installer, package_sources, profile_manager,
+    thunderstore_client,
 };
 use crate::AppState;
 
@@ -58,7 +59,7 @@ async fn install_mod_inner(
     crate::services::launcher::ensure_game_stopped()?;
     profile_manager::validate_name(&full_name)?;
 
-    let (game_path, packages, active_profile) = {
+    let (game_path, cached_packages, active_profile) = {
         let state = state
             .lock()
             .map_err(|e| AppError::Mod(format!("Failed to lock state: {}", e)))?;
@@ -68,14 +69,25 @@ async fn install_mod_inner(
             .clone()
             .ok_or_else(|| AppError::Mod("Game path not set".to_string()))?;
 
-        let packages = state
-            .thunderstore_cache
-            .clone()
-            .ok_or_else(|| AppError::Mod("Package cache not loaded".to_string()))?;
+        (
+            game_path,
+            state.package_cache.clone(),
+            state.active_profile.clone(),
+        )
+    };
 
-        let active_profile = state.active_profile.clone();
-
-        (game_path, packages, active_profile)
+    let packages = match cached_packages {
+        Some(packages) => packages,
+        None => {
+            info!("Package cache not loaded, fetching packages first...");
+            let packages = package_sources::fetch_all_packages(false).await?;
+            let mut state = state
+                .lock()
+                .map_err(|e| AppError::Mod(format!("Failed to lock state: {}", e)))?;
+            state.package_cache = Some(packages.clone());
+            state.cache_updated_at = Some(chrono::Utc::now());
+            packages
+        }
     };
 
     let game_root = game_detector::get_valheim_root(&game_path);
@@ -212,8 +224,21 @@ async fn install_mod_inner(
         }
     }
 
-    // Install the target mod itself
-    if !installed_set.contains(&full_name) {
+    // Install the target mod itself. Reinstall when a different version is
+    // requested so users can switch between versions.
+    let installed_version = profile
+        .mods
+        .iter()
+        .find(|m| m.full_name == full_name)
+        .map(|m| m.version.as_str());
+    let version_changed = installed_version != Some(target_version);
+
+    if version_changed {
+        if installed_version.is_some() {
+            // Remove the old version's files so stale files don't linger.
+            mod_installer::uninstall_mod(&full_name, &game_root)?;
+        }
+
         emit_progress(
             &app,
             "downloading",
@@ -440,7 +465,7 @@ async fn sync_mods_inner(
             .game_path
             .clone()
             .ok_or_else(|| AppError::Mod("Game not set".into()))?;
-        let pkgs = s.thunderstore_cache.clone();
+        let pkgs = s.package_cache.clone();
         (gp, pkgs, s.active_profile.clone())
     };
 
@@ -457,11 +482,11 @@ async fn sync_mods_inner(
                 None,
                 "Fetching package list...",
             );
-            let p = thunderstore_client::fetch_packages(false).await?;
+            let p = package_sources::fetch_all_packages(false).await?;
             let mut s = state
                 .lock()
                 .map_err(|e| AppError::Mod(format!("Lock: {}", e)))?;
-            s.thunderstore_cache = Some(p.clone());
+            s.package_cache = Some(p.clone());
             p
         }
     };

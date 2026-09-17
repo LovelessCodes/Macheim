@@ -1,11 +1,13 @@
+import { beforeEach, expect, mock, test } from "bun:test";
+
 import { invoke } from "@tauri-apps/api/core";
-import { beforeEach, expect, test, vi } from "vitest";
+
+void mock.module("@tauri-apps/api/core", () => ({
+  invoke: mock(() => Promise.resolve({})),
+}));
 
 import { applyCompatibility, syncMods } from "./tauri";
-vi.mock("@tauri-apps/api/core", () => ({
-  invoke: vi.fn<(...args: unknown[]) => Promise<unknown>>().mockResolvedValue({}),
-}));
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => mock.clearAllMocks());
 test("sync sends a boolean, never a UI event or Promise", async () => {
   await syncMods();
   expect(invoke).toHaveBeenCalledWith("sync_mods", {

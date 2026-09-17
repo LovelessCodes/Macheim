@@ -1,61 +1,27 @@
 import { Shield, RefreshCw, Loader2, AlertTriangle } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
 
 import { useAppVersion } from "../../hooks/use-app-version";
-import { getCompatibility, applyCompatibility } from "../../lib/tauri";
-import type { CompatibilitySettings, CompatibilityStatus } from "../../lib/types";
+import { useApplyCompatibility, useCompatibility } from "../../hooks/use-compatibility";
+import type { CompatibilitySettings } from "../../lib/types";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Button } from "../ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
-import { toast } from "../ui/toast";
 
 export default function CompatibilityPage() {
   const version = useAppVersion();
-  const [status, setStatus] = useState<CompatibilityStatus | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const load = useCallback(async () => {
-    setBusy(true);
-    setError("");
-    try {
-      setStatus(await getCompatibility());
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setBusy(false);
-    }
-  }, []);
-  useEffect(() => {
-    let cancelled = false;
-    getCompatibility()
-      .then((next) => {
-        if (!cancelled) setStatus(next);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(String(e));
-      })
-      .finally(() => {
-        if (!cancelled) setBusy(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  async function apply(settings: CompatibilitySettings) {
+  const { data: status = null, isFetching, error: loadError, refetch } = useCompatibility();
+  const applyCompatibilityMutation = useApplyCompatibility();
+
+  const busy = isFetching || applyCompatibilityMutation.isPending;
+  const error = loadError
+    ? String(loadError)
+    : applyCompatibilityMutation.error
+      ? String(applyCompatibilityMutation.error)
+      : "";
+
+  function apply(settings: CompatibilitySettings) {
     if (!status) return;
-    setBusy(true);
-    setError("");
-    try {
-      setStatus(await applyCompatibility(status.profile_name, settings));
-      toast.add({
-        type: "success",
-        title: "Compatibility settings saved for the next game launch.",
-      });
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setBusy(false);
-    }
+    applyCompatibilityMutation.mutate({ profileName: status.profile_name, settings });
   }
   return (
     <div className="grid gap-5">
@@ -69,7 +35,7 @@ export default function CompatibilityPage() {
             Version-pinned visual workarounds, controlled per profile.
           </CardDescription>
           <CardAction>
-            <Button variant="outline" size="sm" onClick={load} disabled={busy}>
+            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={busy}>
               {busy ? <Loader2 className="animate-spin" /> : <RefreshCw />}
               Check support
             </Button>

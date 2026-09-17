@@ -14,7 +14,7 @@ import {
 import { Page } from "@/lib/types";
 
 import { useAppVersion } from "../../hooks/use-app-version";
-import { launchModded, launchVanilla } from "../../lib/tauri";
+import { useLaunchModded, useLaunchVanilla } from "../../hooks/use-launch-game";
 import { useAppStore } from "../../store/appStore";
 import ProfileSelector from "../profiles/ProfileSelector";
 import { Button } from "../ui/button";
@@ -32,7 +32,6 @@ import {
   SidebarRail,
   SidebarSeparator,
 } from "../ui/sidebar";
-import { toast } from "../ui/toast";
 
 interface NavItem {
   page: Page;
@@ -54,30 +53,8 @@ export default function Sidebar() {
   const currentPage = useAppStore((s) => s.currentPage);
   const setCurrentPage = useAppStore((s) => s.setCurrentPage);
   const version = useAppVersion();
-
-  const handleLaunchModded = async () => {
-    try {
-      await launchModded();
-      toast.add({ type: "success", title: "Launching Valheim (modded)..." });
-    } catch (err) {
-      toast.add({
-        type: "error",
-        title: `Failed to launch: ${err}`,
-      });
-    }
-  };
-
-  const handleLaunchVanilla = async () => {
-    try {
-      await launchVanilla();
-      toast.add({ type: "success", title: "Launching Valheim (vanilla)..." });
-    } catch (err) {
-      toast.add({
-        type: "error",
-        title: `Failed to launch: ${err}`,
-      });
-    }
-  };
+  const launchModdedMutation = useLaunchModded();
+  const launchVanillaMutation = useLaunchVanilla();
 
   return (
     <SidebarRoot collapsible="icon">
@@ -135,7 +112,8 @@ export default function Sidebar() {
         <Button
           variant="amber"
           className="w-full group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:px-0"
-          onClick={handleLaunchModded}
+          onClick={() => launchModdedMutation.mutate()}
+          disabled={launchModdedMutation.isPending || launchVanillaMutation.isPending}
         >
           <Play />
           <span className="group-data-[collapsible=icon]:hidden">Play Modded</span>
@@ -143,7 +121,8 @@ export default function Sidebar() {
         <Button
           variant="outline"
           className="w-full group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:px-0"
-          onClick={handleLaunchVanilla}
+          onClick={() => launchVanillaMutation.mutate()}
+          disabled={launchModdedMutation.isPending || launchVanillaMutation.isPending}
         >
           <Wrench />
           <span className="group-data-[collapsible=icon]:hidden">Play Vanilla</span>

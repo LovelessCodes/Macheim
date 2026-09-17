@@ -37,9 +37,9 @@ pub struct AppState {
     pub bepinex_installed: bool,
     /// Name of the currently active mod profile
     pub active_profile: String,
-    /// Cached Thunderstore package data
-    pub thunderstore_cache: Option<Vec<ThunderstorePackage>>,
-    /// When the Thunderstore cache was last updated
+    /// Cached package data from all stores (Thunderstore + Hexium)
+    pub package_cache: Option<Vec<ThunderstorePackage>>,
+    /// When the package cache was last updated
     pub cache_updated_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
@@ -50,7 +50,7 @@ impl Default for AppState {
             game_path: None,
             bepinex_installed: false,
             active_profile: "Default".to_string(),
-            thunderstore_cache: None,
+            package_cache: None,
             cache_updated_at: None,
         }
     }
@@ -108,11 +108,9 @@ pub fn run() {
             commands::game::set_game_path,
             // BepInEx management
             commands::bepinex::install_bepinex,
-            commands::bepinex::get_bepinex_status,
             commands::bepinex::uninstall_bepinex,
             // Thunderstore
             commands::thunderstore::fetch_packages,
-            commands::thunderstore::search_packages,
             commands::thunderstore::get_package_details,
             // Mod management
             commands::mods::install_mod,

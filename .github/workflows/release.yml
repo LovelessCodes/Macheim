@@ -24,10 +24,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -40,14 +38,14 @@ jobs:
           workspaces: "./src-tauri -> target"
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: bun install
 
       - name: Verify release metadata and bundled plugin
-        run: npm run verify:release
+        run: bun run verify:release
 
       - name: Regression tests
         run: |
-          npm test
+          bun run test
           cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
 
       - name: Setup .NET for pure shader policy tests

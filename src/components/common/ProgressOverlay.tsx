@@ -58,7 +58,7 @@ export default function ProgressOverlay() {
     });
 
     return () => {
-      unlisten.then((fn) => fn());
+      void unlisten.then((fn) => fn());
       clearHideTimeout();
     };
   }, []);

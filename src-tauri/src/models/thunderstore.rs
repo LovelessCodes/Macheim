@@ -1,5 +1,14 @@
 use serde::{Deserialize, Serialize};
 
+/// Store a package was fetched from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum PackageSource {
+    #[default]
+    Thunderstore,
+    Hexium,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThunderstorePackage {
     pub name: String,
@@ -14,6 +23,8 @@ pub struct ThunderstorePackage {
     pub categories: Vec<String>,
     #[serde(default)]
     pub is_pinned: bool,
+    #[serde(default)]
+    pub source: PackageSource,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,6 +52,7 @@ pub struct PackageListing {
     pub name: String,
     pub full_name: String,
     pub owner: String,
+    pub package_url: String,
     pub description: String,
     pub version_number: String,
     pub rating_score: u32,
@@ -49,6 +61,7 @@ pub struct PackageListing {
     pub icon: String,
     pub categories: Vec<String>,
     pub date_updated: String,
+    pub source: PackageSource,
 }
 
 impl From<&ThunderstorePackage> for PackageListing {
@@ -58,6 +71,7 @@ impl From<&ThunderstorePackage> for PackageListing {
             name: pkg.name.clone(),
             full_name: pkg.full_name.clone(),
             owner: pkg.owner.clone(),
+            package_url: pkg.package_url.clone(),
             description: latest.map(|v| v.description.clone()).unwrap_or_default(),
             version_number: latest.map(|v| v.version_number.clone()).unwrap_or_default(),
             rating_score: pkg.rating_score,
@@ -66,6 +80,7 @@ impl From<&ThunderstorePackage> for PackageListing {
             icon: latest.map(|v| v.icon.clone()).unwrap_or_default(),
             categories: pkg.categories.clone(),
             date_updated: pkg.date_updated.clone(),
+            source: pkg.source,
         }
     }
 }

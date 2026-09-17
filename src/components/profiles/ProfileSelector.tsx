@@ -1,8 +1,6 @@
 import { Check, ChevronDown, User } from "lucide-react";
-import { useEffect } from "react";
 
-import { getActiveProfile, listProfiles, switchProfile } from "../../lib/tauri";
-import { useProfileStore } from "../../store/profileStore";
+import { useProfiles, useSwitchProfile } from "../../hooks/use-profiles";
 import { Button } from "../ui/button";
 import {
   DropdownMenu,
@@ -10,50 +8,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { toast } from "../ui/toast";
 
 export default function ProfileSelector() {
-  const profiles = useProfileStore((s) => s.profiles);
-  const activeProfile = useProfileStore((s) => s.activeProfile);
-  const setProfiles = useProfileStore((s) => s.setProfiles);
-  const setActiveProfile = useProfileStore((s) => s.setActiveProfile);
+  const { data } = useProfiles();
+  const switchProfileMutation = useSwitchProfile();
+  const profiles = data?.profiles ?? [];
+  const activeProfile = data?.activeProfile ?? "Default";
 
-  // Load profiles on mount
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await listProfiles();
-        setProfiles(data);
-        setActiveProfile(await getActiveProfile());
-      } catch {
-        // Backend may not be ready; use defaults
-        setProfiles([
-          {
-            name: "Default",
-            mods: [],
-            description: "",
-            compatibility: { automatic: true, disabled_rules: [] },
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-        ]);
-      }
-    }
-    load();
-  }, [setProfiles, setActiveProfile]);
-
-  const handleSwitch = async (name: string) => {
+  const handleSwitch = (name: string) => {
     if (name === activeProfile) return;
-    try {
-      await switchProfile(name);
-      setActiveProfile(name);
-      toast.add({ type: "success", title: `Switched to profile "${name}"` });
-    } catch (err) {
-      toast.add({
-        type: "error",
-        title: `Failed to switch profile: ${err}`,
-      });
-    }
+    switchProfileMutation.mutate(name);
   };
 
   return (

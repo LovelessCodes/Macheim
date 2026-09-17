@@ -1,0 +1,10 @@
+export const packagesQueryKey = ["packages"] as const;
+export const packageDetailQueryKey = (fullName: string) => ["package-detail", fullName] as const;
+export const gameStatusQueryKey = ["game-status"] as const;
+export const configFilesQueryKey = ["config-files"] as const;
+export const configQueryKey = (path: string) => ["config", path] as const;
+export const installedModsQueryKey = ["installed-mods"] as const;
+export const profilesQueryKey = ["profiles"] as const;
+export const appVersionQueryKey = ["app-version"] as const;
+export const compatibilityQueryKey = ["compatibility"] as const;
+export const backupsQueryKey = ["backups"] as const;

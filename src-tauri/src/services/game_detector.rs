@@ -193,24 +193,3 @@ pub fn get_game_status_info(game_path: &Option<PathBuf>, bepinex_installed: bool
         },
     }
 }
-
-/// Try to read the game version from Info.plist
-fn read_game_version(app_path: &PathBuf) -> Option<String> {
-    let info_plist = app_path.join("Contents/Info.plist");
-    if !info_plist.exists() {
-        return None;
-    }
-
-    match plist::Value::from_file(&info_plist) {
-        Ok(plist::Value::Dictionary(dict)) => {
-            if let Some(plist::Value::String(version)) = dict.get("CFBundleShortVersionString") {
-                Some(version.clone())
-            } else if let Some(plist::Value::String(version)) = dict.get("CFBundleVersion") {
-                Some(version.clone())
-            } else {
-                None
-            }
-        }
-        _ => None,
-    }
-}

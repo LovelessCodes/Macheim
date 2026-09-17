@@ -1,5 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
 import {
   Download,
+  Check,
   CheckCircle,
   Loader2,
   ExternalLink,
@@ -10,10 +12,13 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { useInstalledMods } from "../../hooks/use-installed-mods";
+import { useModUninstall } from "../../hooks/use-mod-uninstall";
+import { usePackageInstall } from "../../hooks/use-package-install";
 import { formatDate, formatDownloads } from "../../lib/format";
-import { installMod, uninstallMod, getInstalledMods, getPackageDetails } from "../../lib/tauri";
-import type { ThunderstorePackage, PackageDetail } from "../../lib/types";
-import { useModStore } from "../../store/modStore";
+import { packageDetailQueryKey } from "../../lib/query-keys";
+import { getPackageDetails } from "../../lib/tauri";
+import type { ThunderstorePackage } from "../../lib/types";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -26,7 +31,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "../ui/sheet";
-import { toast } from "../ui/toast";
 import ModIcon from "./ModIcon";
 
 interface ModDetailProps {
@@ -35,14 +39,18 @@ interface ModDetailProps {
 }
 
 export default function ModDetail({ pkg, onClose }: ModDetailProps) {
-  const installedMods = useModStore((s) => s.installedMods);
-  const isInstallingMod = useModStore((s) => s.isInstallingMod);
-  const setInstallingMod = useModStore((s) => s.setInstallingMod);
-  const setInstalledMods = useModStore((s) => s.setInstalledMods);
+  const { install, isInstalled, isInstalling, installingVersion } = usePackageInstall(pkg);
+  const { uninstall } = useModUninstall();
 
-  const [detail, setDetail] = useState<PackageDetail | null>(null);
-  const [loadingDetail, setLoadingDetail] = useState(true);
-  const [detailError, setDetailError] = useState<string | null>(null);
+  const {
+    data: detail = null,
+    isPending: loadingDetail,
+    error: detailErrorObj,
+  } = useQuery({
+    queryKey: packageDetailQueryKey(pkg.full_name),
+    queryFn: () => getPackageDetails(pkg.full_name),
+  });
+  const detailError = detailErrorObj ? String(detailErrorObj) : null;
 
   // Open on the next frame so the Sheet plays its enter transition, and let
   // the exit transition finish before the parent unmounts us.
@@ -52,67 +60,33 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  // Fetch full details on mount
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      setLoadingDetail(true);
-      setDetailError(null);
-      try {
-        const d = await getPackageDetails(pkg.full_name);
-        if (!cancelled) setDetail(d);
-      } catch (err) {
-        if (!cancelled) setDetailError(String(err));
-      } finally {
-        if (!cancelled) setLoadingDetail(false);
-      }
-    }
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [pkg.full_name]);
-
-  const isInstalled = installedMods.some((m) => m.full_name === pkg.full_name);
-  const isInstalling = isInstallingMod === pkg.full_name;
+  const { data: installedMods = [] } = useInstalledMods();
+  const installedVersion = installedMods.find((m) => m.full_name === pkg.full_name)?.version;
 
   const latestVersion = detail?.versions?.[0];
   const dependencies =
     latestVersion?.dependencies?.filter((d) => !d.startsWith("denikson-BepInExPack")) ?? [];
 
-  const handleInstall = async () => {
+  const handleInstall = () => {
     if (isInstalled || isInstalling) return;
-    setInstallingMod(pkg.full_name);
-    try {
-      await installMod(pkg.full_name, pkg.version_number);
-      const mods = await getInstalledMods();
-      setInstalledMods(mods);
-      toast.add({ type: "success", title: `Installed ${pkg.name}` });
-    } catch (err) {
-      toast.add({
-        type: "error",
-        title: `Failed to install ${pkg.name}: ${err}`,
-      });
-    } finally {
-      setInstallingMod(null);
-    }
+    install(pkg.version_number);
   };
 
-  const handleUninstall = async () => {
-    try {
-      await uninstallMod(pkg.full_name);
-      const mods = await getInstalledMods();
-      setInstalledMods(mods);
-      toast.add({ type: "info", title: `Uninstalled ${pkg.name}` });
-    } catch (err) {
-      toast.add({
-        type: "error",
-        title: `Failed to uninstall ${pkg.name}: ${err}`,
-      });
-    }
+  const handleInstallVersion = (version: string) => {
+    install(version);
   };
 
-  const thunderstoreUrl = `https://thunderstore.io/c/valheim/p/${pkg.owner}/${pkg.name}/`;
+  const handleUninstall = () => {
+    uninstall(pkg.full_name, pkg.name);
+  };
+
+  const isHexium = pkg.source === "hexium";
+  const sourceLabel = isHexium ? "Hexium" : "Thunderstore";
+  const packageUrl =
+    pkg.package_url ||
+    (isHexium
+      ? `https://valheim.hexium.gg/mods/${pkg.owner}/${pkg.name}`
+      : `https://thunderstore.io/c/valheim/p/${pkg.owner}/${pkg.name}/`);
 
   return (
     <Sheet
@@ -137,7 +111,17 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
               <ModIcon src={pkg.icon} alt={pkg.name} className="size-20" iconClassName="size-8" />
               <div className="min-w-0">
                 <h3 className="text-foreground text-xl font-bold">{pkg.name}</h3>
-                <p className="text-muted-foreground mt-0.5 text-sm">by {pkg.owner}</p>
+                <div className="mt-0.5 flex items-center gap-2">
+                  <p className="text-muted-foreground text-sm">by {pkg.owner}</p>
+                  {isHexium && (
+                    <Badge
+                      variant="outline"
+                      className="border-accent-primary/40 text-accent-primary"
+                    >
+                      Hexium
+                    </Badge>
+                  )}
+                </div>
                 <div className="text-muted-foreground mt-2.5 flex flex-wrap items-center gap-4 text-xs">
                   <span className="flex items-center gap-1">
                     <Download className="size-3.5" />
@@ -209,31 +193,55 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
                   Version History ({detail.versions.length})
                 </h4>
                 <div className="space-y-1.5">
-                  {detail.versions.slice(0, 15).map((v, i) => (
-                    <div
-                      key={v.version_number}
-                      className={
-                        i === 0
-                          ? "border-accent-primary/20 bg-accent-primary/10 flex items-center justify-between border px-3 py-2 text-sm"
-                          : "bg-muted flex items-center justify-between px-3 py-2 text-sm"
-                      }
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-foreground font-mono text-xs font-medium">
-                          v{v.version_number}
-                        </span>
-                        {i === 0 && (
-                          <Badge className="bg-accent-primary border-transparent text-white">
-                            LATEST
-                          </Badge>
-                        )}
+                  {detail.versions.slice(0, 15).map((v, i) => {
+                    const isCurrent = v.version_number === installedVersion;
+                    const isVersionInstalling = installingVersion === v.version_number;
+                    return (
+                      <div
+                        key={v.version_number}
+                        className={
+                          i === 0
+                            ? "border-accent-primary/20 bg-accent-primary/10 relative flex items-center justify-between gap-2 border px-3 py-2 text-sm"
+                            : "bg-muted flex items-center justify-between gap-2 px-3 py-2 text-sm"
+                        }
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-foreground font-mono text-xs font-medium">
+                            v{v.version_number}
+                          </span>
+                          {i === 0 && (
+                            <Badge className="bg-accent-primary absolute top-0 left-0 h-3 border-transparent p-0 text-[9px] text-white opacity-75">
+                              LATEST
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-muted-foreground flex items-center gap-3 text-xs">
+                          <span>{formatDownloads(v.downloads)}</span>
+                          <span>{formatDate(v.date_created)}</span>
+                          {isCurrent ? (
+                            <Button variant="outline-success" size="sm" disabled>
+                              <Check />
+                              Installed
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline-accent-primary"
+                              size="sm"
+                              onClick={() => handleInstallVersion(v.version_number)}
+                              disabled={isInstalling}
+                            >
+                              {isVersionInstalling ? (
+                                <Loader2 className="animate-spin" />
+                              ) : (
+                                <Download />
+                              )}
+                              Install
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-muted-foreground flex items-center gap-3 text-xs">
-                        <span>{formatDownloads(v.downloads)}</span>
-                        <span>{formatDate(v.date_created)}</span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -271,10 +279,7 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
             <div className="grid w-full grid-cols-[1fr_min-content] items-center gap-1">
               <Button variant="outline-success" size="lg" disabled>
                 <CheckCircle />
-                Installed (v
-                {installedMods.find((m) => m.full_name === pkg.full_name)?.version ??
-                  pkg.version_number}
-                )
+                Installed (v{installedVersion ?? pkg.version_number})
               </Button>
               <Button variant="destructive" size="lg" onClick={handleUninstall}>
                 Uninstall
@@ -305,10 +310,10 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
             variant="outline"
             size="lg"
             className="w-full"
-            render={<a href={thunderstoreUrl} target="_blank" rel="noopener noreferrer" />}
+            render={<a href={packageUrl} target="_blank" rel="noopener noreferrer" />}
           >
             <ExternalLink />
-            View on Thunderstore
+            View on {sourceLabel}
           </Button>
         </SheetFooter>
       </SheetContent>

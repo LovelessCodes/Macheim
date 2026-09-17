@@ -28,7 +28,7 @@ export default function ModCard({
 
   const handleInstall = (e: React.MouseEvent) => {
     e.stopPropagation();
-    void install();
+    install();
   };
 
   return (
@@ -44,7 +44,17 @@ export default function ModCard({
           <CardTitle className="truncate transition-colors group-hover:text-[var(--color-accent-amber)]">
             {pkg.name}
           </CardTitle>
-          <CardDescription className="truncate">by {pkg.owner}</CardDescription>
+          <CardDescription className="flex items-center gap-1.5">
+            <span className="truncate">by {pkg.owner}</span>
+            {pkg.source === "hexium" && (
+              <Badge
+                variant="outline"
+                className="border-accent-primary/40 text-accent-primary px-1.5 text-[10px]"
+              >
+                Hexium
+              </Badge>
+            )}
+          </CardDescription>
           <CardDescription className="mt-1 line-clamp-2 leading-relaxed">
             {pkg.description || "No description"}
           </CardDescription>

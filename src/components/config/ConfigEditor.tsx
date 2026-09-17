@@ -8,9 +8,9 @@ import {
   Settings,
   AlertTriangle,
 } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 
-import { getConfigFiles, getConfig, saveConfig } from "../../lib/tauri";
+import { useConfig, useConfigFiles, useSaveConfig } from "../../hooks/use-config";
 import type { ConfigFile, ConfigFileSummary, ConfigEntry, ConfigSection } from "../../lib/types";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -18,52 +18,25 @@ import { Card, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
 import { ScrollArea } from "../ui/scroll-area";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../ui/select";
-import { toast } from "../ui/toast";
 
 export default function ConfigEditor() {
-  const [configFiles, setConfigFiles] = useState<ConfigFileSummary[]>([]);
-  const [selectedFile, setSelectedFile] = useState<ConfigFile | null>(null);
-  const [isLoadingFiles, setIsLoadingFiles] = useState(true);
-  const [isLoadingConfig, setIsLoadingConfig] = useState(false);
-  const [configError, setConfigError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const { data: configFiles = [], isPending: isLoadingFiles } = useConfigFiles();
+  const saveConfigMutation = useSaveConfig();
+
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const {
+    data: selectedFile = null,
+    isPending: isConfigPending,
+    error: configErrorObj,
+  } = useConfig(selectedPath);
+  const isLoadingConfig = selectedPath !== null && isConfigPending;
+  const configError = configErrorObj ? String(configErrorObj) : null;
+
   const [editedEntries, setEditedEntries] = useState<Map<string, string>>(new Map());
 
-  // Load config file list
-  useEffect(() => {
-    async function load() {
-      setIsLoadingFiles(true);
-      try {
-        const files = await getConfigFiles();
-        setConfigFiles(files);
-      } catch {
-        // Backend may not support this yet
-        setConfigFiles([]);
-      } finally {
-        setIsLoadingFiles(false);
-      }
-    }
-    load();
-  }, []);
-
-  const handleSelectFile = useCallback(async (file: ConfigFileSummary) => {
-    setIsLoadingConfig(true);
-    setSelectedFile(null);
-    setConfigError(null);
+  const handleSelectFile = useCallback((file: ConfigFileSummary) => {
+    setSelectedPath(file.path);
     setEditedEntries(new Map());
-    try {
-      const detail = await getConfig(file.path);
-      setSelectedFile(detail);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setConfigError(message);
-      toast.add({
-        type: "error",
-        title: `Failed to load config: ${message}`,
-      });
-    } finally {
-      setIsLoadingConfig(false);
-    }
   }, []);
 
   const handleEntryChange = (sectionName: string, key: string, value: string) => {
@@ -80,38 +53,27 @@ export default function ConfigEditor() {
     return editedEntries.get(key) ?? entry.value;
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!selectedFile) return;
 
-    setIsSaving(true);
-    try {
-      const updatedConfig: ConfigFile = {
-        ...selectedFile,
-        sections: selectedFile.sections.map((section) => ({
-          ...section,
-          entries: section.entries.map((entry) => {
-            const key = `${section.name}::${entry.key}`;
-            const newVal = editedEntries.get(key);
-            return {
-              ...entry,
-              value: newVal ?? entry.value,
-            };
-          }),
-        })),
-      };
+    const updatedConfig: ConfigFile = {
+      ...selectedFile,
+      sections: selectedFile.sections.map((section) => ({
+        ...section,
+        entries: section.entries.map((entry) => {
+          const key = `${section.name}::${entry.key}`;
+          const newVal = editedEntries.get(key);
+          return {
+            ...entry,
+            value: newVal ?? entry.value,
+          };
+        }),
+      })),
+    };
 
-      await saveConfig(updatedConfig);
-      setSelectedFile(updatedConfig);
-      setEditedEntries(new Map());
-      toast.add({ type: "success", title: "Config saved." });
-    } catch (err) {
-      toast.add({
-        type: "error",
-        title: `Failed to save config: ${err}`,
-      });
-    } finally {
-      setIsSaving(false);
-    }
+    saveConfigMutation.mutate(updatedConfig, {
+      onSuccess: () => setEditedEntries(new Map()),
+    });
   };
 
   const handleReset = () => {
@@ -227,7 +189,7 @@ export default function ConfigEditor() {
             </div>
           ) : (
             configFiles.map((file) => {
-              const isActive = selectedFile?.filename === file.filename;
+              const isActive = selectedPath === file.path;
               return (
                 <button
                   key={file.filename}
@@ -290,9 +252,9 @@ export default function ConfigEditor() {
                   variant="accent-primary"
                   size="sm"
                   onClick={handleSave}
-                  disabled={!hasChanges || isSaving}
+                  disabled={!hasChanges || saveConfigMutation.isPending}
                 >
-                  {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
+                  {saveConfigMutation.isPending ? <Loader2 className="animate-spin" /> : <Save />}
                   Save
                 </Button>
               </div>

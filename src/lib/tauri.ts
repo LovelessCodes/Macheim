@@ -1,8 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
 
-import { useAppStore } from "../store/appStore";
-import { useModStore } from "../store/modStore";
-import { useProfileStore } from "../store/profileStore";
 import type {
   GameStatus,
   ThunderstorePackage,
@@ -32,18 +29,10 @@ export async function installBepinex(): Promise<void> {
   return invoke("install_bepinex");
 }
 
-export async function getBepinexStatus(): Promise<boolean> {
-  return invoke<boolean>("get_bepinex_status");
-}
-
 // ── Thunderstore Packages ───────────────────────────────────────
 
 export async function fetchPackages(): Promise<ThunderstorePackage[]> {
   return invoke<ThunderstorePackage[]>("fetch_packages");
-}
-
-export async function searchPackages(query: string): Promise<ThunderstorePackage[]> {
-  return invoke<ThunderstorePackage[]>("search_packages", { query });
 }
 
 export async function getPackageDetails(fullName: string): Promise<PackageDetail> {
@@ -103,11 +92,7 @@ export async function createProfile(name: string): Promise<Profile> {
 }
 
 export async function switchProfile(name: string): Promise<void> {
-  await invoke("switch_profile", { name });
-  useProfileStore.getState().setActiveProfile(name);
-  useAppStore.getState().setGameStatus(await getGameStatus());
-  useModStore.getState().setInstalledMods(await getInstalledMods());
-  useProfileStore.getState().setProfiles(await listProfiles());
+  return invoke("switch_profile", { name });
 }
 
 export async function getActiveProfile(): Promise<string> {

@@ -56,15 +56,15 @@ A native macOS mod manager for [Valheim](https://store.steampowered.com/app/8929
 
 ### Build from Source
 
-Prerequisites: [Node.js](https://nodejs.org/) 24 LTS, current stable [Rust/Cargo](https://rustup.rs/), and Xcode Command Line Tools. The Tauri CLI is a project dependency. If the build says `cargo metadata` cannot be found, install Rust with rustup and restart your terminal.
+Prerequisites: [Bun](https://bun.sh/), current stable [Rust/Cargo](https://rustup.rs/), and Xcode Command Line Tools. The Tauri CLI is a project dependency. If the build says `cargo metadata` cannot be found, install Rust with rustup and restart your terminal.
 
 ```bash
 git clone https://github.com/lofcgi/macheim.git
 cd macheim
-npm ci
-npm test
-npm run verify:release
-npm run tauri build
+bun install
+bun run test
+bun run verify:release
+bun run tauri build
 ```
 
 The built DMG will be in `src-tauri/target/release/bundle/dmg/`.

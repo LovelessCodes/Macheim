@@ -1,3 +1,4 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn } from "cn";
 import {
   AlertTriangle,
@@ -9,11 +10,12 @@ import {
   Shield,
   XCircle,
 } from "lucide-react";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 
 import { useAppVersion } from "../../hooks/use-app-version";
-import { detectGame, getGameStatus, installBepinex } from "../../lib/tauri";
-import { useAppStore } from "../../store/appStore";
+import { useGameStatus } from "../../hooks/use-game-status";
+import { gameStatusQueryKey } from "../../lib/query-keys";
+import { getGameStatus, installBepinex } from "../../lib/tauri";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
@@ -29,116 +31,63 @@ const steps: { id: Step; label: string }[] = [
 ];
 
 export default function SetupWizard() {
-  const setGameStatus = useAppStore((s) => s.setGameStatus);
-  const setInitialized = useAppStore((s) => s.setInitialized);
+  const queryClient = useQueryClient();
   const version = useAppVersion();
+  const { data: status, isFetching: detecting, error: detectErrorObj, refetch } = useGameStatus();
 
-  const [step, setStep] = useState<Step>("detect");
-  const [detecting, setDetecting] = useState(true);
-  const [gamePath, setGamePath] = useState<string | null>(null);
-  const [detectError, setDetectError] = useState<string | null>(null);
-  const [installing, setInstalling] = useState(false);
   const [installProgress, setInstallProgress] = useState(0);
-  const [installError, setInstallError] = useState<string | null>(null);
+  const [bepinexReady, setBepinexReady] = useState(false);
+  const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const currentIndex = steps.findIndex((s) => s.id === step);
+  const installBepinexMutation = useMutation({
+    mutationFn: installBepinex,
+    onSuccess: () => {
+      if (progressTimer.current) clearInterval(progressTimer.current);
+      setInstallProgress(100);
+      setTimeout(() => setBepinexReady(true), 500);
+    },
+    onError: () => {
+      if (progressTimer.current) clearInterval(progressTimer.current);
+      setInstallProgress(0);
+    },
+  });
+
+  const installing = installBepinexMutation.isPending;
+  const installError = installBepinexMutation.error
+    ? `BepInEx installation failed: ${installBepinexMutation.error}`
+    : null;
+
+  const gamePath = status?.game_path ?? null;
+  const installed = status?.installed ?? false;
+  const bepinexInstalled = status?.bepinex_installed ?? false;
+  const detectError = detectErrorObj ? String(detectErrorObj) : null;
   const gameMissing = !gamePath;
 
-  // Step 1: Detect game on mount
-  useEffect(() => {
-    let cancelled = false;
-    async function detect() {
-      setDetecting(true);
-      setDetectError(null);
-      try {
-        const status = await detectGame();
-        if (cancelled) return;
-        setGameStatus(status);
-        setGamePath(status.game_path);
-
-        if (status.installed && status.bepinex_installed) {
-          setStep("ready");
-        } else if (status.installed) {
-          setStep("bepinex");
-        }
-      } catch (err) {
-        if (cancelled) return;
-        setDetectError(`Could not detect Valheim: ${err}`);
-      } finally {
-        if (!cancelled) setDetecting(false);
-      }
-    }
-    detect();
-    return () => {
-      cancelled = true;
-    };
-  }, [setGameStatus]);
+  const step: Step =
+    installed && (bepinexInstalled || bepinexReady) ? "ready" : installed ? "bepinex" : "detect";
+  const currentIndex = steps.findIndex((s) => s.id === step);
 
   // Step 2: Install BepInEx
-  const handleInstallBepinex = async () => {
-    setInstalling(true);
-    setInstallError(null);
+  const handleInstallBepinex = () => {
     setInstallProgress(0);
-
     // Simulate progress steps while waiting for the install
-    const interval = setInterval(() => {
-      setInstallProgress((p) => {
-        if (p >= 90) return 90;
-        return p + Math.random() * 15;
-      });
+    progressTimer.current = setInterval(() => {
+      setInstallProgress((p) => (p >= 90 ? 90 : p + Math.random() * 15));
     }, 400);
-
-    try {
-      await installBepinex();
-      clearInterval(interval);
-      setInstallProgress(100);
-
-      // Re-fetch status
-      try {
-        const status = await getGameStatus();
-        setGameStatus(status);
-      } catch {
-        // Continue anyway
-      }
-
-      setTimeout(() => setStep("ready"), 500);
-    } catch (err) {
-      clearInterval(interval);
-      setInstallError(`BepInEx installation failed: ${err}`);
-      setInstallProgress(0);
-    } finally {
-      setInstalling(false);
-    }
+    installBepinexMutation.mutate();
   };
 
   // Step 3: Done
   const handleFinish = async () => {
     try {
-      const status = await getGameStatus();
-      setGameStatus(status);
+      queryClient.setQueryData(gameStatusQueryKey, await getGameStatus());
     } catch {
       // ok
     }
-    setInitialized(true);
   };
 
   const handleRetryDetect = async () => {
-    setDetecting(true);
-    setDetectError(null);
-    try {
-      const status = await detectGame();
-      setGameStatus(status);
-      setGamePath(status.game_path);
-      if (status.installed && status.bepinex_installed) {
-        setStep("ready");
-      } else if (status.installed) {
-        setStep("bepinex");
-      }
-    } catch (err) {
-      setDetectError(`Detection failed: ${err}`);
-    } finally {
-      setDetecting(false);
-    }
+    await refetch();
   };
 
   return (
@@ -247,21 +196,10 @@ export default function SetupWizard() {
 
               {!detecting && (
                 <CardFooter>
-                  {detectError || gameMissing ? (
-                    <Button className="w-full" onClick={handleRetryDetect}>
-                      <Search size={16} />
-                      Retry Detection
-                    </Button>
-                  ) : (
-                    <Button
-                      className="w-full"
-                      variant="accent-primary"
-                      onClick={() => setStep("bepinex")}
-                    >
-                      Continue
-                      <ArrowRight size={16} />
-                    </Button>
-                  )}
+                  <Button className="w-full" onClick={handleRetryDetect}>
+                    <Search size={16} />
+                    Retry Detection
+                  </Button>
                 </CardFooter>
               )}
             </>

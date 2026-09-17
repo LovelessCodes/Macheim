@@ -62,7 +62,7 @@ world files and multiplayer state are not modified by the compatibility plugin.
 
 ## Validation
 
-- Current automated checks: **10 frontend tests, 17 Rust tests, 26 plugin policy/pixel checks passed**; production frontend build and npm dependency audit passed (0 reported vulnerabilities).
+- Current automated checks: **10 frontend tests, 17 Rust tests, 26 plugin policy/pixel checks passed**; production frontend build and bun dependency audit passed (0 reported vulnerabilities).
 - Local app smoke checks: apply → disable → re-enable; empty profile gets no patch;
   active profile survives app restart; switch back restores the existing mod files.
   All 86 original plugin files checked after the round trip matched their backups;
