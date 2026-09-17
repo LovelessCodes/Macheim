@@ -5,17 +5,23 @@ import { readFileSync, writeFileSync } from "node:fs";
 const json = (path) => JSON.parse(readFileSync(path, "utf8"));
 const hash = (path) => createHash("sha256").update(readFileSync(path)).digest("hex");
 const pkg = json("package.json");
-const lock = json("package-lock.json");
+const lock = readFileSync("bun.lock", "utf8");
 const tauri = json("src-tauri/tauri.conf.json");
 const cargo = readFileSync("src-tauri/Cargo.toml", "utf8").match(/^version = "([^"]+)"/m)?.[1];
 const cargoLock = readFileSync("src-tauri/Cargo.lock", "utf8").match(
   /name = "macheim"\nversion = "([^"]+)"/,
 )?.[1];
-for (const version of [lock.version, lock.packages[""].version, tauri.version, cargo, cargoLock])
+assert.equal(
+  lock.match(/"workspaces"\s*:\s*\{\s*""\s*:\s*\{\s*"name"\s*:\s*"([^"]+)"/)?.[1],
+  pkg.name,
+  "Lockfile root package must match package.json",
+);
+for (const version of [tauri.version, cargo, cargoLock])
   assert.equal(version, pkg.version, "All app and lockfile versions must match");
+const setupWizard = readFileSync("src/components/setup/SetupWizard.tsx", "utf8");
 assert.ok(
-  readFileSync("src/components/setup/SetupWizard.tsx", "utf8").includes(`Macheim v${pkg.version}`),
-  "Setup version label must match",
+  setupWizard.includes("useAppVersion"),
+  "Setup version label must come from the app version at runtime",
 );
 if (process.env.GITHUB_REF_TYPE === "tag")
   assert.equal(process.env.GITHUB_REF_NAME, `v${pkg.version}`, "Tag must match packaged version");
