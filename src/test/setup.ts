@@ -1,4 +1,10 @@
-// jsdom has no layout, so virtualized scroll containers and rows report 0x0
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+
+if (!globalThis.document) {
+  GlobalRegistrator.register();
+}
+
+// happy-dom has no layout, so virtualized scroll containers and rows report 0x0
 // and the virtualizer renders nothing. Report plausible sizes instead.
 // TanStack Virtual reads offsetWidth/offsetHeight for its measurements.
 

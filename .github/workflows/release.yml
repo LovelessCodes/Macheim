@@ -45,7 +45,7 @@ jobs:
 
       - name: Regression tests
         run: |
-          bun test
+          bun run test
           cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
 
       - name: Setup .NET for pure shader policy tests

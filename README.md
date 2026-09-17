@@ -62,7 +62,7 @@ Prerequisites: [Bun](https://bun.sh/), current stable [Rust/Cargo](https://rustu
 git clone https://github.com/lofcgi/macheim.git
 cd macheim
 bun install
-bun test
+bun run test
 bun run verify:release
 bun run tauri build
 ```
