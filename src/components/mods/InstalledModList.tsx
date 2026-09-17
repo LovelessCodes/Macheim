@@ -6,9 +6,11 @@ import { useState } from "react";
 
 import { useInstalledMods } from "../../hooks/use-installed-mods";
 import { useModUninstall } from "../../hooks/use-mod-uninstall";
+import { usePackages } from "../../hooks/use-packages";
 import { installedModsQueryKey } from "../../lib/query-keys";
 import { toggleMod, syncMods, listUnmanagedMods } from "../../lib/tauri";
 import type { InstalledMod } from "../../lib/types";
+import { useModStore } from "../../store/modStore";
 import { ListSkeleton } from "../common/LoadingSkeleton";
 import VirtualList from "../common/VirtualList";
 import { Badge } from "../ui/badge";
@@ -25,11 +27,25 @@ type ModFilter = "all" | "enabled" | "disabled";
 export default function InstalledModList() {
   const queryClient = useQueryClient();
   const { data: installedMods = [], isPending: isLoading } = useInstalledMods();
+  const { data: packages = [] } = usePackages();
   const { uninstall, uninstallingFullName } = useModUninstall();
+  const setSelectedPackage = useModStore((s) => s.setSelectedPackage);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<ModFilter>("all");
   const [togglingMod, setTogglingMod] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+
+  const openDetail = (mod: InstalledMod) => {
+    const pkg = packages.find((p) => p.full_name === mod.full_name);
+    if (!pkg) {
+      toast.add({
+        type: "info",
+        title: `No Thunderstore listing found for ${mod.name}`,
+      });
+      return;
+    }
+    setSelectedPackage(pkg);
+  };
 
   const handleToggle = async (fullName: string, currentEnabled: boolean) => {
     setTogglingMod(fullName);
@@ -157,8 +173,10 @@ export default function InstalledModList() {
           estimateRowHeight={66}
           renderItem={(mod) => (
             <div
+              onClick={() => openDetail(mod)}
+              title="View versions"
               className={cn(
-                "flex items-center gap-4 border bg-card p-3",
+                "flex cursor-pointer items-center gap-4 border bg-card p-3 transition-colors hover:bg-muted/40",
                 !mod.enabled && "opacity-50",
               )}
             >
@@ -182,6 +200,7 @@ export default function InstalledModList() {
                 checked={mod.enabled}
                 disabled={togglingMod === mod.full_name}
                 onCheckedChange={() => handleToggle(mod.full_name, mod.enabled)}
+                onClick={(e) => e.stopPropagation()}
                 aria-label={`${mod.enabled ? "Disable" : "Enable"} ${mod.name}`}
                 className="data-checked:bg-[var(--color-success)]"
               />
@@ -189,7 +208,10 @@ export default function InstalledModList() {
               <Button
                 variant="ghost"
                 size="icon-sm"
-                onClick={() => uninstall(mod.full_name, mod.name)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  uninstall(mod.full_name, mod.name);
+                }}
                 disabled={uninstallingFullName === mod.full_name}
                 title="Uninstall"
                 aria-label={`Uninstall ${mod.name}`}

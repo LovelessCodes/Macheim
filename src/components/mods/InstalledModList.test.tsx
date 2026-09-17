@@ -4,9 +4,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-import { getInstalledMods, listUnmanagedMods, syncMods } from "../../lib/tauri";
+import { fetchPackages, getInstalledMods, listUnmanagedMods, syncMods } from "../../lib/tauri";
 import InstalledModList from "./InstalledModList";
 vi.mock("../../lib/tauri", () => ({
+  fetchPackages: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   getInstalledMods: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   listUnmanagedMods: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   syncMods: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
@@ -33,6 +34,7 @@ function renderWithClient(ui: ReactNode) {
 }
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(fetchPackages).mockResolvedValue([]);
   vi.mocked(getInstalledMods).mockResolvedValue([mod]);
   vi.mocked(listUnmanagedMods).mockResolvedValue(["Manual-Mod"]);
   vi.mocked(syncMods).mockResolvedValue({ cleaned: [], failed: [], reinstalled: [] });
