@@ -112,7 +112,6 @@ pub fn run() {
             commands::bepinex::uninstall_bepinex,
             // Thunderstore
             commands::thunderstore::fetch_packages,
-            commands::thunderstore::search_packages,
             commands::thunderstore::get_package_details,
             // Mod management
             commands::mods::install_mod,

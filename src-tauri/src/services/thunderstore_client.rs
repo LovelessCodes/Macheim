@@ -6,7 +6,7 @@ use tauri::Emitter;
 use tracing::{debug, info};
 
 use crate::error::{AppError, AppResult};
-use crate::models::thunderstore::{PackageListing, ThunderstorePackage};
+use crate::models::thunderstore::ThunderstorePackage;
 
 const THUNDERSTORE_API_URL: &str = "https://thunderstore.io/c/valheim/api/v1/package/";
 const CACHE_MAX_AGE_MINUTES: i64 = 30;
@@ -121,41 +121,6 @@ pub async fn fetch_packages(force_refresh: bool) -> AppResult<Vec<ThunderstorePa
     }
 
     Ok(packages)
-}
-
-/// Search cached packages by query string.
-/// Matches against name, description, and owner (case-insensitive contains).
-pub fn search_packages(
-    packages: &[ThunderstorePackage],
-    query: &str,
-) -> Vec<PackageListing> {
-    let query_lower = query.to_lowercase();
-    let terms: Vec<&str> = query_lower.split_whitespace().collect();
-
-    packages
-        .iter()
-        .filter(|pkg| {
-            if terms.is_empty() {
-                return true;
-            }
-            let name_lower = pkg.name.to_lowercase();
-            let owner_lower = pkg.owner.to_lowercase();
-            let full_name_lower = pkg.full_name.to_lowercase();
-            let desc_lower = pkg
-                .versions
-                .first()
-                .map(|v| v.description.to_lowercase())
-                .unwrap_or_default();
-
-            terms.iter().all(|term| {
-                name_lower.contains(term)
-                    || owner_lower.contains(term)
-                    || full_name_lower.contains(term)
-                    || desc_lower.contains(term)
-            })
-        })
-        .map(PackageListing::from)
-        .collect()
 }
 
 /// Find a specific package by full name (e.g., "denikson-BepInExPack_Valheim").

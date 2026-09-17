@@ -31,25 +31,6 @@ pub async fn fetch_packages(
     Ok(listings)
 }
 
-/// Search packages by query string.
-#[tauri::command]
-pub async fn search_packages(
-    query: String,
-    state: tauri::State<'_, Mutex<AppState>>,
-) -> AppResult<Vec<PackageListing>> {
-    let state = state.lock().map_err(|e| {
-        AppError::Network(format!("Failed to lock state: {}", e))
-    })?;
-
-    let packages = state
-        .thunderstore_cache
-        .as_ref()
-        .ok_or_else(|| AppError::Network("Package cache not loaded. Fetch packages first.".to_string()))?;
-
-    let results = thunderstore_client::search_packages(packages, &query);
-    Ok(results)
-}
-
 /// Get full details for a specific package by full_name.
 #[tauri::command]
 pub async fn get_package_details(
