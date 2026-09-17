@@ -1,43 +1,27 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { Shield, RefreshCw, Loader2, AlertTriangle } from "lucide-react";
-import { useState } from "react";
 
 import { useAppVersion } from "../../hooks/use-app-version";
-import { useCompatibility } from "../../hooks/use-compatibility";
-import { compatibilityQueryKey } from "../../lib/query-keys";
-import { applyCompatibility } from "../../lib/tauri";
+import { useApplyCompatibility, useCompatibility } from "../../hooks/use-compatibility";
 import type { CompatibilitySettings } from "../../lib/types";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Button } from "../ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
-import { toast } from "../ui/toast";
 
 export default function CompatibilityPage() {
   const version = useAppVersion();
-  const queryClient = useQueryClient();
   const { data: status = null, isFetching, error: loadError, refetch } = useCompatibility();
-  const [applying, setApplying] = useState(false);
-  const [applyError, setApplyError] = useState("");
+  const applyCompatibilityMutation = useApplyCompatibility();
 
-  const busy = isFetching || applying;
-  const error = loadError ? String(loadError) : applyError;
+  const busy = isFetching || applyCompatibilityMutation.isPending;
+  const error = loadError
+    ? String(loadError)
+    : applyCompatibilityMutation.error
+      ? String(applyCompatibilityMutation.error)
+      : "";
 
-  async function apply(settings: CompatibilitySettings) {
+  function apply(settings: CompatibilitySettings) {
     if (!status) return;
-    setApplying(true);
-    setApplyError("");
-    try {
-      const next = await applyCompatibility(status.profile_name, settings);
-      queryClient.setQueryData(compatibilityQueryKey, next);
-      toast.add({
-        type: "success",
-        title: "Compatibility settings saved for the next game launch.",
-      });
-    } catch (e) {
-      setApplyError(String(e));
-    } finally {
-      setApplying(false);
-    }
+    applyCompatibilityMutation.mutate({ profileName: status.profile_name, settings });
   }
   return (
     <div className="grid gap-5">
