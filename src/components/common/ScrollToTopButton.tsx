@@ -38,11 +38,11 @@ export default function ScrollToTopButton({ viewportRef }: ScrollToTopButtonProp
     <Button
       type="button"
       variant="secondary"
-      size="icon-lg"
+      size="icon-sm"
       aria-label="Scroll to top"
       title="Scroll to top"
       onClick={scrollToTop}
-      className="animate-in fade-in slide-in-from-bottom-2 absolute right-4 bottom-4 z-10 border shadow-lg duration-150"
+      className="animate-in fade-in slide-in-from-bottom-2 absolute right-2 bottom-2 z-10 border shadow-lg duration-150"
     >
       <ArrowUp />
     </Button>
