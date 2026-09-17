@@ -28,7 +28,7 @@ export default function ModCard({
 
   const handleInstall = (e: React.MouseEvent) => {
     e.stopPropagation();
-    void install();
+    install();
   };
 
   return (
