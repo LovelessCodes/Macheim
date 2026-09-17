@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn } from "cn";
 import {
   AlertTriangle,
@@ -10,7 +10,7 @@ import {
   Shield,
   XCircle,
 } from "lucide-react";
-import { Fragment, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 
 import { useAppVersion } from "../../hooks/use-app-version";
 import { useGameStatus } from "../../hooks/use-game-status";
@@ -35,10 +35,27 @@ export default function SetupWizard() {
   const version = useAppVersion();
   const { data: status, isFetching: detecting, error: detectErrorObj, refetch } = useGameStatus();
 
-  const [installing, setInstalling] = useState(false);
   const [installProgress, setInstallProgress] = useState(0);
-  const [installError, setInstallError] = useState<string | null>(null);
   const [bepinexReady, setBepinexReady] = useState(false);
+  const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const installBepinexMutation = useMutation({
+    mutationFn: installBepinex,
+    onSuccess: () => {
+      if (progressTimer.current) clearInterval(progressTimer.current);
+      setInstallProgress(100);
+      setTimeout(() => setBepinexReady(true), 500);
+    },
+    onError: () => {
+      if (progressTimer.current) clearInterval(progressTimer.current);
+      setInstallProgress(0);
+    },
+  });
+
+  const installing = installBepinexMutation.isPending;
+  const installError = installBepinexMutation.error
+    ? `BepInEx installation failed: ${installBepinexMutation.error}`
+    : null;
 
   const gamePath = status?.game_path ?? null;
   const installed = status?.installed ?? false;
@@ -51,32 +68,13 @@ export default function SetupWizard() {
   const currentIndex = steps.findIndex((s) => s.id === step);
 
   // Step 2: Install BepInEx
-  const handleInstallBepinex = async () => {
-    setInstalling(true);
-    setInstallError(null);
+  const handleInstallBepinex = () => {
     setInstallProgress(0);
-
     // Simulate progress steps while waiting for the install
-    const interval = setInterval(() => {
-      setInstallProgress((p) => {
-        if (p >= 90) return 90;
-        return p + Math.random() * 15;
-      });
+    progressTimer.current = setInterval(() => {
+      setInstallProgress((p) => (p >= 90 ? 90 : p + Math.random() * 15));
     }, 400);
-
-    try {
-      await installBepinex();
-      clearInterval(interval);
-      setInstallProgress(100);
-
-      setTimeout(() => setBepinexReady(true), 500);
-    } catch (err) {
-      clearInterval(interval);
-      setInstallError(`BepInEx installation failed: ${err}`);
-      setInstallProgress(0);
-    } finally {
-      setInstalling(false);
-    }
+    installBepinexMutation.mutate();
   };
 
   // Step 3: Done
