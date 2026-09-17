@@ -6,11 +6,15 @@ import {
   Archive,
   AlertTriangle,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { useState } from "react";
 
+import { useAppVersion } from "../../hooks/use-app-version";
 import { useBackups, useCreateBackup, useRestoreBackup } from "../../hooks/use-backups";
 import { useGameStatus } from "../../hooks/use-game-status";
+import { useUpdater } from "../../hooks/use-updater";
+import ProgressBar from "../common/ProgressBar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
@@ -26,6 +30,8 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 
 export default function SettingsPage() {
   const { data: gameStatus } = useGameStatus();
+  const appVersion = useAppVersion();
+  const { status, version, progress, error, check, install, restart } = useUpdater();
   const [backupsRequested, setBackupsRequested] = useState(false);
   const { data: backups = [] } = useBackups(backupsRequested);
   const createBackupMutation = useCreateBackup();
@@ -100,6 +106,76 @@ export default function SettingsPage() {
               ? `${gameStatus.game_path}/BepInEx/`
               : "~/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/"}
           </p>
+        </CardContent>
+      </Card>
+
+      {/* Updates */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCw className="size-4" />
+            Updates
+          </CardTitle>
+          <CardDescription>
+            Macheim checks quietly in the background and never installs anything without your say.
+            Your mods and profiles are untouched by updates.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <InfoRow label="Installed Version">
+            <span className="font-medium">{appVersion ? `v${appVersion}` : "—"}</span>
+          </InfoRow>
+
+          {status === "downloading" && (
+            <div className="grid gap-1.5">
+              <span className="text-muted-foreground text-sm">
+                Downloading{version ? ` v${version}` : ""}...
+              </span>
+              <ProgressBar value={(progress ?? 0) * 100} />
+            </div>
+          )}
+
+          {status === "available" && (
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-sm">
+                {version ? `v${version} is available.` : "Update available."}
+              </span>
+              <Button variant="accent-primary" size="sm" onClick={() => void install()}>
+                Install Update
+              </Button>
+            </div>
+          )}
+
+          {status === "ready" && (
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-sm">
+                {version ? `v${version} is installed.` : "Update installed."} Restart to finish.
+              </span>
+              <Button variant="accent-primary" size="sm" onClick={() => void restart()}>
+                Restart
+              </Button>
+            </div>
+          )}
+
+          {status === "up-to-date" && (
+            <p className="text-sm text-[var(--color-success)]">You are on the latest version.</p>
+          )}
+
+          {status === "error" && (
+            <p className="text-destructive text-sm">Update check failed: {error}</p>
+          )}
+
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void check({ announce: true })}
+              disabled={status === "checking" || status === "downloading"}
+            >
+              {status === "checking" ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+              {status === "checking" ? "Checking..." : "Check for Updates"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
