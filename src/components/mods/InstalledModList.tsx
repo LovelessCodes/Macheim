@@ -1,15 +1,15 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { cn } from "cn";
 import { ArrowUpCircle, Package, Trash2, Power, PowerOff, RefreshCw, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 import { useInstalledMods } from "../../hooks/use-installed-mods";
+import { useModToggle } from "../../hooks/use-mod-toggle";
 import { useModUninstall } from "../../hooks/use-mod-uninstall";
 import { useModInstall } from "../../hooks/use-package-install";
 import { usePackages } from "../../hooks/use-packages";
-import { installedModsQueryKey } from "../../lib/query-keys";
-import { toggleMod, syncMods, listUnmanagedMods } from "../../lib/tauri";
+import { useSyncMods } from "../../hooks/use-sync-mods";
+import { listUnmanagedMods } from "../../lib/tauri";
 import type { InstalledMod } from "../../lib/types";
 import { useModStore } from "../../store/modStore";
 import { ListSkeleton } from "../common/LoadingSkeleton";
@@ -27,16 +27,20 @@ import ModSearchInput from "./ModSearchInput";
 type ModFilter = "all" | "enabled" | "disabled";
 
 export default function InstalledModList() {
-  const queryClient = useQueryClient();
   const { data: installedMods = [], isPending: isLoading } = useInstalledMods();
   const { data: packages = [] } = usePackages();
   const { uninstall, uninstallingFullName } = useModUninstall();
   const { install, installingFullName } = useModInstall();
+  const toggleModMutation = useModToggle();
+  const syncModsMutation = useSyncMods();
   const setSelectedPackage = useModStore((s) => s.setSelectedPackage);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<ModFilter>("all");
-  const [togglingMod, setTogglingMod] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState(false);
+
+  const togglingMod = toggleModMutation.isPending
+    ? (toggleModMutation.variables?.fullName ?? null)
+    : null;
+  const syncing = syncModsMutation.isPending;
 
   const openDetail = (mod: InstalledMod) => {
     const pkg = packages.find((p) => p.full_name === mod.full_name);
@@ -50,21 +54,8 @@ export default function InstalledModList() {
     setSelectedPackage(pkg);
   };
 
-  const handleToggle = async (fullName: string, currentEnabled: boolean) => {
-    setTogglingMod(fullName);
-    try {
-      await toggleMod(fullName, !currentEnabled);
-      queryClient.setQueryData<InstalledMod[]>(installedModsQueryKey, (prev) =>
-        prev?.map((m) => (m.full_name === fullName ? { ...m, enabled: !currentEnabled } : m)),
-      );
-    } catch (err) {
-      toast.add({
-        type: "error",
-        title: `Failed to toggle mod: ${err}`,
-      });
-    } finally {
-      setTogglingMod(null);
-    }
+  const handleToggle = (fullName: string, currentEnabled: boolean) => {
+    toggleModMutation.mutate({ fullName, enable: !currentEnabled });
   };
 
   const handleUninstall = async (mod: InstalledMod, skipConfirm: boolean) => {
@@ -79,7 +70,6 @@ export default function InstalledModList() {
   };
 
   const handleSync = async () => {
-    setSyncing(true);
     try {
       // Check for unmanaged mods before cleaning
       const unmanaged = await listUnmanagedMods();
@@ -93,20 +83,12 @@ export default function InstalledModList() {
         );
         if (!doClean) return;
       }
-      const result = await syncMods(doClean, doClean ? unmanaged : []);
-      const msgs: string[] = [];
-      if (result.reinstalled.length > 0) msgs.push(`${result.reinstalled.length} reinstalled`);
-      if (result.cleaned.length > 0) msgs.push(`${result.cleaned.length} cleaned`);
-      if (result.failed.length > 0) msgs.push(`${result.failed.length} failed`);
-      toast.add({
-        type: result.failed.length > 0 ? "warning" : "success",
-        title: `Sync complete: ${msgs.join(", ") || "all up to date"}`,
+      syncModsMutation.mutate({
+        cleanUnmanaged: doClean,
+        approvedUnmanaged: doClean ? unmanaged : [],
       });
-      await queryClient.refetchQueries({ queryKey: installedModsQueryKey });
     } catch (err) {
       toast.add({ type: "error", title: `Sync failed: ${err}` });
-    } finally {
-      setSyncing(false);
     }
   };
 
