@@ -59,7 +59,7 @@ async fn install_mod_inner(
     crate::services::launcher::ensure_game_stopped()?;
     profile_manager::validate_name(&full_name)?;
 
-    let (game_path, packages, active_profile) = {
+    let (game_path, cached_packages, active_profile) = {
         let state = state
             .lock()
             .map_err(|e| AppError::Mod(format!("Failed to lock state: {}", e)))?;
@@ -69,14 +69,25 @@ async fn install_mod_inner(
             .clone()
             .ok_or_else(|| AppError::Mod("Game path not set".to_string()))?;
 
-        let packages = state
-            .package_cache
-            .clone()
-            .ok_or_else(|| AppError::Mod("Package cache not loaded".to_string()))?;
+        (
+            game_path,
+            state.package_cache.clone(),
+            state.active_profile.clone(),
+        )
+    };
 
-        let active_profile = state.active_profile.clone();
-
-        (game_path, packages, active_profile)
+    let packages = match cached_packages {
+        Some(packages) => packages,
+        None => {
+            info!("Package cache not loaded, fetching packages first...");
+            let packages = package_sources::fetch_all_packages(false).await?;
+            let mut state = state
+                .lock()
+                .map_err(|e| AppError::Mod(format!("Failed to lock state: {}", e)))?;
+            state.package_cache = Some(packages.clone());
+            state.cache_updated_at = Some(chrono::Utc::now());
+            packages
+        }
     };
 
     let game_root = game_detector::get_valheim_root(&game_path);
