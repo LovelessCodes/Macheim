@@ -67,6 +67,17 @@ export default function InstalledModList() {
     }
   };
 
+  const handleUninstall = async (mod: InstalledMod, skipConfirm: boolean) => {
+    if (!skipConfirm) {
+      const confirmed = await confirm(`Uninstall "${mod.name}"? This removes its files.`, {
+        title: "Uninstall mod",
+        kind: "warning",
+      });
+      if (!confirmed) return;
+    }
+    uninstall(mod.full_name, mod.name);
+  };
+
   const handleSync = async () => {
     setSyncing(true);
     try {
@@ -180,7 +191,6 @@ export default function InstalledModList() {
             return (
               <div
                 onClick={() => openDetail(mod)}
-                title="View versions"
                 className={cn(
                   "flex cursor-pointer items-center gap-4 border bg-card p-3 transition-colors hover:bg-muted/40",
                   !mod.enabled && "opacity-50",
@@ -242,10 +252,10 @@ export default function InstalledModList() {
                   size="icon-sm"
                   onClick={(e) => {
                     e.stopPropagation();
-                    uninstall(mod.full_name, mod.name);
+                    void handleUninstall(mod, e.shiftKey);
                   }}
                   disabled={uninstallingFullName === mod.full_name}
-                  title="Uninstall"
+                  title="Uninstall (hold Shift to skip confirmation)"
                   aria-label={`Uninstall ${mod.name}`}
                   className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                 >
