@@ -1,6 +1,7 @@
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { cn } from "cn";
 import { CheckIcon, XIcon } from "lucide-react";
+import { useRef } from "react";
 
 const Combobox = ComboboxPrimitive.Root;
 const ComboboxValue = ComboboxPrimitive.Value;
@@ -59,9 +60,13 @@ function ComboboxContent({
   sideOffset = 4,
   align = "start",
   alignOffset = 0,
+  anchor,
   ...props
 }: ComboboxPrimitive.Popup.Props &
-  Pick<ComboboxPrimitive.Positioner.Props, "align" | "alignOffset" | "side" | "sideOffset">) {
+  Pick<
+    ComboboxPrimitive.Positioner.Props,
+    "align" | "alignOffset" | "side" | "sideOffset" | "anchor"
+  >) {
   return (
     <ComboboxPrimitive.Portal>
       <ComboboxPrimitive.Positioner
@@ -69,6 +74,7 @@ function ComboboxContent({
         sideOffset={sideOffset}
         align={align}
         alignOffset={alignOffset}
+        anchor={anchor}
         className="isolate z-50"
       >
         <ComboboxPrimitive.Popup
@@ -128,6 +134,10 @@ function ComboboxItem({ className, children, ...props }: ComboboxPrimitive.Item.
   );
 }
 
+function useComboboxAnchor() {
+  return useRef<HTMLDivElement | null>(null);
+}
+
 export {
   Combobox,
   ComboboxValue,
@@ -138,4 +148,5 @@ export {
   ComboboxEmpty,
   ComboboxList,
   ComboboxItem,
+  useComboboxAnchor,
 };
