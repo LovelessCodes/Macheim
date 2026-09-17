@@ -28,9 +28,16 @@ independently.
 
 ## Screenshots
 
-|                 Mod Browser                 |                  Installed Mods                   |               Modpacks                |
-| :-----------------------------------------: | :-----------------------------------------------: | :-----------------------------------: |
-| ![Browse Mods](screenshots/browse-mods.png) | ![Installed Mods](screenshots/installed-mods.png) | ![Modpacks](screenshots/modpacks.png) |
+|                 Browse Mods                  |                 Mod Details                  |                Modpacks                |
+| :------------------------------------------: | :------------------------------------------: | :------------------------------------: |
+| ![Browse Mods](screenshots/browse-mods.webp) | ![Mod Details](screenshots/mod-details.webp) | ![Modpacks](screenshots/modpacks.webp) |
+
+|                   Installed Mods                   |                  Config Editor                   |                    Mac Compatibility                     |
+| :------------------------------------------------: | :----------------------------------------------: | :------------------------------------------------------: |
+| ![Installed Mods](screenshots/installed-mods.webp) | ![Config Editor](screenshots/config-editor.webp) | ![Mac Compatibility](screenshots/mac-compatibility.webp) |
+
+All screenshots are 1200×800 captures of the running app; see
+[screenshots/README.md](screenshots/README.md) to refresh them.
 
 ## Features
 
