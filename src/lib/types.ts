@@ -103,6 +103,52 @@ export interface SaveOverview {
   snapshots: SaveSnapshot[];
 }
 
+export type CrashKind =
+  | "game_update_mismatch"
+  | "missing_native_library"
+  | "patched_code"
+  | "unknown";
+
+export interface LogException {
+  source: string;
+  kind: string;
+  message: string;
+  frames: string[];
+  lines_from_end: number;
+}
+
+export interface CrashCulprit {
+  full_name: string;
+  reason: string;
+  score: number;
+}
+
+export interface CrashReport {
+  analyzed_at: string;
+  log_path: string | null;
+  modded: boolean;
+  kind: CrashKind;
+  summary: string;
+  stale_exception: boolean;
+  loaded_plugins: string[];
+  exceptions: LogException[];
+  likely_culprits: CrashCulprit[];
+  log_tail: string[];
+}
+
+export function crashKindLabel(kind: CrashKind): string {
+  switch (kind) {
+    case "game_update_mismatch":
+      return "Game update mismatch";
+    case "missing_native_library":
+      return "Missing native library";
+    case "patched_code":
+      return "Mod-patched code";
+    case "unknown":
+      return "Unknown";
+  }
+}
+
 export interface DuplicateDll {
   file_name: string;
   mods: string[];

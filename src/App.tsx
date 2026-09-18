@@ -2,11 +2,13 @@ import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
 
 import ProgressOverlay from "./components/common/ProgressOverlay";
+import CrashReportSheet from "./components/diagnostics/CrashReportSheet";
 import DownloadQueuePanel from "./components/downloads/DownloadQueuePanel";
 import InstallDropZone from "./components/downloads/InstallDropZone";
 import MainLayout from "./components/layout/MainLayout";
 import SetupWizard from "./components/setup/SetupWizard";
 import { toast, Toaster } from "./components/ui/toast";
+import { useDiagnosticsSync } from "./hooks/use-diagnostics";
 import { useDownloadQueueSync } from "./hooks/use-download-queue";
 import { useGameStatus } from "./hooks/use-game-status";
 import { useUpdaterStartup } from "./hooks/use-updater";
@@ -20,6 +22,7 @@ export default function App() {
   const { data: gameStatus, isPending: booting } = useGameStatus();
   useUpdaterStartup();
   useDownloadQueueSync();
+  useDiagnosticsSync();
 
   useEffect(() => {
     const unlisten = listen<CdnFallbackEvent>("cdn-fallback", (event) => {
@@ -46,6 +49,7 @@ export default function App() {
       <Toaster />
       <ProgressOverlay />
       <DownloadQueuePanel />
+      <CrashReportSheet />
       <InstallDropZone />
     </>
   );

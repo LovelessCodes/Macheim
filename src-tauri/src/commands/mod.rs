@@ -3,6 +3,7 @@ pub mod bepinex;
 pub mod compatibility;
 pub mod config;
 pub mod conflicts;
+pub mod diagnostics;
 pub mod downloads;
 pub mod game;
 pub mod launch;

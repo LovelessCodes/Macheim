@@ -8,7 +8,10 @@ use crate::AppState;
 
 /// Launch Valheim with BepInEx (modded).
 #[tauri::command]
-pub async fn launch_modded(state: tauri::State<'_, Mutex<AppState>>) -> AppResult<()> {
+pub async fn launch_modded(
+    state: tauri::State<'_, Mutex<AppState>>,
+    app: tauri::AppHandle,
+) -> AppResult<()> {
     info!("Command: launch_modded");
     // Wait for an in-flight queued install step instead of failing; downloads
     // themselves do not hold the lock, so this stays responsive.
@@ -43,12 +46,20 @@ pub async fn launch_modded(state: tauri::State<'_, Mutex<AppState>>) -> AppResul
         tracing::info!("Created pre-launch save snapshot");
     }
 
-    launcher::launch_modded(&game_path, &game_root, console_enabled)
+    launcher::launch_modded(&game_path, &game_root, console_enabled)?;
+    crate::services::launch_monitor::watch_launch(app, true);
+    Ok(())
 }
 
 /// Launch Valheim vanilla (via Steam, no mods).
 #[tauri::command]
-pub async fn launch_vanilla(_state: tauri::State<'_, Mutex<AppState>>) -> AppResult<()> {
+pub async fn launch_vanilla(
+    _state: tauri::State<'_, Mutex<AppState>>,
+    app: tauri::AppHandle,
+) -> AppResult<()> {
     info!("Command: launch_vanilla");
-    launcher::launch_vanilla()
+    launcher::launch_vanilla()?;
+    // Watching vanilla runs tells us whether a crash is mod-related at all.
+    crate::services::launch_monitor::watch_launch(app, false);
+    Ok(())
 }

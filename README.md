@@ -94,6 +94,13 @@ All screenshots are 1200×800 captures of the running app; see
 - **Clearer installed list** - Outdated versions are badged, row actions use tooltips, and
   the scroll-to-top button no longer overlaps row controls
 
+### Diagnostics
+
+- **Crash triage** - Launches Macheim starts are watched; an early exit produces a crash report
+  with the failure category, likely culprit mods, the exception stack and the log tail
+- **Safe Mode** - Disable every mod and launch from the report or Settings, then restore them
+  from the banner; "Analyze latest log" runs the same analysis any time
+
 ### Saves
 
 - **World & character snapshots** - Snapshot your worlds and characters on demand, or

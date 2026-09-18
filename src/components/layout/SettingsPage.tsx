@@ -1,3 +1,4 @@
+import { confirm } from "@tauri-apps/plugin-dialog";
 import {
   FolderOpen,
   HardDrive,
@@ -5,8 +6,11 @@ import {
   Trash2,
   Archive,
   AlertTriangle,
+  FileSearch,
   Loader2,
   RefreshCw,
+  ShieldOff,
+  Stethoscope,
   Terminal,
 } from "lucide-react";
 import { useState } from "react";
@@ -14,6 +18,7 @@ import { useState } from "react";
 import { useAppSettings, useSetConsoleEnabled } from "../../hooks/use-app-settings";
 import { useAppVersion } from "../../hooks/use-app-version";
 import { useBackups, useCreateBackup, useRestoreBackup } from "../../hooks/use-backups";
+import { useAnalyzeCrashLogs, useLaunchSafeMode } from "../../hooks/use-diagnostics";
 import { useGameStatus, useSteamStatus } from "../../hooks/use-game-status";
 import { useUpdater } from "../../hooks/use-updater";
 import ProgressBar from "../common/ProgressBar";
@@ -42,6 +47,16 @@ export default function SettingsPage() {
   const restoreBackupMutation = useRestoreBackup();
   const { data: appSettings } = useAppSettings();
   const setConsoleEnabled = useSetConsoleEnabled();
+  const analyzeLogs = useAnalyzeCrashLogs();
+  const launchSafeMode = useLaunchSafeMode();
+
+  const handleSafeMode = async () => {
+    const confirmed = await confirm(
+      "Disable every mod and launch Valheim? You can restore the mods from the banner afterwards.",
+      { title: "Launch in Safe Mode", kind: "warning" },
+    );
+    if (confirmed) launchSafeMode.mutate();
+  };
 
   return (
     <div className="grid gap-6">
@@ -228,6 +243,40 @@ export default function SettingsPage() {
               {status === "checking" ? "Checking..." : "Check for Updates"}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Diagnostics */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Stethoscope className="size-4" />
+            Diagnostics
+          </CardTitle>
+          <CardDescription>
+            Analyze the latest Valheim log for a likely culprit, or launch without mods to check
+            whether mods are involved at all. Safe mode is reversible from the banner.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => analyzeLogs.mutate()}
+            disabled={analyzeLogs.isPending}
+          >
+            {analyzeLogs.isPending ? <Loader2 className="animate-spin" /> : <FileSearch />}
+            Analyze latest log
+          </Button>
+          <Button
+            variant="outline-warning"
+            size="sm"
+            onClick={() => void handleSafeMode()}
+            disabled={launchSafeMode.isPending}
+          >
+            {launchSafeMode.isPending ? <Loader2 className="animate-spin" /> : <ShieldOff />}
+            Launch Safe Mode
+          </Button>
         </CardContent>
       </Card>
 

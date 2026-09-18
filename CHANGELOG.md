@@ -11,6 +11,12 @@ Upstream releases before this fork are listed on
 
 ### Added
 
+- **Crash triage** — Macheim watches every launch it starts and, when Valheim exits unusually
+  early, analyzes BepInEx's log: the report classifies the failure (game update mismatch,
+  missing native library, exception in patched code) and names likely culprit mods from stack
+  traces and log activity. From the report you can disable a suspect, launch in **Safe Mode**
+  (all mods off, one click to restore from the banner), or re-analyze the latest log on demand
+  from Settings.
 - **Quiet Steam handling** — Macheim no longer focuses or restarts an already-running Steam
   client, and when Steam is missing it starts it hidden in the background (`-silent`, launch
   hidden) and waits for it before starting the game, so cold starts are less likely to end in

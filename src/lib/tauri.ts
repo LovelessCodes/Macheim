@@ -13,6 +13,7 @@ import type {
   CompatibilitySettings,
   AppSettings,
   ConflictReport,
+  CrashReport,
   SteamStatus,
   SaveOverview,
   DownloadItem,
@@ -246,4 +247,26 @@ export async function restoreSaveSnapshot(id: string): Promise<SaveOverview> {
 
 export async function deleteSaveSnapshot(id: string): Promise<SaveOverview> {
   return invoke<SaveOverview>("delete_save_snapshot", { id });
+}
+
+// ── Diagnostics ─────────────────────────────────────────────────
+
+export async function getLastCrashReport(): Promise<CrashReport | null> {
+  return invoke<CrashReport | null>("get_last_crash_report");
+}
+
+export async function analyzeCrashLogs(): Promise<CrashReport> {
+  return invoke<CrashReport>("analyze_crash_logs");
+}
+
+export async function launchSafeMode(): Promise<string[]> {
+  return invoke<string[]>("launch_safe_mode");
+}
+
+export async function restoreSafeModeMods(): Promise<string[]> {
+  return invoke<string[]>("restore_safe_mode_mods");
+}
+
+export async function getSafeMode(): Promise<string[]> {
+  return invoke<string[]>("get_safe_mode");
 }
