@@ -14,7 +14,7 @@ import { useState } from "react";
 import { useAppSettings, useSetConsoleEnabled } from "../../hooks/use-app-settings";
 import { useAppVersion } from "../../hooks/use-app-version";
 import { useBackups, useCreateBackup, useRestoreBackup } from "../../hooks/use-backups";
-import { useGameStatus } from "../../hooks/use-game-status";
+import { useGameStatus, useSteamStatus } from "../../hooks/use-game-status";
 import { useUpdater } from "../../hooks/use-updater";
 import ProgressBar from "../common/ProgressBar";
 import { Badge } from "../ui/badge";
@@ -33,6 +33,7 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 
 export default function SettingsPage() {
   const { data: gameStatus } = useGameStatus();
+  const { data: steamStatus } = useSteamStatus();
   const appVersion = useAppVersion();
   const { status, version, progress, error, check, install, restart } = useUpdater();
   const [backupsRequested, setBackupsRequested] = useState(false);
@@ -115,6 +116,27 @@ export default function SettingsPage() {
               className="data-checked:bg-[var(--color-success)]"
             />
           </InfoRow>
+
+          <InfoRow label="Steam">
+            {steamStatus?.running ? (
+              <Badge
+                variant="outline"
+                className="border-[var(--color-success)]/40 text-[var(--color-success)]"
+              >
+                Running
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-muted-foreground">
+                Not running
+              </Badge>
+            )}
+          </InfoRow>
+          <p className="text-muted-foreground text-xs">
+            Valheim needs the Steam client, but Macheim never touches a running one: Steam is only
+            started when it is missing, launched hidden in the background, and the game waits for
+            it. For a smaller client window day to day, turn on Steam&apos;s Small Mode (View &rarr;
+            Small Mode), or leave Steam running in Offline Mode for offline play.
+          </p>
         </CardContent>
       </Card>
 

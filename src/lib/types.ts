@@ -75,6 +75,10 @@ export interface AppSettings {
   snapshot_saves: boolean;
 }
 
+export interface SteamStatus {
+  running: boolean;
+}
+
 export interface SaveWorld {
   name: string;
   files: number;
