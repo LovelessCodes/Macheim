@@ -25,6 +25,7 @@ void mock.module("../../lib/tauri", () => ({
     ]),
   ),
   getInstalledMods: mock(() => Promise.resolve([])),
+  enqueueInstall: mock(() => Promise.resolve({})),
 }));
 
 import ModpackBrowser from "./ModpackBrowser";

@@ -21,6 +21,8 @@ export function useModUninstall() {
         type: "error",
         title: `Failed to uninstall ${name}: ${err}`,
       });
+      // The optimistic removal above may not match what is on disk.
+      void queryClient.invalidateQueries({ queryKey: installedModsQueryKey });
     },
   });
 

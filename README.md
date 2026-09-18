@@ -73,6 +73,10 @@ All screenshots are 1200×800 captures of the running app; see
 
 ### Mod management
 
+- **Background download queue** - Installs queue instead of failing when Valheim is running
+  or the connection drops, then start automatically once the game closes or the network
+  returns. Track, pause, resume, cancel, retry, uninstall and re-install downloads from the
+  header button, anywhere in the app; the queue survives app restarts
 - **Update detection & "Update All"** - Installed mods are checked against latest versions,
   with a one-click bulk update for everything that's outdated
 - **Version history & downgrades** - Open a mod's Version History to install or switch to an

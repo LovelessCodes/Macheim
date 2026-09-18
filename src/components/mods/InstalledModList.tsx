@@ -1,16 +1,29 @@
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { cn } from "cn";
-import { ArrowUpCircle, Package, Trash2, Power, PowerOff, RefreshCw, Loader2 } from "lucide-react";
+import {
+  ArrowUpCircle,
+  Clock,
+  Package,
+  Trash2,
+  Power,
+  PowerOff,
+  RefreshCw,
+  Loader2,
+} from "lucide-react";
 import { useMemo, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 
+import { useEnqueueInstall } from "../../hooks/use-download-queue";
 import { useInstalledMods } from "../../hooks/use-installed-mods";
 import { useModToggle } from "../../hooks/use-mod-toggle";
 import { useModUninstall } from "../../hooks/use-mod-uninstall";
-import { useModInstall, useUpdateMods } from "../../hooks/use-package-install";
+import { useUpdateMods } from "../../hooks/use-package-install";
 import { usePackages } from "../../hooks/use-packages";
 import { useSyncMods } from "../../hooks/use-sync-mods";
 import { listUnmanagedMods } from "../../lib/tauri";
 import type { InstalledMod } from "../../lib/types";
+import { isDownloadActive, isDownloadPending } from "../../lib/types";
+import { useDownloadStore } from "../../store/downloadStore";
 import { useModStore } from "../../store/modStore";
 import { ListSkeleton } from "../common/LoadingSkeleton";
 import VirtualList from "../common/VirtualList";
@@ -30,11 +43,22 @@ export default function InstalledModList() {
   const { data: installedMods = [], isPending: isLoading } = useInstalledMods();
   const { data: packages = [] } = usePackages();
   const { uninstall, uninstallingFullName } = useModUninstall();
-  const { install, installingFullName } = useModInstall();
+  const enqueue = useEnqueueInstall();
   const updateModsMutation = useUpdateMods();
   const toggleModMutation = useModToggle();
   const syncModsMutation = useSyncMods();
   const setSelectedPackage = useModStore((s) => s.setSelectedPackage);
+  const queuedNames = useDownloadStore(
+    useShallow((state) =>
+      state.items.filter((item) => isDownloadPending(item.status)).map((item) => item.full_name),
+    ),
+  );
+  const activeNames = useDownloadStore(
+    useShallow((state) =>
+      state.items.filter((item) => isDownloadActive(item.status)).map((item) => item.full_name),
+    ),
+  );
+  const openDownloads = useDownloadStore((s) => s.setPanelOpen);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<ModFilter>("all");
 
@@ -54,7 +78,7 @@ export default function InstalledModList() {
       installedMods.flatMap((mod) => {
         const pkg = packageByFullName.get(mod.full_name);
         return pkg && pkg.version_number !== mod.version
-          ? [{ fullName: mod.full_name, version: pkg.version_number }]
+          ? [{ fullName: mod.full_name, name: mod.name, version: pkg.version_number }]
           : [];
       }),
     [installedMods, packageByFullName],
@@ -202,7 +226,8 @@ export default function InstalledModList() {
           estimateRowHeight={66}
           renderItem={(mod) => {
             const pkg = packageByFullName.get(mod.full_name);
-            const isUpdating = installingFullName === mod.full_name;
+            const isQueued = queuedNames.includes(mod.full_name);
+            const isUpdating = activeNames.includes(mod.full_name);
             return (
               <div
                 onClick={() => openDetail(mod)}
@@ -235,10 +260,18 @@ export default function InstalledModList() {
                           variant="outline-accent-primary"
                           size="icon-sm"
                           disabled={isUpdating || updatingAll}
-                          aria-label={`Update ${mod.name} to v${pkg.version_number}`}
+                          aria-label={
+                            isQueued
+                              ? `${mod.name} update is queued`
+                              : `Update ${mod.name} to v${pkg.version_number}`
+                          }
                           onClick={(e) => {
                             e.stopPropagation();
-                            install({
+                            if (isQueued) {
+                              openDownloads(true);
+                              return;
+                            }
+                            void enqueue({
                               fullName: mod.full_name,
                               name: mod.name,
                               version: pkg.version_number,
@@ -247,9 +280,19 @@ export default function InstalledModList() {
                         />
                       }
                     >
-                      {isUpdating ? <Loader2 className="animate-spin" /> : <ArrowUpCircle />}
+                      {isUpdating ? (
+                        <Loader2 className="animate-spin" />
+                      ) : isQueued ? (
+                        <Clock />
+                      ) : (
+                        <ArrowUpCircle />
+                      )}
                     </TooltipTrigger>
-                    <TooltipContent>Update to v{pkg.version_number}</TooltipContent>
+                    <TooltipContent>
+                      {isQueued
+                        ? "Update queued — open downloads"
+                        : `Update to v${pkg.version_number}`}
+                    </TooltipContent>
                   </Tooltip>
                 )}
 

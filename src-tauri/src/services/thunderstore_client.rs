@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 use tauri::Emitter;
 use tracing::info;
@@ -43,11 +44,14 @@ pub fn find_package<'a>(
 
 /// Download a mod's ZIP file and return the bytes. No timeout on download body.
 pub async fn download_mod(download_url: &str) -> AppResult<Vec<u8>> {
-    download_mod_with_progress(download_url, None).await
+    download_mod_with_progress(download_url, None, None).await
 }
 
 /// Progress callback type: (downloaded_bytes, total_bytes_option)
 pub type ProgressFn = Box<dyn Fn(u64, Option<u64>) + Send>;
+
+/// Returns true when the caller wants the download to stop (pause or cancel).
+pub type AbortFn = Arc<dyn Fn() -> bool + Send + Sync>;
 
 /// Payload for the one-time "we switched CDNs" notification.
 #[derive(Clone, serde::Serialize)]
@@ -95,11 +99,17 @@ fn notify_cdn_fallback_once() {
 /// Thunderstore redirects package downloads to `gcdn.thunderstore.io`, which
 /// some antivirus tools block. Redirects are followed manually so the primary
 /// CDN host can be swapped for Thunderstore's backup CDN before it is contacted.
+///
+/// `abort` is polled before the request and between stream chunks; when it
+/// returns true the download stops with `AppError::Cancelled`.
 pub async fn download_mod_with_progress(
     download_url: &str,
     progress: Option<ProgressFn>,
+    abort: Option<AbortFn>,
 ) -> AppResult<Vec<u8>> {
     info!("Downloading mod from: {}", download_url);
+
+    let aborted = || abort.as_ref().is_some_and(|check| check());
 
     let client = reqwest::Client::builder()
         .user_agent("Macheim/1.0.1")
@@ -115,6 +125,10 @@ pub async fn download_mod_with_progress(
 
     let mut redirects = 0;
     let response = loop {
+        if aborted() {
+            return Err(AppError::Cancelled);
+        }
+
         if replace_primary_cdn(&mut url) {
             notify_cdn_fallback_once();
         }
@@ -123,7 +137,7 @@ pub async fn download_mod_with_progress(
             .get(url.clone())
             .send()
             .await
-            .map_err(|e| AppError::Network(format!("Download failed: {}", e)))?;
+            .map_err(|e| AppError::NetworkTransient(format!("Download failed: {}", e)))?;
 
         if !matches!(response.status().as_u16(), 301 | 302 | 303 | 307 | 308) {
             break response;
@@ -165,8 +179,11 @@ pub async fn download_mod_with_progress(
 
     use futures_util::StreamExt;
     while let Some(chunk) = stream.next().await {
-        let chunk =
-            chunk.map_err(|e| AppError::Network(format!("Download stream error: {}", e)))?;
+        if aborted() {
+            return Err(AppError::Cancelled);
+        }
+        let chunk = chunk
+            .map_err(|e| AppError::NetworkTransient(format!("Download stream error: {}", e)))?;
         bytes.extend_from_slice(&chunk);
         if let Some(ref cb) = progress {
             cb(bytes.len() as u64, total_size);

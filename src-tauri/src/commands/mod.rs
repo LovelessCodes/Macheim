@@ -2,6 +2,7 @@ pub mod backup;
 pub mod bepinex;
 pub mod compatibility;
 pub mod config;
+pub mod downloads;
 pub mod game;
 pub mod launch;
 pub mod mods;

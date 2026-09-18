@@ -7,6 +7,16 @@ All notable changes to this fork are documented in this file. The format follows
 Upstream releases before this fork are listed on
 [lofcgi/macheim](https://github.com/lofcgi/macheim/releases).
 
+## [Unreleased]
+
+### Added
+
+- **Download queue** — Installs no longer fail while Valheim is running or the connection is
+  down; they queue instead and start automatically once the game closes or the network
+  returns. Track, pause, resume, cancel, retry, uninstall and re-install downloads from the
+  header button, anywhere in the app. The queue is persisted, so pending installs survive
+  restarts.
+
 ## [1.2.1] - 2026-09-17
 
 The first fork release since upstream **v1.1.0**. It focuses on quality-of-life, a full UI

@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+use tauri::Manager;
+
 pub mod commands;
 pub mod error;
 pub mod models;
@@ -72,6 +74,19 @@ pub fn lock_operation(
     })
 }
 
+/// Wait for the operation lock instead of failing. Used by commands that must
+/// run after a queued install step finishes (e.g. launching the game).
+pub async fn lock_operation_wait(
+    state: &Mutex<AppState>,
+) -> error::AppResult<tokio::sync::OwnedMutexGuard<()>> {
+    let lock = state
+        .lock()
+        .map_err(|e| error::AppError::Mod(e.to_string()))?
+        .operation_lock
+        .clone();
+    Ok(lock.lock_owned().await)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize tracing for structured logging
@@ -107,6 +122,13 @@ pub fn run() {
         .manage(Mutex::new(AppState::default()))
         .setup(|app| {
             let _ = APP_HANDLE.set(app.handle().clone());
+
+            // Live install queue: survives navigation and app restarts, and
+            // pauses itself while Valheim runs or the network is down.
+            let queue = Arc::new(services::download_queue::DownloadQueue::open_default());
+            app.manage(Arc::clone(&queue));
+            services::download_queue::spawn_worker(app.handle().clone());
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -121,13 +143,24 @@ pub fn run() {
             commands::thunderstore::fetch_packages,
             commands::thunderstore::get_package_details,
             // Mod management
-            commands::mods::install_mod,
             commands::mods::uninstall_mod,
             commands::mods::toggle_mod,
             commands::mods::get_installed_mods,
-            commands::mods::install_modpack,
             commands::mods::sync_mods,
             commands::mods::list_unmanaged_mods,
+            // Download queue
+            commands::downloads::get_download_queue,
+            commands::downloads::enqueue_install,
+            commands::downloads::pause_download,
+            commands::downloads::resume_download,
+            commands::downloads::cancel_download,
+            commands::downloads::retry_download,
+            commands::downloads::reinstall_download,
+            commands::downloads::remove_download,
+            commands::downloads::pause_all_downloads,
+            commands::downloads::resume_all_downloads,
+            commands::downloads::cancel_all_downloads,
+            commands::downloads::clear_finished_downloads,
             // Profiles
             commands::profiles::list_profiles,
             commands::profiles::create_profile,

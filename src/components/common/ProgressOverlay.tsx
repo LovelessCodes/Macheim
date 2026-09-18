@@ -1,130 +1,139 @@
-import { listen } from "@tauri-apps/api/event";
 import { cn } from "cn";
-import { Loader2, Download, CheckCircle, Package } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ChevronRight, Loader2, Package, X } from "lucide-react";
+import { useMemo } from "react";
 
+import { formatBytes } from "../../lib/format";
+import { isDownloadActive, isDownloadPending } from "../../lib/types";
+import { selectOverlayItem, useDownloadStore } from "../../store/downloadStore";
+import DownloadStatusIcon from "../downloads/DownloadStatusIcon";
+import { Button } from "../ui/button";
 import { Card, CardContent } from "../ui/card";
 import { Progress } from "../ui/progress";
 
-interface ProgressEvent {
-  stage: string;
-  mod_name: string;
-  current: number;
-  total: number;
-  bytes_downloaded: number;
-  bytes_total: number | null;
-  message: string;
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes >= 1_000_000_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
-  if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
-  if (bytes >= 1_000) return `${(bytes / 1_000).toFixed(0)} KB`;
-  return `${bytes} B`;
-}
-
+/**
+ * Bottom-center status card for the install queue. Stays mounted for the whole
+ * batch (showing queue position), can be dismissed, and opens the queue panel
+ * when clicked. Sync & Clean downloads, which are not queue items, use it too.
+ */
 export default function ProgressOverlay() {
-  const [progress, setProgress] = useState<ProgressEvent | null>(null);
-  const [visible, setVisible] = useState(false);
-  const hideTimeout = useRef<number | null>(null);
+  const items = useDownloadStore((state) => state.items);
+  const standalone = useDownloadStore((state) => state.standaloneProgress);
+  const dismissed = useDownloadStore((state) => state.overlayDismissed);
+  const dismissOverlay = useDownloadStore((state) => state.dismissOverlay);
+  const openPanel = useDownloadStore((state) => state.setPanelOpen);
 
-  useEffect(() => {
-    function clearHideTimeout() {
-      if (hideTimeout.current !== null) {
-        window.clearTimeout(hideTimeout.current);
-        hideTimeout.current = null;
-      }
-    }
+  const pending = useMemo(() => items.filter((item) => isDownloadPending(item.status)), [items]);
+  const queueItem = useMemo(() => selectOverlayItem(pending), [pending]);
+  const item = dismissed ? null : queueItem;
+  const position = item ? pending.findIndex((candidate) => candidate.id === item.id) + 1 : 0;
 
-    const unlisten = listen<ProgressEvent>("mod-progress", (event) => {
-      const p = event.payload;
-      clearHideTimeout();
-      if (p.stage === "done") {
-        // Show done briefly then hide
-        setProgress(p);
-        hideTimeout.current = window.setTimeout(() => {
-          hideTimeout.current = null;
-          setVisible(false);
-          setProgress(null);
-        }, 2000);
-      } else if (p.stage === "error") {
-        // The failing command reports the error itself; just clear the overlay
-        setVisible(false);
-        setProgress(null);
-      } else {
-        setProgress(p);
-        setVisible(true);
-      }
-    });
+  if (!item && !standalone) return null;
 
-    return () => {
-      void unlisten.then((fn) => fn());
-      clearHideTimeout();
-    };
-  }, []);
-
-  if (!visible || !progress) return null;
-
-  const isDone = progress.stage === "done";
-  const isDownloading = progress.stage === "downloading";
-  const pct = progress.bytes_total
-    ? Math.round((progress.bytes_downloaded / progress.bytes_total) * 100)
-    : null;
-  const overallPct = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
+  const isDownloading = item?.status === "downloading";
+  const itemPct = item && item.total > 0 ? Math.round((item.current / item.total) * 100) : null;
+  const bytePct =
+    item && item.bytes_total ? Math.round((item.bytes_downloaded / item.bytes_total) * 100) : null;
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[100] flex justify-center p-6">
-      <Card className="animate-in fade-in slide-in-from-bottom-4 pointer-events-auto w-full max-w-lg gap-0 overflow-hidden py-0 shadow-2xl shadow-black/40 duration-200">
-        {/* Overall progress bar */}
+      <Card
+        onClick={item ? () => openPanel(true) : undefined}
+        className={cn(
+          "animate-in fade-in slide-in-from-bottom-4 pointer-events-auto w-full max-w-lg gap-0 overflow-hidden py-0 shadow-2xl shadow-black/40 duration-200",
+          item && "cursor-pointer transition-colors hover:bg-muted/40",
+        )}
+      >
         <Progress
-          value={isDone ? 100 : overallPct}
-          className={cn(
-            "[&_[data-slot=progress-indicator]]:transition-all [&_[data-slot=progress-track]]:h-1 [&_[data-slot=progress-track]]:bg-muted",
-            isDone
-              ? "[&_[data-slot=progress-indicator]]:bg-[var(--color-success)]"
-              : "[&_[data-slot=progress-indicator]]:bg-accent-primary",
-          )}
+          value={item ? (bytePct ?? itemPct ?? 0) : null}
+          className="[&_[data-slot=progress-track]]:bg-muted [&_[data-slot=progress-indicator]]:bg-accent-primary [&_[data-slot=progress-indicator]]:transition-all [&_[data-slot=progress-track]]:h-1"
         />
 
         <CardContent className="flex items-center gap-3 p-4">
-          {isDone ? (
-            <CheckCircle className="size-5 shrink-0 text-[var(--color-success)]" />
-          ) : isDownloading ? (
-            <Download className="text-accent-primary size-5 shrink-0 animate-pulse" />
+          {item ? (
+            <DownloadStatusIcon status={item.status} className="size-5" />
           ) : (
             <Loader2 className="text-accent-primary size-5 shrink-0 animate-spin" />
           )}
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between">
-              <p className="text-foreground truncate text-sm font-medium">{progress.message}</p>
-              {progress.total > 0 && !isDone && (
-                <span className="text-muted-foreground ml-2 shrink-0 text-xs">
-                  {progress.current}/{progress.total}
+              <p className="text-foreground truncate text-sm font-medium">
+                {item ? item.message : standalone?.message}
+              </p>
+              {item && pending.length > 0 && (
+                <span className="text-muted-foreground ml-2 shrink-0 text-xs tabular-nums">
+                  {position}/{pending.length}
                 </span>
               )}
             </div>
 
-            {progress.mod_name && !isDone && (
+            {item ? (
               <div className="mt-1 flex items-center gap-2">
                 <Package className="text-muted-foreground size-3 shrink-0" />
-                <p className="text-muted-foreground truncate text-xs">{progress.mod_name}</p>
+                <p className="text-muted-foreground truncate text-xs">
+                  {item.name}
+                  {item.version ? ` v${item.version}` : ""}
+                </p>
               </div>
+            ) : (
+              standalone?.mod_name && (
+                <div className="mt-1 flex items-center gap-2">
+                  <Package className="text-muted-foreground size-3 shrink-0" />
+                  <p className="text-muted-foreground truncate text-xs">{standalone.mod_name}</p>
+                </div>
+              )
             )}
 
-            {isDownloading && progress.bytes_downloaded > 0 && (
+            {isDownloading && item && item.bytes_downloaded > 0 && (
               <div className="mt-1.5 flex items-center gap-2">
                 <Progress
-                  value={pct ?? 50}
+                  value={bytePct ?? 50}
                   className="[&_[data-slot=progress-indicator]]:bg-accent-amber flex-1 [&_[data-slot=progress-track]]:h-1.5"
                 />
                 <span className="text-muted-foreground shrink-0 text-[10px] tabular-nums">
-                  {formatBytes(progress.bytes_downloaded)}
-                  {progress.bytes_total ? ` / ${formatBytes(progress.bytes_total)}` : ""}
+                  {formatBytes(item.bytes_downloaded)}
+                  {item.bytes_total ? ` / ${formatBytes(item.bytes_total)}` : ""}
+                </span>
+              </div>
+            )}
+
+            {!item && standalone && standalone.bytes_downloaded > 0 && (
+              <div className="mt-1.5 flex items-center gap-2">
+                <Progress
+                  value={
+                    standalone.bytes_total
+                      ? Math.round((standalone.bytes_downloaded / standalone.bytes_total) * 100)
+                      : 50
+                  }
+                  className="[&_[data-slot=progress-indicator]]:bg-accent-amber flex-1 [&_[data-slot=progress-track]]:h-1.5"
+                />
+                <span className="text-muted-foreground shrink-0 text-[10px] tabular-nums">
+                  {formatBytes(standalone.bytes_downloaded)}
+                  {standalone.bytes_total ? ` / ${formatBytes(standalone.bytes_total)}` : ""}
                 </span>
               </div>
             )}
           </div>
+
+          {item && !isDownloadActive(item.status) && (
+            <ChevronRight className="text-muted-foreground size-4 shrink-0" />
+          )}
+
+          {item && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Hide status card"
+              title="Hide for now"
+              className="text-muted-foreground shrink-0"
+              onClick={(event) => {
+                event.stopPropagation();
+                dismissOverlay();
+              }}
+            >
+              <X />
+            </Button>
+          )}
         </CardContent>
       </Card>
     </div>
