@@ -14,6 +14,7 @@ import type {
   AppSettings,
   ConflictReport,
   CrashReport,
+  SteamStatus,
   SaveOverview,
   DownloadItem,
   DownloadKind,
@@ -28,6 +29,10 @@ export async function detectGame(): Promise<GameStatus> {
 
 export async function getGameStatus(): Promise<GameStatus> {
   return invoke<GameStatus>("get_game_status");
+}
+
+export async function getSteamStatus(): Promise<SteamStatus> {
+  return invoke<SteamStatus>("get_steam_status");
 }
 
 // ── BepInEx ─────────────────────────────────────────────────────

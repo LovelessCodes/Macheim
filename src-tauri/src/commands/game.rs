@@ -115,3 +115,17 @@ pub async fn set_game_path(
     );
     Ok(status)
 }
+
+/// Whether the Steam client is running. Valheim needs it (Offline Mode
+/// counts); Macheim only uses this for the Settings hint.
+#[tauri::command]
+pub async fn get_steam_status() -> AppResult<SteamStatus> {
+    Ok(SteamStatus {
+        running: crate::services::launcher::is_steam_running()?,
+    })
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct SteamStatus {
+    pub running: bool,
+}
