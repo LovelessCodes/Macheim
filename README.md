@@ -73,6 +73,10 @@ All screenshots are 1200×800 captures of the running app; see
 
 ### Mod management
 
+- **Install from file** - Drag and drop mod `.zip` archives onto the window, or pick them with
+  "Install from file" on the Installed Mods page; archives are matched back to their
+  Thunderstore listing (so author, icon and update checks are correct) and queue like any
+  other install
 - **Background download queue** - Installs queue instead of failing when Valheim is running
   or the connection drops, then start automatically once the game closes or the network
   returns. Track, pause, resume, cancel, retry, uninstall and re-install downloads from the

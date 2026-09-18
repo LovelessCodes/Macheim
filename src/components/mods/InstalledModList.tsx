@@ -3,6 +3,7 @@ import { cn } from "cn";
 import {
   ArrowUpCircle,
   Clock,
+  FileArchive,
   Package,
   Trash2,
   Power,
@@ -14,6 +15,7 @@ import { useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import { useEnqueueInstall } from "../../hooks/use-download-queue";
+import { useInstallFromFile } from "../../hooks/use-install-from-file";
 import { useInstalledMods } from "../../hooks/use-installed-mods";
 import { useModToggle } from "../../hooks/use-mod-toggle";
 import { useModUninstall } from "../../hooks/use-mod-uninstall";
@@ -44,6 +46,7 @@ export default function InstalledModList() {
   const { data: packages = [] } = usePackages();
   const { uninstall, uninstallingFullName } = useModUninstall();
   const enqueue = useEnqueueInstall();
+  const { pickFiles } = useInstallFromFile();
   const updateModsMutation = useUpdateMods();
   const toggleModMutation = useModToggle();
   const syncModsMutation = useSyncMods();
@@ -207,6 +210,10 @@ export default function InstalledModList() {
               Update All ({updatable.length})
             </Button>
           )}
+          <Button variant="outline" size="sm" onClick={() => void pickFiles()} disabled={syncing}>
+            <FileArchive />
+            Install from file
+          </Button>
           <Button variant="amber" size="sm" onClick={handleSync} disabled={syncing || updatingAll}>
             {syncing ? <Loader2 className="animate-spin" /> : <RefreshCw />}
             Sync & Clean

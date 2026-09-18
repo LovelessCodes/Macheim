@@ -130,6 +130,11 @@ function DownloadRow({
                 Modpack
               </Badge>
             )}
+            {item.local_path && (
+              <Badge variant="outline" className="shrink-0">
+                From file
+              </Badge>
+            )}
           </div>
           <p
             className={cn(

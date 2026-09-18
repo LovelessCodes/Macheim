@@ -3,6 +3,7 @@ import { useEffect } from "react";
 
 import ProgressOverlay from "./components/common/ProgressOverlay";
 import DownloadQueuePanel from "./components/downloads/DownloadQueuePanel";
+import InstallDropZone from "./components/downloads/InstallDropZone";
 import MainLayout from "./components/layout/MainLayout";
 import SetupWizard from "./components/setup/SetupWizard";
 import { toast, Toaster } from "./components/ui/toast";
@@ -45,6 +46,7 @@ export default function App() {
       <Toaster />
       <ProgressOverlay />
       <DownloadQueuePanel />
+      <InstallDropZone />
     </>
   );
 }

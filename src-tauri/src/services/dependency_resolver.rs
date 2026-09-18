@@ -17,18 +17,15 @@ pub struct ResolvedDependency {
     pub icon: String,
 }
 
-/// Resolve all dependencies for a given package, returning them in topological order.
-/// Skips packages that are already installed.
+/// Resolve a list of Thunderstore dependency strings (from a package version
+/// or a local zip's manifest) into topological install order. Skips packages
+/// that are already installed.
 pub fn resolve_dependencies(
-    target_full_name: &str,
-    target_version: &str,
+    dependencies: &[String],
     packages: &[ThunderstorePackage],
     installed: &HashSet<String>,
 ) -> AppResult<Vec<ResolvedDependency>> {
-    info!(
-        "Resolving dependencies for {} v{}",
-        target_full_name, target_version
-    );
+    info!("Resolving {} direct dependencies", dependencies.len());
 
     let package_map: HashMap<&str, &ThunderstorePackage> =
         packages.iter().map(|p| (p.full_name.as_str(), p)).collect();
@@ -40,33 +37,14 @@ pub fn resolve_dependencies(
     let mut queue: VecDeque<String> = VecDeque::new();
     let mut visited: HashSet<String> = HashSet::new();
 
-    // Start with the target package's dependencies
-    let target_pkg = package_map.get(target_full_name).ok_or_else(|| {
-        AppError::DependencyResolution(format!("Package '{}' not found", target_full_name))
-    })?;
-
-    let target_ver = target_pkg
-        .versions
-        .iter()
-        .find(|v| v.version_number == target_version)
-        .or_else(|| target_pkg.versions.first())
-        .ok_or_else(|| {
-            AppError::DependencyResolution(format!("No versions found for '{}'", target_full_name))
-        })?;
-
-    // Initialize graph with the target's direct dependencies
-    graph.entry(target_full_name.to_string()).or_default();
-    in_degree.entry(target_full_name.to_string()).or_insert(0);
-
-    for dep_str in &target_ver.dependencies {
+    // Seed the queue with the declared dependencies
+    for dep_str in dependencies {
         if let Some(parsed) = ParsedDependency::parse(dep_str) {
             if !installed.contains(&parsed.full_name) {
                 queue.push_back(dep_str.clone());
-                graph
-                    .entry(target_full_name.to_string())
-                    .or_default()
-                    .push(parsed.full_name.clone());
             }
+        } else {
+            warn!("Failed to parse dependency string: {}", dep_str);
         }
     }
 
@@ -165,11 +143,8 @@ pub fn resolve_dependencies(
     while let Some(node) = zero_in.pop_front() {
         processed += 1;
 
-        // Add to sorted list (skip the target itself; we only want dependencies)
-        if node != target_full_name {
-            if let Some(resolved) = all_deps.get(&node) {
-                sorted.push(resolved.clone());
-            }
+        if let Some(resolved) = all_deps.get(&node) {
+            sorted.push(resolved.clone());
         }
 
         if let Some(neighbors) = graph.get(&node) {

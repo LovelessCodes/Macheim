@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use tracing::warn;
 
 use crate::error::AppResult;
-use crate::models::thunderstore::ThunderstorePackage;
-use crate::services::{hexium_client, thunderstore_client};
+use crate::models::thunderstore::{PackageSource, ThunderstorePackage};
+use crate::services::{hexium_client, package_cache, thunderstore_client};
 
 /// Fetch packages from every supported store and merge them into one list.
 /// Hexium is best-effort: when it is unreachable the Thunderstore list is
@@ -26,6 +26,25 @@ pub async fn fetch_all_packages(force_refresh: bool) -> AppResult<Vec<Thundersto
     };
 
     Ok(merge_packages(thunderstore, hexium))
+}
+
+/// Package list from the on-disk caches only, never the network. Used for
+/// best-effort work such as attributing a local archive to a store package.
+pub fn cached_packages() -> Vec<ThunderstorePackage> {
+    let thunderstore: Vec<ThunderstorePackage> =
+        package_cache::load_fresh_cache(&package_cache::cache_dir("thunderstore"))
+            .unwrap_or_default();
+    let hexium: Vec<ThunderstorePackage> =
+        package_cache::load_fresh_cache(&package_cache::cache_dir("hexium"))
+            .unwrap_or_default()
+            .into_iter()
+            .map(|mut pkg: ThunderstorePackage| {
+                pkg.source = PackageSource::Hexium;
+                pkg
+            })
+            .collect();
+
+    merge_packages(thunderstore, hexium)
 }
 
 /// Merge `secondary` into `primary`. Packages present in both stores are

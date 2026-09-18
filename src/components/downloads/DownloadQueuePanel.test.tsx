@@ -164,3 +164,13 @@ test("renders an empty state with no items", () => {
 
   expect(screen.getByText("No downloads")).toBeTruthy();
 });
+
+test("marks installs that come from a local archive", async () => {
+  useDownloadStore.setState({
+    items: [item({ id: 4, status: "queued", local_path: "/tmp/CoolMod.zip" })],
+  });
+
+  renderWithClient(<DownloadQueuePanel />);
+
+  expect(await screen.findByText("From file")).toBeTruthy();
+});

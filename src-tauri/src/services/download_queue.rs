@@ -50,6 +50,19 @@ impl DownloadStatus {
     }
 }
 
+/// Identity of a local archive, resolved once when it is queued so the
+/// install never has to guess (or touch the package cache) again.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LocalArchiveMeta {
+    pub author: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub icon: Option<String>,
+    #[serde(default)]
+    pub dependencies: Vec<String>,
+}
+
 /// A single queued install request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DownloadItem {
@@ -76,6 +89,12 @@ pub struct DownloadItem {
     pub retry_count: u32,
     #[serde(default)]
     pub installed_count: usize,
+    /// Local archive path for "install from file" items.
+    #[serde(default)]
+    pub local_path: Option<String>,
+    /// Identity derived from that archive.
+    #[serde(default)]
+    pub local_meta: Option<LocalArchiveMeta>,
     pub queued_at: String,
     #[serde(default)]
     pub finished_at: Option<String>,
@@ -226,6 +245,20 @@ impl DownloadQueue {
         version: Option<String>,
         kind: DownloadKind,
     ) -> DownloadItem {
+        self.enqueue_with_source(full_name, name, version, kind, None, None)
+    }
+
+    /// Add a request, optionally installing from a local archive instead of
+    /// downloading the package.
+    pub fn enqueue_with_source(
+        &self,
+        full_name: &str,
+        name: &str,
+        version: Option<String>,
+        kind: DownloadKind,
+        local_path: Option<String>,
+        local_meta: Option<LocalArchiveMeta>,
+    ) -> DownloadItem {
         let result = {
             let mut inner = self.lock_inner();
 
@@ -242,8 +275,14 @@ impl DownloadQueue {
                     return item.clone();
                 }
                 let retrying = item.status == DownloadStatus::Failed;
-                if retrying || item.version != version {
+                if retrying
+                    || item.version != version
+                    || item.local_path != local_path
+                    || item.local_meta != local_meta
+                {
                     item.version = version;
+                    item.local_path = local_path;
+                    item.local_meta = local_meta;
                     item.status = DownloadStatus::Queued;
                     item.error = None;
                     item.retry_count = 0;
@@ -274,6 +313,8 @@ impl DownloadQueue {
                     error: None,
                     retry_count: 0,
                     installed_count: 0,
+                    local_path,
+                    local_meta,
                     queued_at: chrono::Utc::now().to_rfc3339(),
                     finished_at: None,
                 };
@@ -848,10 +889,19 @@ async fn process_item(app: &AppHandle, queue: &Arc<DownloadQueue>, id: u64) {
     };
 
     let version = item.version.as_deref();
+    let local = item
+        .local_path
+        .as_deref()
+        .map(|path| install_pipeline::LocalSource {
+            path: std::path::Path::new(path),
+            name: &item.name,
+            meta: item.local_meta.as_ref(),
+        });
     info!("Queue: processing {} v{:?}", item.full_name, version);
     let result = install_pipeline::install_package(
         &item.full_name,
         version,
+        local,
         &state,
         Some(&control),
         &reporter,
@@ -1162,6 +1212,95 @@ mod tests {
         assert_eq!(stored.installed_count, 0);
         assert!(stored.finished_at.is_none());
         assert_eq!(queue.snapshot().items.len(), 1);
+    }
+
+    fn archive_meta() -> LocalArchiveMeta {
+        LocalArchiveMeta {
+            author: "Local".to_string(),
+            description: "Installed from a local archive".to_string(),
+            icon: None,
+            dependencies: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn local_installs_keep_their_archive_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("queue.json");
+        let archive = dir.path().join("CoolMod.zip");
+        let queue = DownloadQueue::open(path.clone());
+
+        let item = queue.enqueue_with_source(
+            "Local-CoolMod",
+            "CoolMod",
+            None,
+            DownloadKind::Mod,
+            Some(archive.to_string_lossy().to_string()),
+            Some(archive_meta()),
+        );
+        assert_eq!(
+            item.local_path.as_deref(),
+            Some(archive.to_string_lossy().as_ref())
+        );
+
+        let reloaded = DownloadQueue::open(path);
+        let stored = reloaded.item(item.id).unwrap();
+        assert_eq!(stored.local_path, item.local_path);
+        assert_eq!(stored.local_meta, item.local_meta);
+    }
+
+    #[test]
+    fn enqueueing_a_different_archive_resets_the_item() {
+        let (_dir, queue) = temp_queue();
+        let first = queue.enqueue_with_source(
+            "Local-Mod",
+            "Mod",
+            None,
+            DownloadKind::Mod,
+            Some("/tmp/a.zip".to_string()),
+            Some(archive_meta()),
+        );
+        queue.pause(first.id);
+
+        // Same name, new file while it is still pending: swap the source.
+        let second = queue.enqueue_with_source(
+            "Local-Mod",
+            "Mod",
+            None,
+            DownloadKind::Mod,
+            Some("/tmp/b.zip".to_string()),
+            Some(archive_meta()),
+        );
+
+        assert_eq!(first.id, second.id);
+        assert_eq!(second.local_path.as_deref(), Some("/tmp/b.zip"));
+        assert_eq!(second.status, DownloadStatus::Queued);
+    }
+
+    #[test]
+    fn a_running_local_install_keeps_its_archive() {
+        let (_dir, queue) = temp_queue();
+        let item = queue.enqueue_with_source(
+            "Local-Mod",
+            "Mod",
+            None,
+            DownloadKind::Mod,
+            Some("/tmp/a.zip".to_string()),
+            Some(archive_meta()),
+        );
+        assert!(queue.begin(item.id).is_some());
+
+        let second = queue.enqueue_with_source(
+            "Local-Mod",
+            "Mod",
+            None,
+            DownloadKind::Mod,
+            Some("/tmp/b.zip".to_string()),
+            Some(archive_meta()),
+        );
+
+        assert_eq!(second.local_path.as_deref(), Some("/tmp/a.zip"));
+        assert_eq!(second.status, DownloadStatus::Downloading);
     }
 
     #[test]

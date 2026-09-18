@@ -1,5 +1,15 @@
 import type { DownloadStatus } from "./types";
 
+/** True when a dragged or picked path is a ZIP archive. */
+export function isZipPath(path: string): boolean {
+  return path.toLowerCase().endsWith(".zip");
+}
+
+/** Last path segment, for labels. */
+export function fileName(path: string): string {
+  return path.split(/[/\\]/).pop() || path;
+}
+
 /** Short label for a queue item status, for buttons and rows. */
 export function downloadStatusLabel(status: DownloadStatus): string {
   switch (status) {

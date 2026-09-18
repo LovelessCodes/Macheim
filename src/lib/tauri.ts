@@ -71,6 +71,10 @@ export async function enqueueInstall(
   return invoke<DownloadItem>("enqueue_install", { fullName, name, version, kind });
 }
 
+export async function enqueueLocalInstall(path: string): Promise<DownloadItem> {
+  return invoke<DownloadItem>("enqueue_local_install", { path });
+}
+
 export async function pauseDownload(id: number): Promise<DownloadQueueSnapshot> {
   return invoke<DownloadQueueSnapshot>("pause_download", { id });
 }
