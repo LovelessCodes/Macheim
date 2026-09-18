@@ -437,7 +437,7 @@ fn rank_culprits(
         })
         .collect();
 
-    culprits.sort_by(|a, b| b.score.cmp(&a.score));
+    culprits.sort_by_key(|culprit| std::cmp::Reverse(culprit.score));
     culprits.truncate(MAX_CULPRITS);
     culprits
 }
