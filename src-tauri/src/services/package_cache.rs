@@ -55,6 +55,15 @@ fn save_cache<T: Serialize>(dir: &Path, packages: &[T]) -> AppResult<()> {
     Ok(())
 }
 
+/// Load a package list from disk without touching the network. Returns None
+/// when the cache is missing, stale or unreadable.
+pub fn load_fresh_cache<T: DeserializeOwned>(dir: &Path) -> Option<Vec<T>> {
+    if !is_cache_valid(dir) {
+        return None;
+    }
+    load_cache(dir).ok()
+}
+
 /// Fetch a package list from a Thunderstore-compatible API, using the disk
 /// cache when it is fresh (< 30 minutes).
 pub async fn fetch_cached_packages<T: DeserializeOwned + Serialize>(
@@ -83,7 +92,7 @@ pub async fn fetch_cached_packages<T: DeserializeOwned + Serialize>(
         .get(url)
         .send()
         .await
-        .map_err(|e| AppError::Network(format!("Failed to fetch packages: {}", e)))?;
+        .map_err(|e| AppError::NetworkTransient(format!("Failed to fetch packages: {}", e)))?;
 
     if !response.status().is_success() {
         return Err(AppError::Network(format!(

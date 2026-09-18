@@ -151,6 +151,7 @@ pub fn run() {
             // Download queue
             commands::downloads::get_download_queue,
             commands::downloads::enqueue_install,
+            commands::downloads::enqueue_local_install,
             commands::downloads::pause_download,
             commands::downloads::resume_download,
             commands::downloads::cancel_download,

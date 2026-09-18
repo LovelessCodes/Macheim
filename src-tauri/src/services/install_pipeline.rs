@@ -1,16 +1,25 @@
 use std::collections::HashSet;
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use tracing::{info, warn};
 
 use crate::error::{AppError, AppResult};
-use crate::models::InstalledMod;
-use crate::services::download_queue::InstallControl;
+use crate::models::{InstalledMod, ThunderstorePackage};
+use crate::services::download_queue::{InstallControl, LocalArchiveMeta};
 use crate::services::{
     dependency_resolver, game_detector, launcher, mod_installer, package_sources, profile_manager,
     thunderstore_client,
 };
 use crate::AppState;
+
+/// A local archive queued for installation, with the identity resolved when it
+/// was enqueued.
+pub struct LocalSource<'a> {
+    pub path: &'a Path,
+    pub name: &'a str,
+    pub meta: Option<&'a LocalArchiveMeta>,
+}
 
 /// Progress update emitted while a package installs.
 #[derive(Debug, Clone)]
@@ -29,8 +38,97 @@ pub struct InstallProgress {
 /// download callbacks, so it must own its captures.
 pub type ProgressReporter = Arc<dyn Fn(InstallProgress) + Send + Sync>;
 
+/// Where the package payload comes from.
+enum TargetSource {
+    Store { download_url: String },
+    Local { zip: Vec<u8> },
+}
+
+/// Everything needed to install the requested package itself. Dependencies
+/// are resolved separately from `dependencies`.
+struct TargetInfo {
+    author: String,
+    name: String,
+    full_name: String,
+    version: String,
+    description: String,
+    icon: String,
+    dependencies: Vec<String>,
+    source: TargetSource,
+}
+
+impl TargetInfo {
+    fn from_store(
+        packages: &[ThunderstorePackage],
+        full_name: &str,
+        version: Option<&str>,
+    ) -> AppResult<Self> {
+        let pkg = thunderstore_client::find_package(packages, full_name)
+            .ok_or_else(|| AppError::Mod(format!("Package '{}' not found", full_name)))?;
+
+        let target_version = version
+            .or_else(|| pkg.versions.first().map(|v| v.version_number.as_str()))
+            .ok_or_else(|| AppError::Mod("No version available".to_string()))?;
+
+        let ver = pkg
+            .versions
+            .iter()
+            .find(|v| v.version_number == target_version)
+            .ok_or_else(|| AppError::Mod("Version not found".to_string()))?;
+
+        Ok(Self {
+            author: pkg.owner.clone(),
+            name: pkg.name.clone(),
+            full_name: pkg.full_name.clone(),
+            version: ver.version_number.clone(),
+            description: ver.description.clone(),
+            icon: ver.icon.clone(),
+            dependencies: ver.dependencies.clone(),
+            source: TargetSource::Store {
+                download_url: ver.download_url.clone(),
+            },
+        })
+    }
+
+    fn from_local(
+        full_name: &str,
+        name: &str,
+        version: Option<&str>,
+        meta: &LocalArchiveMeta,
+        zip: Vec<u8>,
+    ) -> Self {
+        Self {
+            author: meta.author.clone(),
+            name: name.to_string(),
+            full_name: full_name.to_string(),
+            version: version.unwrap_or("1.0.0").to_string(),
+            description: meta.description.clone(),
+            icon: meta.icon.clone().unwrap_or_default(),
+            dependencies: meta.dependencies.clone(),
+            source: TargetSource::Local { zip },
+        }
+    }
+
+    fn from_local_info(info: mod_installer::LocalModInfo, zip: Vec<u8>) -> Self {
+        Self {
+            author: info.author,
+            name: info.name,
+            full_name: info.full_name,
+            version: info.version.unwrap_or_else(|| "1.0.0".to_string()),
+            description: info.description,
+            icon: info.icon.unwrap_or_default(),
+            dependencies: info.dependencies,
+            source: TargetSource::Local { zip },
+        }
+    }
+}
+
 /// Install a package and all its dependencies. Shared by the direct command
 /// and the queued worker.
+///
+/// `local_path` switches the target from a store download to a user-supplied
+/// archive; its manifest (when present) supplies name, version and
+/// dependencies.
 ///
 /// `control` lets a queue item be paused or cancelled mid-flight. When it
 /// reports aborted, the pipeline returns `AppError::Cancelled` at the next
@@ -38,15 +136,29 @@ pub type ProgressReporter = Arc<dyn Fn(InstallProgress) + Send + Sync>;
 pub async fn install_package(
     full_name: &str,
     version: Option<&str>,
+    local: Option<LocalSource<'_>>,
     state: &Mutex<AppState>,
     control: Option<&Arc<InstallControl>>,
     reporter: &ProgressReporter,
 ) -> AppResult<Vec<InstalledMod>> {
-    info!("Installing package: {} (version: {:?})", full_name, version);
     launcher::ensure_game_stopped()?;
     profile_manager::validate_name(full_name)?;
 
-    let (game_path, cached_packages, active_profile) = {
+    let local_source = match local {
+        Some(source) => {
+            info!("Installing local archive: {}", source.path.display());
+            let zip = std::fs::read(source.path).map_err(|e| {
+                AppError::Mod(format!("Could not read '{}': {}", source.path.display(), e))
+            })?;
+            Some((source, zip))
+        }
+        None => {
+            info!("Installing package: {} (version: {:?})", full_name, version);
+            None
+        }
+    };
+
+    let (game_path, mut cached_packages, active_profile) = {
         let state = state
             .lock()
             .map_err(|e| AppError::Mod(format!("Failed to lock state: {}", e)))?;
@@ -63,40 +175,38 @@ pub async fn install_package(
         )
     };
 
-    let packages = match cached_packages {
-        Some(packages) => packages,
-        None => {
-            info!("Package cache not loaded, fetching packages first...");
-            let packages = package_sources::fetch_all_packages(false).await?;
-            let mut state = state
-                .lock()
-                .map_err(|e| AppError::Mod(format!("Failed to lock state: {}", e)))?;
-            state.package_cache = Some(packages.clone());
-            state.cache_updated_at = Some(chrono::Utc::now());
-            packages
-        }
+    // Store installs always need the package list; local installs only need it
+    // when their manifest declares dependencies (or when a pre-meta queue item
+    // has to be re-derived).
+    let needs_packages = match &local_source {
+        Some((source, _)) => source.meta.is_none_or(|meta| !meta.dependencies.is_empty()),
+        None => true,
     };
+    if needs_packages && cached_packages.is_none() {
+        info!("Package cache not loaded, fetching packages first...");
+        let packages = package_sources::fetch_all_packages(false).await?;
+        let mut state = state
+            .lock()
+            .map_err(|e| AppError::Mod(format!("Failed to lock state: {}", e)))?;
+        state.package_cache = Some(packages.clone());
+        state.cache_updated_at = Some(chrono::Utc::now());
+        cached_packages = Some(packages);
+    }
+    let packages = cached_packages.unwrap_or_default();
 
     let game_root = game_detector::get_valheim_root(&game_path);
 
-    // Find the target package
-    let target_pkg = thunderstore_client::find_package(&packages, full_name)
-        .ok_or_else(|| AppError::Mod(format!("Package '{}' not found", full_name)))?;
-
-    let target_version = version
-        .or_else(|| {
-            target_pkg
-                .versions
-                .first()
-                .map(|v| v.version_number.as_str())
-        })
-        .ok_or_else(|| AppError::Mod("No version available".to_string()))?;
-
-    let target_ver_info = target_pkg
-        .versions
-        .iter()
-        .find(|v| v.version_number == target_version)
-        .ok_or_else(|| AppError::Mod("Version not found".to_string()))?;
+    let target = match local_source {
+        Some((source, zip)) => match source.meta {
+            Some(meta) => TargetInfo::from_local(full_name, source.name, version, meta, zip),
+            None => {
+                let info = mod_installer::describe_local_zip(source.path, &zip, &packages)?;
+                TargetInfo::from_local_info(info, zip)
+            }
+        },
+        None => TargetInfo::from_store(&packages, full_name, version)?,
+    };
+    let full_name = target.full_name.clone();
 
     // Get currently installed mods to skip existing deps
     let profile = profile_manager::load_profile(&active_profile)?;
@@ -106,18 +216,14 @@ pub async fn install_package(
     report(
         reporter,
         "resolving",
-        full_name,
+        &full_name,
         0,
         0,
         "Resolving dependencies...".to_string(),
     );
 
-    let deps = dependency_resolver::resolve_dependencies(
-        full_name,
-        target_version,
-        &packages,
-        &installed_set,
-    )?;
+    let deps =
+        dependency_resolver::resolve_dependencies(&target.dependencies, &packages, &installed_set)?;
 
     let total_items = deps.len() + 1; // deps + target mod
     let mut installed_mods = Vec::new();
@@ -235,7 +341,7 @@ pub async fn install_package(
         .iter()
         .find(|m| m.full_name == full_name)
         .map(|m| m.version.as_str());
-    let version_changed = installed_version != Some(target_version);
+    let version_changed = installed_version != Some(target.version.as_str());
 
     if version_changed {
         ensure_not_aborted(control)?;
@@ -244,61 +350,38 @@ pub async fn install_package(
             // Remove the old version's files so stale files don't linger.
             mutate_under_lock(state, control, || {
                 launcher::ensure_game_stopped()?;
-                mod_installer::uninstall_mod(full_name, &game_root)
+                mod_installer::uninstall_mod(&full_name, &game_root)
             })
             .await?;
         }
 
-        report(
-            reporter,
-            "downloading",
-            full_name,
-            total_items,
-            total_items,
-            format!("Downloading {}", target_pkg.name),
-        );
-
-        let app_reporter = Arc::clone(reporter);
-        let fn_clone = full_name.to_string();
-
-        let target_zip = thunderstore_client::download_mod_with_progress(
-            &target_ver_info.download_url,
-            Some(Box::new(move |downloaded, total| {
-                app_reporter(InstallProgress {
-                    stage: "downloading",
-                    mod_name: fn_clone.clone(),
-                    current: total_items,
-                    total: total_items,
-                    bytes_downloaded: downloaded,
-                    bytes_total: total,
-                    message: "Downloading...".to_string(),
-                });
-            })),
-            abort.clone(),
-        )
-        .await?;
+        let target_zip = acquire_target_bytes(&target, total_items, reporter, &abort).await?;
 
         launcher::ensure_game_stopped()?;
         ensure_not_aborted(control)?;
 
+        let action = match &target.source {
+            TargetSource::Local { .. } => "Installing {} from file",
+            TargetSource::Store { .. } => "Installing {}",
+        };
         report(
             reporter,
             "installing",
-            full_name,
+            &full_name,
             total_items,
             total_items,
-            format!("Installing {}", target_pkg.name),
+            action.replace("{}", &target.name),
         );
 
         let installed = mutate_under_lock(state, control, || {
             launcher::ensure_game_stopped()?;
             let installed = mod_installer::install_mod_from_bytes(
-                &target_pkg.owner,
-                &target_pkg.name,
-                &target_ver_info.version_number,
-                &target_ver_info.description,
-                &target_ver_info.icon,
-                &target_ver_info.dependencies,
+                &target.author,
+                &target.name,
+                &target.version,
+                &target.description,
+                &target.icon,
+                &target.dependencies,
                 &target_zip,
                 &game_root,
             )?;
@@ -313,7 +396,7 @@ pub async fn install_package(
     report(
         reporter,
         "done",
-        full_name,
+        &full_name,
         total_items,
         total_items,
         format!(
@@ -339,6 +422,49 @@ pub async fn install_package(
         return Err(AppError::Mod(format!("Partially installed: {} succeeded. Failed dependencies: {}. Resolve these before playing; successful files were retained.", installed_mods.len(), failed_mods.join(", "))));
     }
     Ok(installed_mods)
+}
+
+/// Fetch the target payload: download it for store packages, reuse the local
+/// archive bytes otherwise.
+async fn acquire_target_bytes(
+    target: &TargetInfo,
+    total_items: usize,
+    reporter: &ProgressReporter,
+    abort: &Option<thunderstore_client::AbortFn>,
+) -> AppResult<Vec<u8>> {
+    match &target.source {
+        TargetSource::Local { zip } => Ok(zip.clone()),
+        TargetSource::Store { download_url } => {
+            report(
+                reporter,
+                "downloading",
+                &target.full_name,
+                total_items,
+                total_items,
+                format!("Downloading {}", target.name),
+            );
+
+            let app_reporter = Arc::clone(reporter);
+            let name = target.full_name.clone();
+
+            thunderstore_client::download_mod_with_progress(
+                download_url,
+                Some(Box::new(move |downloaded, total| {
+                    app_reporter(InstallProgress {
+                        stage: "downloading",
+                        mod_name: name.clone(),
+                        current: total_items,
+                        total: total_items,
+                        bytes_downloaded: downloaded,
+                        bytes_total: total,
+                        message: "Downloading...".to_string(),
+                    });
+                })),
+                abort.clone(),
+            )
+            .await
+        }
+    }
 }
 
 /// Run a filesystem mutation under the shared operation lock, re-checking

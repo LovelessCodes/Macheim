@@ -177,6 +177,8 @@ export interface DownloadItem {
   error: string | null;
   retry_count: number;
   installed_count: number;
+  /** Set when the install comes from a local archive instead of a download. */
+  local_path?: string | null;
   queued_at: string;
   finished_at: string | null;
 }

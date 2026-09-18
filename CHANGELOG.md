@@ -11,6 +11,12 @@ Upstream releases before this fork are listed on
 
 ### Added
 
+- **Install from file** — Drag and drop `.zip` archives onto the window, or use "Install from
+  file" on the Installed Mods page. Archives are matched back to their Thunderstore listing
+  by package name/version (or the owner encoded in the download's file name), so they keep
+  the real author, icon and update checks; unmatched zips install as `Local-<file name>`.
+  Local installs go through the same queue, so they wait for Valheim to close and can be
+  paused or cancelled.
 - **Download queue** — Installs no longer fail while Valheim is running or the connection is
   down; they queue instead and start automatically once the game closes or the network
   returns. Track, pause, resume, cancel, retry, uninstall and re-install downloads from the

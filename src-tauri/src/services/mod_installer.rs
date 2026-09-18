@@ -1,11 +1,260 @@
+use std::ffi::OsStr;
+use std::io::Read;
 use std::path::Path;
 
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 use crate::error::{AppError, AppResult};
-use crate::models::InstalledMod;
+use crate::models::{
+    InstalledMod, Manifest, PackageVersion, ParsedDependency, ThunderstorePackage,
+};
 use crate::services::gatekeeper;
 use crate::services::thunderstore_client;
+
+/// Metadata derived from a local ZIP, used when installing from file.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LocalModInfo {
+    pub author: String,
+    pub name: String,
+    pub full_name: String,
+    pub version: Option<String>,
+    pub description: String,
+    /// Store icon, when the archive could be matched to a package.
+    pub icon: Option<String>,
+    pub dependencies: Vec<String>,
+}
+
+/// Describe a local mod archive without storing it.
+///
+/// Thunderstore's `manifest.json` has no author field, so identity comes from
+/// matching the archive against the known package list (name + version, and
+/// the dependency list when several owners share a name). When there is no
+/// match or no package list, the file name (`Owner-Name-Version.zip`, the
+/// shape Thunderstore serves) supplies the owner. Raw plugin zips with no
+/// usable hints install as `Local-<file name>`.
+pub fn describe_local_zip(
+    path: &Path,
+    zip_bytes: &[u8],
+    packages: &[ThunderstorePackage],
+) -> AppResult<LocalModInfo> {
+    let manifest = read_manifest(zip_bytes)?;
+    let parsed = parse_file_identity(path);
+
+    // Name/version hints used to look the archive up in the store.
+    let (hint_name, hint_version, manifest_description, manifest_dependencies) = match &manifest {
+        Some(manifest) => (
+            Some(manifest.name.clone()),
+            Some(manifest.version_number.clone()),
+            manifest.description.clone(),
+            manifest.dependencies.clone(),
+        ),
+        None => match &parsed {
+            Some(parsed) => (
+                Some(parsed.name.clone()),
+                Some(parsed.version.clone()),
+                String::new(),
+                Vec::new(),
+            ),
+            None => (None, None, String::new(), Vec::new()),
+        },
+    };
+
+    if let (Some(name), Some(version)) = (&hint_name, &hint_version) {
+        if let Some((pkg, ver)) = find_store_match(packages, name, version, &manifest_dependencies)
+        {
+            debug!("Local archive matches store package {}", pkg.full_name);
+            return Ok(LocalModInfo {
+                author: pkg.owner.clone(),
+                name: pkg.name.clone(),
+                full_name: pkg.full_name.clone(),
+                version: Some(ver.version_number.clone()),
+                description: if manifest_description.trim().is_empty() {
+                    ver.description.clone()
+                } else {
+                    manifest_description
+                },
+                icon: (!ver.icon.is_empty()).then(|| ver.icon.clone()),
+                dependencies: if manifest_dependencies.is_empty() {
+                    ver.dependencies.clone()
+                } else {
+                    manifest_dependencies
+                },
+            });
+        }
+    }
+
+    // No store match. Prefer manifest identity, borrowed author from the file
+    // name when the manifest omits it (Thunderstore never writes one).
+    if let Some(manifest) = manifest {
+        let author = sanitize_component(&manifest.author.unwrap_or_default())
+            .or_else(|| parsed.as_ref().and_then(|p| sanitize_component(&p.author)))
+            .unwrap_or_else(|| "Local".to_string());
+        let name = sanitize_component(&manifest.name).unwrap_or_else(|| fallback_name(path));
+        return Ok(LocalModInfo {
+            full_name: format!("{}-{}", author, name),
+            author,
+            name,
+            version: Some(manifest.version_number),
+            description: manifest.description,
+            icon: None,
+            dependencies: manifest.dependencies,
+        });
+    }
+
+    // Raw zip: the file name is the only identity we have.
+    if let Some(parsed) = parsed {
+        let author = sanitize_component(&parsed.author).unwrap_or_else(|| "Local".to_string());
+        let name = sanitize_component(&parsed.name).unwrap_or_else(|| fallback_name(path));
+        return Ok(LocalModInfo {
+            full_name: format!("{}-{}", author, name),
+            author,
+            name,
+            version: Some(parsed.version),
+            description: "Installed from a local archive".to_string(),
+            icon: None,
+            dependencies: Vec::new(),
+        });
+    }
+
+    let name = fallback_name(path);
+    Ok(LocalModInfo {
+        full_name: format!("Local-{}", name),
+        author: "Local".to_string(),
+        name,
+        version: None,
+        description: "Installed from a local archive".to_string(),
+        icon: None,
+        dependencies: Vec::new(),
+    })
+}
+
+/// Find the store package an archive belongs to. Exact name + version always
+/// match; when several owners publish the same name, the dependency list has
+/// to agree as well, otherwise the archive stays unattributed.
+fn find_store_match<'a>(
+    packages: &'a [ThunderstorePackage],
+    name: &str,
+    version: &str,
+    dependencies: &[String],
+) -> Option<(&'a ThunderstorePackage, &'a PackageVersion)> {
+    let matches: Vec<(&ThunderstorePackage, &PackageVersion)> = packages
+        .iter()
+        .filter(|pkg| pkg.name == name)
+        .filter_map(|pkg| {
+            pkg.versions
+                .iter()
+                .find(|v| v.version_number == version)
+                .map(|ver| (pkg, ver))
+        })
+        .collect();
+
+    match matches.len() {
+        0 => None,
+        1 => Some(matches[0]),
+        _ => {
+            let exact: Vec<_> = matches
+                .iter()
+                .copied()
+                .filter(|(_, ver)| same_dependencies(&ver.dependencies, dependencies))
+                .collect();
+            (exact.len() == 1).then(|| exact[0])
+        }
+    }
+}
+
+fn same_dependencies(a: &[String], b: &[String]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut a: Vec<&String> = a.iter().collect();
+    let mut b: Vec<&String> = b.iter().collect();
+    a.sort();
+    b.sort();
+    a == b
+}
+
+/// Read `manifest.json` from a mod ZIP. Thunderstore packages put it at the
+/// root; some repacks wrap the payload in a single top-level folder.
+pub fn read_manifest(zip_bytes: &[u8]) -> AppResult<Option<Manifest>> {
+    let cursor = std::io::Cursor::new(zip_bytes);
+    let mut archive = zip::ZipArchive::new(cursor)?;
+
+    let mut found: Option<(usize, Manifest)> = None;
+    for index in 0..archive.len() {
+        let mut file = archive.by_index(index)?;
+        let path = file.mangled_name();
+        if path.file_name() != Some(OsStr::new("manifest.json")) {
+            continue;
+        }
+        let depth = path.components().count().saturating_sub(1);
+        if depth > 1 {
+            continue;
+        }
+
+        let mut raw = String::new();
+        if file.read_to_string(&mut raw).is_err() {
+            continue;
+        }
+        match serde_json::from_str::<Manifest>(&raw) {
+            Ok(manifest) => {
+                if found.as_ref().is_none_or(|(best, _)| depth < *best) {
+                    found = Some((depth, manifest));
+                }
+            }
+            Err(e) => warn!("Ignoring unreadable manifest.json in local archive: {}", e),
+        }
+    }
+
+    Ok(found.map(|(_, manifest)| manifest))
+}
+
+/// Parse `Owner-Name-Version.zip` (the download shape Thunderstore serves).
+fn parse_file_identity(path: &Path) -> Option<ParsedDependency> {
+    let stem = path.file_stem()?.to_string_lossy();
+    let stem = strip_copy_suffix(&stem);
+    ParsedDependency::parse(&stem)
+}
+
+/// Browsers append ` (1)`, ` (2)`, ... to repeated downloads.
+fn strip_copy_suffix(stem: &str) -> String {
+    let trimmed = stem.trim();
+    if let Some(without_close) = trimmed.strip_suffix(')') {
+        if let Some(open) = without_close.rfind(" (") {
+            let counter = &without_close[open + 2..];
+            if !counter.is_empty() && counter.chars().all(|c| c.is_ascii_digit()) {
+                return trimmed[..open].to_string();
+            }
+        }
+    }
+    trimmed.to_string()
+}
+
+/// Turn a manifest field into a safe file-name component. Returns None when
+/// nothing usable remains.
+fn sanitize_component(raw: &str) -> Option<String> {
+    let cleaned: String = raw
+        .trim()
+        .chars()
+        .map(|c| {
+            if c.is_control() || matches!(c, '/' | '\\' | ':') {
+                '_'
+            } else {
+                c
+            }
+        })
+        .collect();
+    let cleaned = cleaned.trim_matches([' ', '.']).trim().to_string();
+    if cleaned.is_empty() || cleaned.len() > 120 {
+        return None;
+    }
+    Some(cleaned)
+}
+
+fn fallback_name(path: &Path) -> String {
+    path.file_stem()
+        .and_then(|stem| sanitize_component(&strip_copy_suffix(&stem.to_string_lossy())))
+        .unwrap_or_else(|| "LocalMod".to_string())
+}
 
 /// Install a mod from a ZIP downloaded from Thunderstore.
 /// Returns the InstalledMod metadata.
@@ -392,6 +641,224 @@ fn copy_non_metadata_files(src: &Path, dst: &Path) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn zip_bytes(entries: &[(&str, &str)]) -> Vec<u8> {
+        use std::io::Write;
+
+        let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        for (name, contents) in entries {
+            writer
+                .start_file(*name, zip::write::SimpleFileOptions::default())
+                .unwrap();
+            writer.write_all(contents.as_bytes()).unwrap();
+        }
+        writer.finish().unwrap().into_inner()
+    }
+
+    const MANIFEST: &str = r#"{
+        "name": "CoolMod",
+        "version_number": "1.2.3",
+        "description": "Does cool things",
+        "dependencies": ["Author-Dep-1.0.0"],
+        "website_url": "",
+        "author": "Someone"
+    }"#;
+
+    /// Thunderstore manifests never include an author.
+    const AUTHORLESS_MANIFEST: &str = r#"{
+        "name": "CoolMod",
+        "version_number": "1.2.3",
+        "description": "Does cool things",
+        "dependencies": ["Author-Dep-1.0.0"]
+    }"#;
+
+    fn store_package(
+        name: &str,
+        owner: &str,
+        version: &str,
+        dependencies: &[&str],
+        icon: &str,
+    ) -> crate::models::ThunderstorePackage {
+        use crate::models::{PackageSource, PackageVersion, ThunderstorePackage};
+
+        ThunderstorePackage {
+            name: name.to_string(),
+            full_name: format!("{}-{}", owner, name),
+            owner: owner.to_string(),
+            package_url: String::new(),
+            date_updated: String::new(),
+            is_deprecated: false,
+            rating_score: 0,
+            versions: vec![PackageVersion {
+                name: name.to_string(),
+                full_name: format!("{}-{}-{}", owner, name, version),
+                version_number: version.to_string(),
+                dependencies: dependencies.iter().map(|dep| dep.to_string()).collect(),
+                download_url: String::new(),
+                downloads: 0,
+                description: format!("{} from the store", name),
+                icon: icon.to_string(),
+                date_created: String::new(),
+                file_size: 0,
+                is_active: true,
+                uuid4: None,
+            }],
+            categories: Vec::new(),
+            is_pinned: false,
+            source: PackageSource::Thunderstore,
+        }
+    }
+
+    #[test]
+    fn local_zip_with_manifest_keeps_published_identity() {
+        let bytes = zip_bytes(&[
+            ("manifest.json", MANIFEST),
+            ("plugins/CoolMod.dll", "binary"),
+        ]);
+
+        let info = describe_local_zip(Path::new("/tmp/cool.zip"), &bytes, &[]).unwrap();
+
+        assert_eq!(info.full_name, "Someone-CoolMod");
+        assert_eq!(info.version.as_deref(), Some("1.2.3"));
+        assert_eq!(info.description, "Does cool things");
+        assert_eq!(info.dependencies, vec!["Author-Dep-1.0.0".to_string()]);
+    }
+
+    #[test]
+    fn local_zip_manifest_inside_a_folder_is_found() {
+        let bytes = zip_bytes(&[
+            ("CoolMod/manifest.json", MANIFEST),
+            ("CoolMod/plugins/CoolMod.dll", "binary"),
+        ]);
+
+        let info = describe_local_zip(Path::new("/tmp/whatever.zip"), &bytes, &[]).unwrap();
+
+        assert_eq!(info.full_name, "Someone-CoolMod");
+    }
+
+    #[test]
+    fn local_zip_without_manifest_falls_back_to_the_file_name() {
+        let bytes = zip_bytes(&[("CoolMod.dll", "binary"), ("README.md", "hi")]);
+
+        let info = describe_local_zip(Path::new("/tmp/Cool Mod.zip"), &bytes, &[]).unwrap();
+
+        assert_eq!(info.full_name, "Local-Cool Mod");
+        assert_eq!(info.name, "Cool Mod");
+        assert_eq!(info.author, "Local");
+        assert_eq!(info.version, None);
+        assert!(info.dependencies.is_empty());
+    }
+
+    #[test]
+    fn local_zip_with_malformed_manifest_is_treated_as_raw() {
+        let bytes = zip_bytes(&[("manifest.json", "{not json"), ("Mod.dll", "binary")]);
+
+        assert!(read_manifest(&bytes).unwrap().is_none());
+    }
+
+    #[test]
+    fn manifest_fields_with_path_separators_are_sanitized() {
+        let bytes = zip_bytes(&[(
+            "manifest.json",
+            r#"{"name":"Bad/Name","version_number":"1.0.0","description":"d","dependencies":[],"author":"Ev:il"}"#,
+        )]);
+
+        let info = describe_local_zip(Path::new("/tmp/x.zip"), &bytes, &[]).unwrap();
+
+        assert_eq!(info.author, "Ev_il");
+        assert_eq!(info.name, "Bad_Name");
+        assert_eq!(info.full_name, "Ev_il-Bad_Name");
+    }
+
+    #[test]
+    fn thunderstore_file_names_identify_raw_zips() {
+        let bytes = zip_bytes(&[("BepInEx.dll", "binary")]);
+
+        let info = describe_local_zip(
+            Path::new("/Users/me/Downloads/denikson-BepInExPack_Valheim-5.4.2350.zip"),
+            &bytes,
+            &[],
+        )
+        .unwrap();
+
+        assert_eq!(info.author, "denikson");
+        assert_eq!(info.name, "BepInExPack_Valheim");
+        assert_eq!(info.full_name, "denikson-BepInExPack_Valheim");
+        assert_eq!(info.version.as_deref(), Some("5.4.2350"));
+    }
+
+    #[test]
+    fn browser_copy_suffixes_are_ignored() {
+        let bytes = zip_bytes(&[("Mod.dll", "binary")]);
+
+        let info = describe_local_zip(
+            Path::new("/Users/me/Downloads/denikson-Mod-1.2.3 (1).zip"),
+            &bytes,
+            &[],
+        )
+        .unwrap();
+
+        assert_eq!(info.full_name, "denikson-Mod");
+        assert_eq!(info.version.as_deref(), Some("1.2.3"));
+    }
+
+    #[test]
+    fn manifest_without_author_borrows_the_owner_from_the_file_name() {
+        let bytes = zip_bytes(&[("manifest.json", AUTHORLESS_MANIFEST)]);
+
+        let info =
+            describe_local_zip(Path::new("/tmp/Someone-CoolMod-1.2.3.zip"), &bytes, &[]).unwrap();
+
+        assert_eq!(info.full_name, "Someone-CoolMod");
+        assert_eq!(info.author, "Someone");
+    }
+
+    #[test]
+    fn store_match_attributes_the_archive_and_borrows_its_icon() {
+        let packages = vec![store_package(
+            "CoolMod",
+            "Someone",
+            "1.2.3",
+            &["Author-Dep-1.0.0"],
+            "https://cdn.example/icon.png",
+        )];
+        let bytes = zip_bytes(&[("manifest.json", AUTHORLESS_MANIFEST), ("CoolMod.dll", "b")]);
+
+        let info = describe_local_zip(Path::new("/tmp/renamed.zip"), &bytes, &packages).unwrap();
+
+        assert_eq!(info.author, "Someone");
+        assert_eq!(info.full_name, "Someone-CoolMod");
+        assert_eq!(info.icon.as_deref(), Some("https://cdn.example/icon.png"));
+        assert_eq!(info.dependencies, vec!["Author-Dep-1.0.0".to_string()]);
+    }
+
+    #[test]
+    fn ambiguous_store_matches_stay_unattributed() {
+        let packages = vec![
+            store_package("CoolMod", "Someone", "1.2.3", &[], ""),
+            store_package("CoolMod", "Other", "1.2.3", &[], ""),
+        ];
+        let bytes = zip_bytes(&[("manifest.json", AUTHORLESS_MANIFEST), ("CoolMod.dll", "b")]);
+
+        let info = describe_local_zip(Path::new("/tmp/renamed.zip"), &bytes, &packages).unwrap();
+
+        assert_eq!(info.author, "Local");
+        assert_eq!(info.full_name, "Local-CoolMod");
+    }
+
+    #[test]
+    fn ambiguous_store_matches_resolve_on_dependencies() {
+        let packages = vec![
+            store_package("CoolMod", "Someone", "1.2.3", &["Author-Dep-1.0.0"], ""),
+            store_package("CoolMod", "Other", "1.2.3", &["Other-Dep-1.0.0"], ""),
+        ];
+        let bytes = zip_bytes(&[("manifest.json", AUTHORLESS_MANIFEST), ("CoolMod.dll", "b")]);
+
+        let info = describe_local_zip(Path::new("/tmp/renamed.zip"), &bytes, &packages).unwrap();
+
+        assert_eq!(info.author, "Someone");
+        assert_eq!(info.full_name, "Someone-CoolMod");
+    }
 
     #[test]
     fn reinstall_preserves_existing_config_values() {
