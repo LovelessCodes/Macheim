@@ -15,7 +15,7 @@ pub async fn launch_modded(state: tauri::State<'_, Mutex<AppState>>) -> AppResul
     let _operation = crate::lock_operation_wait(&state).await?;
     launcher::ensure_game_stopped()?;
 
-    let (game_path, console_enabled) = {
+    let (game_path, console_enabled, snapshot_saves) = {
         let state = state
             .lock()
             .map_err(|e| AppError::GameNotFound(format!("Failed to lock state: {}", e)))?;
@@ -23,7 +23,11 @@ pub async fn launch_modded(state: tauri::State<'_, Mutex<AppState>>) -> AppResul
             .game_path
             .clone()
             .ok_or_else(|| AppError::GameNotFound("Game path not set".to_string()))?;
-        (game_path, state.settings.console_enabled)
+        (
+            game_path,
+            state.settings.console_enabled,
+            state.settings.snapshot_saves,
+        )
     };
 
     let game_root = game_detector::get_valheim_root(&game_path);
@@ -34,6 +38,11 @@ pub async fn launch_modded(state: tauri::State<'_, Mutex<AppState>>) -> AppResul
         .clone();
     let profile = crate::services::profile_manager::load_profile(&name)?;
     crate::services::compatibility::reconcile(&profile, &game_root)?;
+
+    if snapshot_saves && crate::services::save_manager::snapshot_before_launch().is_some() {
+        tracing::info!("Created pre-launch save snapshot");
+    }
+
     launcher::launch_modded(&game_path, &game_root, console_enabled)
 }
 

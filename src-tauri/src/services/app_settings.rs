@@ -12,6 +12,9 @@ pub struct AppSettings {
     /// Append `-console` to the modded launch command.
     #[serde(default = "default_true")]
     pub console_enabled: bool,
+    /// Snapshot worlds and characters before every modded launch.
+    #[serde(default = "default_true")]
+    pub snapshot_saves: bool,
 }
 
 fn default_true() -> bool {
@@ -19,10 +22,12 @@ fn default_true() -> bool {
 }
 
 impl Default for AppSettings {
-    /// Console was always on before it became a setting.
+    /// Console and pre-launch snapshots were always on before they became
+    /// settings.
     fn default() -> Self {
         Self {
             console_enabled: true,
+            snapshot_saves: true,
         }
     }
 }
@@ -75,6 +80,7 @@ mod tests {
 
         let settings = AppSettings {
             console_enabled: false,
+            snapshot_saves: false,
         };
         save_to(&path, &settings).unwrap();
         assert_eq!(load_from(&path), settings);

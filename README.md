@@ -94,6 +94,12 @@ All screenshots are 1200×800 captures of the running app; see
 - **Clearer installed list** - Outdated versions are badged, row actions use tooltips, and
   the scroll-to-top button no longer overlaps row controls
 
+### Saves
+
+- **World & character snapshots** - Snapshot your worlds and characters on demand, or
+  automatically before every modded launch (last five kept); restoring replaces the live
+  saves and keeps a safety snapshot of the previous state first
+
 ### Under the hood
 
 - **TanStack Query data layer** - Fetching, caching, and mutations were migrated to TanStack

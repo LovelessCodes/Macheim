@@ -152,6 +152,11 @@ pub fn run() {
             commands::mods::sync_mods,
             commands::mods::list_unmanaged_mods,
             commands::conflicts::detect_mod_conflicts,
+            // Save snapshots
+            commands::saves::get_save_overview,
+            commands::saves::create_save_snapshot,
+            commands::saves::restore_save_snapshot,
+            commands::saves::delete_save_snapshot,
             // Download queue
             commands::downloads::get_download_queue,
             commands::downloads::enqueue_install,
@@ -178,6 +183,7 @@ pub fn run() {
             // App settings
             commands::settings::get_app_settings,
             commands::settings::set_console_enabled,
+            commands::settings::set_snapshot_saves,
             // Config editor
             commands::config::get_config_files,
             commands::config::get_config,

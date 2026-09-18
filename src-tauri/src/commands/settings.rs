@@ -24,12 +24,28 @@ pub async fn set_console_enabled(
     state: State<'_, Mutex<AppState>>,
 ) -> AppResult<AppSettings> {
     tracing::info!("Command: set_console_enabled({})", enabled);
+    update_settings(state, |settings| settings.console_enabled = enabled)
+}
 
+/// Toggle automatic world/character snapshots before modded launches.
+#[tauri::command]
+pub async fn set_snapshot_saves(
+    enabled: bool,
+    state: State<'_, Mutex<AppState>>,
+) -> AppResult<AppSettings> {
+    tracing::info!("Command: set_snapshot_saves({})", enabled);
+    update_settings(state, |settings| settings.snapshot_saves = enabled)
+}
+
+fn update_settings(
+    state: State<'_, Mutex<AppState>>,
+    update: impl FnOnce(&mut AppSettings),
+) -> AppResult<AppSettings> {
     let settings = {
         let mut state = state
             .lock()
             .map_err(|e| AppError::Mod(format!("Failed to lock state: {}", e)))?;
-        state.settings.console_enabled = enabled;
+        update(&mut state.settings);
         state.settings.clone()
     };
 

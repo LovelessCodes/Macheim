@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  DatabaseBackup,
   Download,
   FileText,
   Layers,
@@ -46,6 +47,7 @@ const navItems: NavItem[] = [
   { page: "config", label: "Config Editor", icon: FileText },
   { page: "compatibility", label: "Mac Compatibility", icon: Shield },
   { page: "profiles", label: "Profiles", icon: User },
+  { page: "saves", label: "Save Snapshots", icon: DatabaseBackup },
   { page: "settings", label: "Settings", icon: Settings },
 ];
 

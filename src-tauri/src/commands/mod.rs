@@ -8,5 +8,6 @@ pub mod game;
 pub mod launch;
 pub mod mods;
 pub mod profiles;
+pub mod saves;
 pub mod settings;
 pub mod thunderstore;

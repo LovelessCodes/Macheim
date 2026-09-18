@@ -72,6 +72,31 @@ export interface GameStatus {
 
 export interface AppSettings {
   console_enabled: boolean;
+  snapshot_saves: boolean;
+}
+
+export interface SaveWorld {
+  name: string;
+  files: number;
+  size: number;
+  modified: string | null;
+}
+
+export interface SaveSnapshot {
+  id: string;
+  label: string;
+  created_at: string;
+  size: number;
+  automatic: boolean;
+  worlds: number;
+  characters: number;
+}
+
+export interface SaveOverview {
+  save_dir: string | null;
+  worlds: SaveWorld[];
+  characters: SaveWorld[];
+  snapshots: SaveSnapshot[];
 }
 
 export interface DuplicateDll {
@@ -185,6 +210,7 @@ export type Page =
   | "config"
   | "profiles"
   | "compatibility"
+  | "saves"
   | "settings";
 
 export type SortOption = "downloads" | "rating" | "updated" | "name";

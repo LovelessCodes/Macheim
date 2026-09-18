@@ -5,8 +5,13 @@ import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 
 void mock.module("../lib/tauri", () => ({
-  getAppSettings: mock(() => Promise.resolve({ console_enabled: true })),
-  setConsoleEnabled: mock((enabled: boolean) => Promise.resolve({ console_enabled: enabled })),
+  getAppSettings: mock(() => Promise.resolve({ console_enabled: true, snapshot_saves: true })),
+  setConsoleEnabled: mock((enabled: boolean) =>
+    Promise.resolve({ console_enabled: enabled, snapshot_saves: true }),
+  ),
+  setSnapshotSaves: mock((enabled: boolean) =>
+    Promise.resolve({ console_enabled: true, snapshot_saves: enabled }),
+  ),
 }));
 
 import { appSettingsQueryKey } from "../lib/query-keys";
@@ -24,8 +29,12 @@ function wrapper({ children }: { children: ReactNode }) {
 
 beforeEach(() => {
   mock.clearAllMocks();
-  getMock.mockImplementation(() => Promise.resolve({ console_enabled: true }));
-  setMock.mockImplementation((enabled: boolean) => Promise.resolve({ console_enabled: enabled }));
+  getMock.mockImplementation(() =>
+    Promise.resolve({ console_enabled: true, snapshot_saves: true }),
+  );
+  setMock.mockImplementation((enabled: boolean) =>
+    Promise.resolve({ console_enabled: enabled, snapshot_saves: true }),
+  );
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 });
 
@@ -47,7 +56,8 @@ test("toggling the console updates the cached settings", async () => {
   await waitFor(() =>
     expect(queryClient.getQueryData<AppSettings>(appSettingsQueryKey)?.console_enabled).toBe(false),
   );
-  expect(setMock).toHaveBeenCalledWith(false);
+  // React Query passes its mutation context as a second argument.
+  expect(setMock.mock.calls[0]?.[0]).toBe(false);
 });
 
 test("a failed toggle rolls the switch back", async () => {
