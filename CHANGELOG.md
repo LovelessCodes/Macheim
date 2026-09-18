@@ -11,6 +11,8 @@ Upstream releases before this fork are listed on
 
 ### Added
 
+- **Developer console toggle** — Choose whether "Play Modded" passes Valheim's `-console`
+  flag, from Settings. Enabled by default, matching previous behaviour.
 - **Install from file** — Drag and drop `.zip` archives onto the window, or use "Install from
   file" on the Installed Mods page. Archives are matched back to their Thunderstore listing
   by package name/version (or the owner encoded in the download's file name), so they keep

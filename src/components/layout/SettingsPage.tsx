@@ -7,9 +7,11 @@ import {
   AlertTriangle,
   Loader2,
   RefreshCw,
+  Terminal,
 } from "lucide-react";
 import { useState } from "react";
 
+import { useAppSettings, useSetConsoleEnabled } from "../../hooks/use-app-settings";
 import { useAppVersion } from "../../hooks/use-app-version";
 import { useBackups, useCreateBackup, useRestoreBackup } from "../../hooks/use-backups";
 import { useGameStatus } from "../../hooks/use-game-status";
@@ -18,6 +20,7 @@ import ProgressBar from "../common/ProgressBar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { Switch } from "../ui/switch";
 
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -36,6 +39,8 @@ export default function SettingsPage() {
   const { data: backups = [] } = useBackups(backupsRequested);
   const createBackupMutation = useCreateBackup();
   const restoreBackupMutation = useRestoreBackup();
+  const { data: appSettings } = useAppSettings();
+  const setConsoleEnabled = useSetConsoleEnabled();
 
   return (
     <div className="grid gap-6">
@@ -84,6 +89,31 @@ export default function SettingsPage() {
           </InfoRow>
           <InfoRow label="Active Profile">
             <span className="font-medium">{gameStatus?.active_profile ?? "Default"}</span>
+          </InfoRow>
+        </CardContent>
+      </Card>
+
+      {/* Launch */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Terminal className="size-4" />
+            Launch
+          </CardTitle>
+          <CardDescription>
+            Applies to &quot;Play Modded&quot;. The developer console opens with F5 in game and is
+            always available in a normal Steam launch if you add the flag there.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <InfoRow label="Enable developer console (-console)">
+            <Switch
+              checked={appSettings?.console_enabled ?? true}
+              disabled={!appSettings || setConsoleEnabled.isPending}
+              onCheckedChange={(checked) => setConsoleEnabled.mutate(checked)}
+              aria-label="Enable Valheim developer console"
+              className="data-checked:bg-[var(--color-success)]"
+            />
           </InfoRow>
         </CardContent>
       </Card>

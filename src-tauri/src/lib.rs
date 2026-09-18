@@ -43,6 +43,8 @@ pub struct AppState {
     pub package_cache: Option<Vec<ThunderstorePackage>>,
     /// When the package cache was last updated
     pub cache_updated_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// Persisted app preferences (loaded at startup).
+    pub settings: services::app_settings::AppSettings,
 }
 
 impl Default for AppState {
@@ -54,6 +56,7 @@ impl Default for AppState {
             active_profile: "Default".to_string(),
             package_cache: None,
             cache_updated_at: None,
+            settings: services::app_settings::load(),
         }
     }
 }
@@ -171,6 +174,9 @@ pub fn run() {
             commands::profiles::export_profile,
             commands::profiles::import_profile,
             commands::profiles::get_active_profile,
+            // App settings
+            commands::settings::get_app_settings,
+            commands::settings::set_console_enabled,
             // Config editor
             commands::config::get_config_files,
             commands::config::get_config,
