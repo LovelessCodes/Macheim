@@ -138,6 +138,7 @@ pub fn run() {
             // Game detection
             commands::game::detect_game,
             commands::game::get_game_status,
+            commands::game::get_steam_status,
             commands::game::set_game_path,
             // BepInEx management
             commands::bepinex::install_bepinex,

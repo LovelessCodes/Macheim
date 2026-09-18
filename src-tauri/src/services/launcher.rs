@@ -23,6 +23,18 @@ pub fn is_game_running() -> AppResult<bool> {
     }
 }
 
+/// Is the Steam client running? Valheim's Steamworks integration needs the
+/// client process, but Macheim never has to focus or restart it.
+pub fn is_steam_running() -> AppResult<bool> {
+    for process in ["steam_osx", "steam.sh"] {
+        let output = Command::new("pgrep").args(["-x", process]).output()?;
+        if output.status.code() == Some(0) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
 pub fn ensure_game_stopped() -> AppResult<()> {
     if is_game_running()? {
         return Err(AppError::GameRunning);
@@ -152,8 +164,20 @@ fn build_launch_script(
         r#"#!/bin/bash
 set -e
 cd {game_root}
-open /Applications/Steam.app
+# Quiet Steam: never touch a running client (no focus stealing), and start a
+# missing one hidden so it does not take over the screen. Valheim still needs
+# the client process to initialize Steamworks.
+if ! pgrep -x steam_osx >/dev/null 2>&1; then
+  open -j -g -a Steam --args -silent
+  for _ in $(seq 1 30); do
+    pgrep -x steam_osx >/dev/null 2>&1 && break
+    sleep 1
+  done
+  # Best effort: keep a freshly started Steam window out of the way.
+  osascript -e 'tell application "System Events" to set visible of process "Steam" to false' >/dev/null 2>&1 || true
+fi
 arch -x86_64 env \
+  SteamAppId=892970 \
   DOORSTOP_ENABLED=1 \
   DOORSTOP_TARGET_ASSEMBLY={preloader} \
   DYLD_LIBRARY_PATH={game_root} \
@@ -216,5 +240,39 @@ mod tests {
         let script = build_launch_script(p, p, p, p, false);
         assert!(!script.contains("-console"));
         assert!(script.contains("/tmp/Valheim"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn generated_launcher_script_is_valid_bash() {
+        use std::io::Write;
+
+        let p = Path::new("/Volumes/Alice's Games/Valheim");
+        let script = build_launch_script(p, p, p, p, true);
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        file.write_all(script.as_bytes()).unwrap();
+
+        let status = Command::new("bash")
+            .arg("-n")
+            .arg(file.path())
+            .status()
+            .unwrap();
+        assert!(
+            status.success(),
+            "generated launcher script has invalid syntax"
+        );
+    }
+
+    #[test]
+    fn steam_is_started_hidden_and_only_when_missing() {
+        let p = Path::new("/tmp/Valheim");
+        let script = build_launch_script(p, p, p, p, false);
+
+        assert!(script.contains("pgrep -x steam_osx"));
+        assert!(script.contains("open -j -g -a Steam --args -silent"));
+        assert!(script.contains("set visible of process \"Steam\" to false"));
+        // Nothing may focus or restart an already-running client.
+        assert!(!script.contains("open /Applications/Steam.app"));
+        assert!(script.contains("SteamAppId=892970"));
     }
 }

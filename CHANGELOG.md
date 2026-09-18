@@ -11,6 +11,10 @@ Upstream releases before this fork are listed on
 
 ### Added
 
+- **Quiet Steam handling** — Macheim no longer focuses or restarts an already-running Steam
+  client, and when Steam is missing it starts it hidden in the background (`-silent`, launch
+  hidden) and waits for it before starting the game, so cold starts are less likely to end in
+  the splash-screen exit.
 - **Save snapshots** — A new Save Snapshots page lists your worlds and characters and can
   snapshot them on demand. Snapshots are also taken automatically before every modded launch
   (toggleable, last five kept), and restoring replaces the live saves after keeping a safety

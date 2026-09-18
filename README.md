@@ -100,6 +100,12 @@ All screenshots are 1200×800 captures of the running app; see
   automatically before every modded launch (last five kept); restoring replaces the live
   saves and keeps a safety snapshot of the previous state first
 
+### Launching
+
+- **Quiet Steam handling** - A running Steam client is never focused or restarted, and a missing
+  one is started hidden in the background (with the game waiting for it), so the client window
+  stays out of the way; Settings shows whether Steam is running
+
 ### Under the hood
 
 - **TanStack Query data layer** - Fetching, caching, and mutations were migrated to TanStack
