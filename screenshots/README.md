@@ -6,6 +6,7 @@ running app at a 1200×800 window and shipped as WebP (see "Why WebP" below).
 | File                     | Page                           |
 | ------------------------ | ------------------------------ |
 | `browse-mods.webp`       | Browse Mods, default sort      |
+| `sidebar-collapsed.webp` | Browse Mods, sidebar icon-only |
 | `mod-details.webp`       | Mod detail panel open          |
 | `installed-mods.webp`    | Installed Mods                 |
 | `modpacks.webp`          | Modpacks                       |
@@ -54,7 +55,8 @@ because almost every page calls Tauri commands.
 ## Capture checklist
 
 - Use the **Default** profile, dark theme, and a clean window (no progress
-  overlay, no update toast, no hover tooltips).
+  overlay, no update toast, no hover tooltips). Park the cursor away from the
+  icon-only sidebar before shooting — otherwise an icon tooltip lands in frame.
 - The **Settings** page prints your real Steam/BepInEx paths — do not include it
   in public screenshots, or redact the paths first.
 - Mod names, counts and versions change over time; that's fine. What matters is
