@@ -1,7 +1,7 @@
 import { beforeEach, expect, test } from "bun:test";
 
 import type { DownloadItem, ModProgressEvent } from "../lib/types";
-import { useDownloadStore } from "./downloadStore";
+import { selectOverlayItem, useDownloadStore } from "./downloadStore";
 
 function item(overrides: Partial<DownloadItem> = {}): DownloadItem {
   return {
@@ -102,4 +102,38 @@ test("snapshot replaces paused and items state", () => {
 
   expect(useDownloadStore.getState().paused).toBe(true);
   expect(useDownloadStore.getState().items).toEqual([completed]);
+});
+
+test("a dismissed overlay stays hidden until a new batch starts", () => {
+  const downloading = item({ id: 1, status: "downloading" });
+  useDownloadStore.getState().setSnapshot({ paused: false, items: [downloading] });
+  useDownloadStore.getState().dismissOverlay();
+  expect(useDownloadStore.getState().overlayDismissed).toBe(true);
+
+  // Same batch, more status updates: still hidden.
+  useDownloadStore.getState().setSnapshot({ paused: false, items: [downloading] });
+  expect(useDownloadStore.getState().overlayDismissed).toBe(true);
+
+  // Queue drains, then a new install starts: visible again.
+  useDownloadStore
+    .getState()
+    .setSnapshot({ paused: false, items: [item({ id: 1, status: "completed" })] });
+  useDownloadStore.getState().setSnapshot({
+    paused: false,
+    items: [item({ id: 1, status: "completed" }), item({ id: 2, status: "queued" })],
+  });
+  expect(useDownloadStore.getState().overlayDismissed).toBe(false);
+});
+
+test("the overlay item prefers running work, then waiting, paused and queued", () => {
+  const queued = item({ id: 1, status: "queued" });
+  const paused = item({ id: 2, status: "paused" });
+  const waiting = item({ id: 3, status: "waiting_for_network" });
+  const active = item({ id: 4, status: "installing" });
+
+  expect(selectOverlayItem([queued])?.id).toBe(1);
+  expect(selectOverlayItem([queued, paused])?.id).toBe(2);
+  expect(selectOverlayItem([queued, paused, waiting])?.id).toBe(3);
+  expect(selectOverlayItem([queued, paused, waiting, active])?.id).toBe(4);
+  expect(selectOverlayItem([item({ id: 9, status: "completed" })])).toBeNull();
 });

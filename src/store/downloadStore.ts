@@ -14,17 +14,21 @@ interface DownloadStore {
   paused: boolean;
   items: DownloadItem[];
   panelOpen: boolean;
+  /** User hid the bottom status card for the current queue. */
+  overlayDismissed: boolean;
   /** Byte progress for downloads started outside the queue (Sync & Clean). */
   standaloneProgress: ModProgressEvent | null;
 
   setSnapshot: (snapshot: DownloadQueueSnapshot) => void;
   applyProgress: (progress: ModProgressEvent) => void;
   setPanelOpen: (open: boolean) => void;
+  dismissOverlay: () => void;
 
   pause: (id: number) => Promise<void>;
   resume: (id: number) => Promise<void>;
   cancel: (id: number) => Promise<void>;
   retry: (id: number) => Promise<void>;
+  reinstall: (id: number) => Promise<void>;
   remove: (id: number) => Promise<void>;
   pauseAll: () => Promise<void>;
   resumeAll: () => Promise<void>;
@@ -45,19 +49,26 @@ export const useDownloadStore = create<DownloadStore>((set) => ({
   paused: false,
   items: [],
   panelOpen: false,
+  overlayDismissed: false,
   standaloneProgress: null,
 
   setSnapshot: (snapshot) =>
-    set((state) => ({
-      paused: snapshot.paused,
-      items: snapshot.items,
-      // Queue activity takes over the overlay; standalone progress is stale then.
-      standaloneProgress: snapshot.items.some(
-        (item) => item.status === "downloading" || item.status === "installing",
-      )
-        ? null
-        : state.standaloneProgress,
-    })),
+    set((state) => {
+      const hadPending = state.items.some((item) => isDownloadPending(item.status));
+      const hasPending = snapshot.items.some((item) => isDownloadPending(item.status));
+      return {
+        paused: snapshot.paused,
+        items: snapshot.items,
+        // A new batch of downloads re-surfaces the status card.
+        overlayDismissed: hasPending && !hadPending ? false : state.overlayDismissed,
+        // Queue activity takes over the overlay; standalone progress is stale then.
+        standaloneProgress: snapshot.items.some(
+          (item) => item.status === "downloading" || item.status === "installing",
+        )
+          ? null
+          : state.standaloneProgress,
+      };
+    }),
 
   applyProgress: (progress) =>
     set((state) => {
@@ -89,11 +100,13 @@ export const useDownloadStore = create<DownloadStore>((set) => ({
     }),
 
   setPanelOpen: (panelOpen) => set({ panelOpen }),
+  dismissOverlay: () => set({ overlayDismissed: true }),
 
   pause: (id) => run(() => tauri.pauseDownload(id), "Could not pause download"),
   resume: (id) => run(() => tauri.resumeDownload(id), "Could not resume download"),
   cancel: (id) => run(() => tauri.cancelDownload(id), "Could not cancel download"),
   retry: (id) => run(() => tauri.retryDownload(id), "Could not retry download"),
+  reinstall: (id) => run(() => tauri.reinstallDownload(id), "Could not reinstall mod"),
   remove: (id) => run(() => tauri.removeDownload(id), "Could not remove download"),
   pauseAll: () => run(tauri.pauseAllDownloads, "Could not pause downloads"),
   resumeAll: () => run(tauri.resumeAllDownloads, "Could not resume downloads"),
@@ -101,22 +114,20 @@ export const useDownloadStore = create<DownloadStore>((set) => ({
   clearFinished: () => run(tauri.clearFinishedDownloads, "Could not clear downloads"),
 }));
 
-/** Item currently downloading or installing. */
-export function useActiveDownload(): DownloadItem | null {
-  return useDownloadStore(
-    (state) =>
-      state.items.find((item) => item.status === "downloading" || item.status === "installing") ??
-      null,
-  );
-}
-
-/** Item blocked on Valheim or the network. */
-export function useWaitingDownload(): DownloadItem | null {
-  return useDownloadStore(
-    (state) =>
-      state.items.find(
-        (item) => item.status === "waiting_for_game" || item.status === "waiting_for_network",
-      ) ?? null,
+/**
+ * The item the bottom status card should describe: whatever is running, or
+ * failing that, the next thing the queue will do. Keeps the card mounted for
+ * the whole batch instead of flashing between items.
+ */
+export function selectOverlayItem(items: DownloadItem[]): DownloadItem | null {
+  return (
+    items.find((item) => item.status === "downloading" || item.status === "installing") ??
+    items.find(
+      (item) => item.status === "waiting_for_game" || item.status === "waiting_for_network",
+    ) ??
+    items.find((item) => item.status === "paused") ??
+    items.find((item) => item.status === "queued") ??
+    null
   );
 }
 

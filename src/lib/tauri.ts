@@ -87,6 +87,10 @@ export async function retryDownload(id: number): Promise<DownloadQueueSnapshot> 
   return invoke<DownloadQueueSnapshot>("retry_download", { id });
 }
 
+export async function reinstallDownload(id: number): Promise<DownloadQueueSnapshot> {
+  return invoke<DownloadQueueSnapshot>("reinstall_download", { id });
+}
+
 export async function removeDownload(id: number): Promise<DownloadQueueSnapshot> {
   return invoke<DownloadQueueSnapshot>("remove_download", { id });
 }

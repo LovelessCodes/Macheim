@@ -1,24 +1,25 @@
+import { confirm } from "@tauri-apps/plugin-dialog";
 import { cn } from "cn";
 import {
-  AlertTriangle,
-  CheckCircle,
-  Clock,
   Download,
-  Gamepad2,
   Loader2,
+  PackageMinus,
+  PackageX,
   Pause,
   Play,
   RefreshCw,
+  RotateCcw,
   Trash2,
-  WifiOff,
   X,
-  XCircle,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 
+import { useInstalledMods } from "../../hooks/use-installed-mods";
+import { useModUninstall } from "../../hooks/use-mod-uninstall";
+import { downloadStatusLabel } from "../../lib/downloads";
 import { formatBytes } from "../../lib/format";
-import type { DownloadItem, DownloadStatus } from "../../lib/types";
+import type { DownloadItem } from "../../lib/types";
 import { isDownloadActive, isDownloadPending } from "../../lib/types";
 import { useDownloadStore } from "../../store/downloadStore";
 import { Badge } from "../ui/badge";
@@ -34,52 +35,7 @@ import {
   SheetTitle,
 } from "../ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-
-function statusLabel(item: DownloadItem): string {
-  switch (item.status) {
-    case "queued":
-      return "Queued";
-    case "downloading":
-      return "Downloading";
-    case "installing":
-      return "Installing";
-    case "paused":
-      return "Paused";
-    case "waiting_for_game":
-      return "Waiting for Valheim to close";
-    case "waiting_for_network":
-      return "No connection — retrying automatically";
-    case "completed":
-      return "Installed";
-    case "failed":
-      return "Failed";
-    case "cancelled":
-      return "Cancelled";
-  }
-}
-
-function StatusIcon({ status }: { status: DownloadStatus }) {
-  switch (status) {
-    case "downloading":
-      return <Download className="text-accent-primary size-4 shrink-0 animate-pulse" />;
-    case "installing":
-      return <Loader2 className="text-accent-primary size-4 shrink-0 animate-spin" />;
-    case "queued":
-      return <Clock className="text-muted-foreground size-4 shrink-0" />;
-    case "paused":
-      return <Pause className="text-muted-foreground size-4 shrink-0" />;
-    case "waiting_for_game":
-      return <Gamepad2 className="size-4 shrink-0 text-[var(--color-accent-amber)]" />;
-    case "waiting_for_network":
-      return <WifiOff className="size-4 shrink-0 text-[var(--color-warning)]" />;
-    case "completed":
-      return <CheckCircle className="size-4 shrink-0 text-[var(--color-success)]" />;
-    case "failed":
-      return <AlertTriangle className="text-destructive size-4 shrink-0" />;
-    case "cancelled":
-      return <XCircle className="text-muted-foreground size-4 shrink-0" />;
-  }
-}
+import DownloadStatusIcon from "./DownloadStatusIcon";
 
 function progressValue(item: DownloadItem): number | null {
   if (item.status === "downloading" && item.bytes_total) {
@@ -122,19 +78,43 @@ function IconAction({
   );
 }
 
-function DownloadRow({ item }: { item: DownloadItem }) {
+function DownloadRow({
+  item,
+  installedVersion,
+  isUninstalling,
+  onUninstall,
+  onReinstall,
+}: {
+  item: DownloadItem;
+  /** Version on disk for this mod in the active profile, if any. */
+  installedVersion: string | null;
+  isUninstalling: boolean;
+  onUninstall: () => void;
+  onReinstall: () => void;
+}) {
   const pending = isDownloadPending(item.status);
   const pct = progressValue(item);
   const { pause, resume, cancel, retry, remove } = useDownloadStore.getState();
+  const isInstalled = installedVersion === item.version;
 
   const canPause = isDownloadActive(item.status) || item.status === "queued";
-  const detail = item.status === "failed" && item.error ? item.error : statusLabel(item);
+  const wasUninstalled = item.status === "completed" && installedVersion === null;
+  const detail =
+    item.status === "failed" && item.error
+      ? item.error
+      : wasUninstalled
+        ? "Uninstalled — re-install to restore"
+        : item.message || downloadStatusLabel(item.status);
 
   return (
     <div className="flex flex-col gap-2 px-4 py-3">
       <div className="flex items-start gap-3">
         <div className="pt-0.5">
-          <StatusIcon status={item.status} />
+          {wasUninstalled ? (
+            <PackageX className="text-muted-foreground size-4 shrink-0" />
+          ) : (
+            <DownloadStatusIcon status={item.status} className="size-4" />
+          )}
         </div>
 
         <div className="min-w-0 flex-1">
@@ -193,6 +173,20 @@ function DownloadRow({ item }: { item: DownloadItem }) {
                   <RefreshCw />
                 </IconAction>
               )}
+              {item.status === "completed" &&
+                (isInstalled ? (
+                  <IconAction
+                    label="Uninstall mod"
+                    onClick={onUninstall}
+                    className="hover:text-destructive"
+                  >
+                    {isUninstalling ? <Loader2 className="animate-spin" /> : <PackageMinus />}
+                  </IconAction>
+                ) : (
+                  <IconAction label="Re-install" onClick={onReinstall}>
+                    <RotateCcw />
+                  </IconAction>
+                ))}
               <IconAction
                 label="Remove from list"
                 onClick={() => void remove(item.id)}
@@ -227,6 +221,14 @@ export default function DownloadQueuePanel() {
   const setOpen = useDownloadStore((state) => state.setPanelOpen);
   const items = useDownloadStore((state) => state.items);
   const paused = useDownloadStore((state) => state.paused);
+  const reinstall = useDownloadStore((state) => state.reinstall);
+
+  const { data: installedMods = [] } = useInstalledMods();
+  const installedVersions = useMemo(
+    () => new Map(installedMods.map((mod) => [mod.full_name, mod.version])),
+    [installedMods],
+  );
+  const { uninstall, uninstallingFullName } = useModUninstall();
 
   const pending = useMemo(() => items.filter((item) => isDownloadPending(item.status)), [items]);
   const finished = useMemo(
@@ -235,6 +237,27 @@ export default function DownloadQueuePanel() {
   );
 
   const { pauseAll, resumeAll, cancelAll, clearFinished } = useDownloadStore.getState();
+
+  const handleUninstall = async (item: DownloadItem) => {
+    const confirmed = await confirm(`Uninstall "${item.name}"? This removes its files.`, {
+      title: "Uninstall mod",
+      kind: "warning",
+    });
+    if (confirmed) uninstall(item.full_name, item.name);
+  };
+
+  const renderRow = (item: DownloadItem) => (
+    <DownloadRow
+      key={item.id}
+      item={item}
+      // The row whose version is on disk can be uninstalled; older rows offer
+      // a re-install of their own version.
+      installedVersion={installedVersions.get(item.full_name) ?? null}
+      isUninstalling={uninstallingFullName === item.full_name}
+      onUninstall={() => void handleUninstall(item)}
+      onReinstall={() => void reinstall(item.id)}
+    />
+  );
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -276,18 +299,14 @@ export default function DownloadQueuePanel() {
             </div>
           ) : (
             <div className="divide-y">
-              {pending.map((item) => (
-                <DownloadRow key={item.id} item={item} />
-              ))}
+              {pending.map((item) => renderRow(item))}
 
               {finished.length > 0 && (
                 <div className="text-muted-foreground bg-muted/40 px-4 py-1.5 text-[10px] font-semibold tracking-wider uppercase">
                   History
                 </div>
               )}
-              {finished.map((item) => (
-                <DownloadRow key={item.id} item={item} />
-              ))}
+              {finished.map((item) => renderRow(item))}
             </div>
           )}
         </ScrollArea>

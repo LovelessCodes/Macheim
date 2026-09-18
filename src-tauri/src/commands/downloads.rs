@@ -87,6 +87,19 @@ pub async fn retry_download(
 }
 
 #[tauri::command]
+pub async fn reinstall_download(
+    id: u64,
+    queue: State<'_, Arc<DownloadQueue>>,
+    app: AppHandle,
+) -> AppResult<DownloadQueueSnapshot> {
+    if queue.reinstall(id) {
+        queue.wake();
+        broadcast(&app, &queue);
+    }
+    Ok(queue.snapshot())
+}
+
+#[tauri::command]
 pub async fn remove_download(
     id: u64,
     queue: State<'_, Arc<DownloadQueue>>,

@@ -155,6 +155,7 @@ pub fn run() {
             commands::downloads::resume_download,
             commands::downloads::cancel_download,
             commands::downloads::retry_download,
+            commands::downloads::reinstall_download,
             commands::downloads::remove_download,
             commands::downloads::pause_all_downloads,
             commands::downloads::resume_all_downloads,

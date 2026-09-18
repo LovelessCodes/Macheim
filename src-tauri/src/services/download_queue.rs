@@ -550,6 +550,25 @@ impl DownloadQueue {
         true
     }
 
+    /// Queue a finished item again (used after uninstalling its mod).
+    pub fn reinstall(&self, id: u64) -> bool {
+        let mut inner = self.lock_inner();
+        let Some(item) = inner.items.iter_mut().find(|item| item.id == id) else {
+            return false;
+        };
+        if item.status != DownloadStatus::Completed {
+            return false;
+        }
+        item.status = DownloadStatus::Queued;
+        item.message = "Queued".to_string();
+        item.error = None;
+        item.retry_count = 0;
+        item.installed_count = 0;
+        item.finished_at = None;
+        reset_progress(item);
+        true
+    }
+
     /// Remove an item. Active items must be cancelled first.
     pub fn remove(&self, id: u64) -> bool {
         let mut inner = self.lock_inner();
@@ -1121,6 +1140,29 @@ mod tests {
         assert_eq!(stored.status, DownloadStatus::Queued);
         assert!(stored.error.is_none());
         assert_eq!(stored.retry_count, 0);
+    }
+
+    #[test]
+    fn reinstall_requeues_finished_items_in_place() {
+        let (_dir, queue) = temp_queue();
+        let item = queue.enqueue("Author-Mod", "Mod", None, DownloadKind::Mod);
+        queue.complete(item.id, 2);
+
+        assert!(queue.reinstall(item.id));
+        let stored = queue.item(item.id).unwrap();
+        assert_eq!(stored.status, DownloadStatus::Queued);
+        assert_eq!(stored.installed_count, 0);
+        assert!(stored.finished_at.is_none());
+        assert_eq!(queue.snapshot().items.len(), 1);
+    }
+
+    #[test]
+    fn reinstall_refuses_unfinished_items() {
+        let (_dir, queue) = temp_queue();
+        let item = queue.enqueue("Author-Mod", "Mod", None, DownloadKind::Mod);
+        assert!(!queue.reinstall(item.id));
+        queue.fail(item.id, "boom");
+        assert!(!queue.reinstall(item.id));
     }
 
     #[test]
