@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef } from "react";
 
 import { toast } from "../components/ui/toast";
-import { installedModsQueryKey } from "../lib/query-keys";
+import { installedModsQueryKey, modConflictsQueryKey } from "../lib/query-keys";
 import { enqueueInstall, getDownloadQueue } from "../lib/tauri";
 import type {
   DownloadItem,
@@ -130,6 +130,7 @@ export function useDownloadQueueSync() {
       if (hasNewOutcomes) {
         showOutcomeToast(outcomes.current);
         void queryClient.invalidateQueries({ queryKey: installedModsQueryKey });
+        void queryClient.invalidateQueries({ queryKey: modConflictsQueryKey });
       }
 
       // Start a fresh tally once the queue drains, so the next batch reports

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { toast } from "../components/ui/toast";
-import { installedModsQueryKey } from "../lib/query-keys";
+import { installedModsQueryKey, modConflictsQueryKey } from "../lib/query-keys";
 import { uninstallMod } from "../lib/tauri";
 import type { InstalledMod } from "../lib/types";
 
@@ -14,6 +14,7 @@ export function useModUninstall() {
       queryClient.setQueryData<InstalledMod[]>(installedModsQueryKey, (prev) =>
         prev?.filter((m) => m.full_name !== fullName),
       );
+      void queryClient.invalidateQueries({ queryKey: modConflictsQueryKey });
       toast.add({ type: "info", title: `Uninstalled ${name}` });
     },
     onError: (err, { name }) => {
@@ -23,6 +24,7 @@ export function useModUninstall() {
       });
       // The optimistic removal above may not match what is on disk.
       void queryClient.invalidateQueries({ queryKey: installedModsQueryKey });
+      void queryClient.invalidateQueries({ queryKey: modConflictsQueryKey });
     },
   });
 

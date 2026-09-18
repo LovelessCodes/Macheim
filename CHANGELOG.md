@@ -11,6 +11,10 @@ Upstream releases before this fork are listed on
 
 ### Added
 
+- **Conflict detection** — The Installed Mods page flags potential profile problems: the same
+  plugin file shipped by two mods, a dependency required at conflicting versions, and
+  dependencies installed at a version other than the one requested. These are warnings and
+  never block a launch.
 - **Developer console toggle** — Choose whether "Play Modded" passes Valheim's `-console`
   flag, from Settings. Enabled by default, matching previous behaviour.
 - **Install from file** — Drag and drop `.zip` archives onto the window, or use "Install from

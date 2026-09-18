@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { toast } from "../components/ui/toast";
-import { gameStatusQueryKey, installedModsQueryKey, profilesQueryKey } from "../lib/query-keys";
+import {
+  gameStatusQueryKey,
+  installedModsQueryKey,
+  modConflictsQueryKey,
+  profilesQueryKey,
+} from "../lib/query-keys";
 import {
   createProfile,
   deleteProfile,
@@ -29,6 +34,7 @@ export function useSwitchProfile() {
     onSuccess: async (_data, name) => {
       queryClient.setQueryData(gameStatusQueryKey, await getGameStatus());
       await queryClient.invalidateQueries({ queryKey: installedModsQueryKey });
+      await queryClient.invalidateQueries({ queryKey: modConflictsQueryKey });
       await queryClient.invalidateQueries({ queryKey: profilesQueryKey });
       toast.add({ type: "success", title: `Switched to profile "${name}"` });
     },

@@ -151,6 +151,7 @@ pub fn run() {
             commands::mods::get_installed_mods,
             commands::mods::sync_mods,
             commands::mods::list_unmanaged_mods,
+            commands::conflicts::detect_mod_conflicts,
             // Download queue
             commands::downloads::get_download_queue,
             commands::downloads::enqueue_install,

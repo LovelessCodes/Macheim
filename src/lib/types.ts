@@ -74,6 +74,43 @@ export interface AppSettings {
   console_enabled: boolean;
 }
 
+export interface DuplicateDll {
+  file_name: string;
+  mods: string[];
+}
+
+export interface DependencyRequirement {
+  required_by: string[];
+  version: string;
+}
+
+export interface DependencyConflict {
+  dependency: string;
+  requirements: DependencyRequirement[];
+}
+
+export interface VersionMismatch {
+  dependency: string;
+  required_by: string[];
+  required_version: string;
+  installed_version: string;
+}
+
+export interface ConflictReport {
+  duplicate_dlls: DuplicateDll[];
+  dependency_conflicts: DependencyConflict[];
+  version_mismatches: VersionMismatch[];
+}
+
+export function conflictCount(report: ConflictReport | null | undefined): number {
+  if (!report) return 0;
+  return (
+    report.duplicate_dlls.length +
+    report.dependency_conflicts.length +
+    report.version_mismatches.length
+  );
+}
+
 export interface ConfigFileSummary {
   path: string;
   filename: string;
