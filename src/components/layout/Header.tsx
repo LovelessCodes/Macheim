@@ -1,7 +1,8 @@
-import { Clock, Download, Loader2, Pause, RefreshCw, RotateCcw } from "lucide-react";
+import { Clock, Download, Loader2, Pause, RefreshCw, RotateCcw, TriangleAlert } from "lucide-react";
 
 import { useUpdater } from "../../hooks/use-updater";
 import { useAppStore } from "../../store/appStore";
+import { useDiagnosticsStore } from "../../store/diagnosticsStore";
 import {
   useDownloadIndicator,
   usePendingDownloadCount,
@@ -34,6 +35,8 @@ export default function Header({ onRefresh, isRefreshing }: HeaderProps) {
   const activeDownload = useDownloadIndicator();
   const pendingDownloads = usePendingDownloadCount();
   const openDownloads = useDownloadStore((s) => s.setPanelOpen);
+  const crashReport = useDiagnosticsStore((s) => s.report);
+  const openCrashReport = useDiagnosticsStore((s) => s.setReportOpen);
 
   const updateButton =
     status === "available" ? (
@@ -86,6 +89,18 @@ export default function Header({ onRefresh, isRefreshing }: HeaderProps) {
       </h2>
 
       <div className="flex-1" />
+
+      {crashReport && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => openCrashReport(true)}
+          title="Open the latest crash report"
+        >
+          <TriangleAlert className="text-[var(--color-warning)]" />
+          Crash report
+        </Button>
+      )}
 
       <Button
         variant={isWaiting ? "outline-warning" : "ghost"}

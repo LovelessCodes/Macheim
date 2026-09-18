@@ -45,6 +45,8 @@ pub struct AppState {
     pub cache_updated_at: Option<chrono::DateTime<chrono::Utc>>,
     /// Persisted app preferences (loaded at startup).
     pub settings: services::app_settings::AppSettings,
+    /// Latest crash report collected by the launch watcher.
+    pub last_crash: Option<services::crash_analyzer::CrashReport>,
 }
 
 impl Default for AppState {
@@ -57,6 +59,7 @@ impl Default for AppState {
             package_cache: None,
             cache_updated_at: None,
             settings: services::app_settings::load(),
+            last_crash: None,
         }
     }
 }
@@ -152,6 +155,12 @@ pub fn run() {
             commands::mods::sync_mods,
             commands::mods::list_unmanaged_mods,
             commands::conflicts::detect_mod_conflicts,
+            // Diagnostics
+            commands::diagnostics::get_last_crash_report,
+            commands::diagnostics::analyze_crash_logs,
+            commands::diagnostics::launch_safe_mode,
+            commands::diagnostics::restore_safe_mode_mods,
+            commands::diagnostics::get_safe_mode,
             // Save snapshots
             commands::saves::get_save_overview,
             commands::saves::create_save_snapshot,
