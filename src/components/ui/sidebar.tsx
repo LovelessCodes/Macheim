@@ -4,10 +4,11 @@ import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "cn";
-import { PanelLeftIcon } from "lucide-react";
+import { Download, Loader2, PanelLeftIcon, RotateCcw } from "lucide-react";
 import * as React from "react";
 
 import { useIsMobile } from "../../hooks/use-mobile";
+import { useUpdater } from "../../hooks/use-updater";
 import { Button } from "./button";
 import { Input } from "./input";
 import { Separator } from "./separator";
@@ -148,6 +149,35 @@ function Sidebar({
   collapsible?: "offcanvas" | "icon" | "none";
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+  const { status, version, progress, install, restart } = useUpdater();
+
+  const updateButton =
+    status === "available" ? (
+      <Button
+        variant="outline-accent-primary"
+        size="xs"
+        onClick={() => void install()}
+        title={version ? `Install Macheim ${version}` : "Install update"}
+      >
+        <Download />
+        {version ? `Update v${version}` : "Update"}
+      </Button>
+    ) : status === "downloading" ? (
+      <Button variant="outline-accent-primary" size="xs" disabled>
+        <Loader2 className="animate-spin" />
+        Downloading{progress !== null ? ` ${Math.round(progress * 100)}%` : "..."}
+      </Button>
+    ) : status === "ready" ? (
+      <Button
+        variant="accent-primary"
+        size="xs"
+        onClick={() => void restart()}
+        title="Restart to finish updating"
+      >
+        <RotateCcw />
+        Restart
+      </Button>
+    ) : null;
 
   if (collapsible === "none") {
     return (
@@ -224,9 +254,10 @@ function Sidebar({
         )}
         {...props}
       >
-        <div className="absolute top-0.5 left-19 flex h-7 items-center">
+        <div className="absolute top-0.5 left-19 flex h-7 items-center gap-1">
           <div className="bg-muted block h-2/3 w-0.5" />
           <SidebarTrigger />
+          {updateButton && <div className="mr-1 flex items-center">{updateButton}</div>}
         </div>
         <div
           data-sidebar="sidebar"
