@@ -10,3 +10,4 @@ export const appVersionQueryKey = ["app-version"] as const;
 export const compatibilityQueryKey = ["compatibility"] as const;
 export const backupsQueryKey = ["backups"] as const;
 export const appSettingsQueryKey = ["app-settings"] as const;
+export const savesQueryKey = ["saves"] as const;

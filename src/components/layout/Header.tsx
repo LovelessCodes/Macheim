@@ -17,6 +17,7 @@ const pageTitles: Record<string, string> = {
   config: "Config Editor",
   compatibility: "Mac Compatibility",
   profiles: "Profiles",
+  saves: "Save Snapshots",
   settings: "Settings",
   setup: "Setup",
 };

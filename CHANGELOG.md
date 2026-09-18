@@ -11,6 +11,10 @@ Upstream releases before this fork are listed on
 
 ### Added
 
+- **Save snapshots** — A new Save Snapshots page lists your worlds and characters and can
+  snapshot them on demand. Snapshots are also taken automatically before every modded launch
+  (toggleable, last five kept), and restoring replaces the live saves after keeping a safety
+  snapshot of what it replaced.
 - **Conflict detection** — The Installed Mods page flags potential profile problems: the same
   plugin file shipped by two mods, a dependency required at conflicting versions, and
   dependencies installed at a version other than the one requested. These are warnings and

@@ -12,6 +12,7 @@ import ModDetail from "../mods/ModDetail";
 import ModGrid from "../mods/ModGrid";
 import ModpackBrowser from "../mods/ModpackBrowser";
 import ProfileManager from "../profiles/ProfileManager";
+import SavesPage from "../saves/SavesPage";
 import { ScrollArea } from "../ui/scroll-area";
 import { SidebarInset, SidebarProvider } from "../ui/sidebar";
 import Header from "./Header";
@@ -56,6 +57,8 @@ export default function MainLayout() {
         return <CompatibilityPage key={activeProfile} />;
       case "profiles":
         return <ProfileManager />;
+      case "saves":
+        return <SavesPage />;
       case "settings":
         return <SettingsPage />;
       default:

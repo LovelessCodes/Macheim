@@ -13,6 +13,7 @@ import type {
   CompatibilitySettings,
   AppSettings,
   ConflictReport,
+  SaveOverview,
   DownloadItem,
   DownloadKind,
   DownloadQueueSnapshot,
@@ -218,4 +219,26 @@ export async function getAppSettings(): Promise<AppSettings> {
 
 export async function setConsoleEnabled(enabled: boolean): Promise<AppSettings> {
   return invoke<AppSettings>("set_console_enabled", { enabled });
+}
+
+export async function setSnapshotSaves(enabled: boolean): Promise<AppSettings> {
+  return invoke<AppSettings>("set_snapshot_saves", { enabled });
+}
+
+// ── Save Snapshots ──────────────────────────────────────────────
+
+export async function getSaveOverview(): Promise<SaveOverview> {
+  return invoke<SaveOverview>("get_save_overview");
+}
+
+export async function createSaveSnapshot(label?: string): Promise<SaveOverview> {
+  return invoke<SaveOverview>("create_save_snapshot", { label });
+}
+
+export async function restoreSaveSnapshot(id: string): Promise<SaveOverview> {
+  return invoke<SaveOverview>("restore_save_snapshot", { id });
+}
+
+export async function deleteSaveSnapshot(id: string): Promise<SaveOverview> {
+  return invoke<SaveOverview>("delete_save_snapshot", { id });
 }

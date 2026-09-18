@@ -15,6 +15,7 @@ pub mod mod_installer;
 pub mod package_cache;
 pub mod package_sources;
 pub mod profile_manager;
+pub mod save_manager;
 pub mod thunderstore_client;
 
 pub use backup_manager::*;
