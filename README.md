@@ -73,6 +73,8 @@ All screenshots are 1200×800 captures of the running app; see
 
 ### Mod management
 
+- **Conflict detection** - The Installed Mods page flags duplicate plugin files and dependency
+  version clashes, refreshed after installs, syncs and toggles
 - **Developer console toggle** - Decide whether "Play Modded" adds Valheim's `-console` flag,
   from Settings
 - **Install from file** - Drag and drop mod `.zip` archives onto the window, or pick them with

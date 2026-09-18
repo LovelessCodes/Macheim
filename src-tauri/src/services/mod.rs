@@ -3,6 +3,7 @@ pub mod backup_manager;
 pub mod bepinex_installer;
 pub mod compatibility;
 pub mod config_editor;
+pub mod conflict_detector;
 pub mod dependency_resolver;
 pub mod download_queue;
 pub mod game_detector;

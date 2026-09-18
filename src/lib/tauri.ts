@@ -12,6 +12,7 @@ import type {
   CompatibilityStatus,
   CompatibilitySettings,
   AppSettings,
+  ConflictReport,
   DownloadItem,
   DownloadKind,
   DownloadQueueSnapshot,
@@ -134,6 +135,10 @@ export async function syncMods(
 
 export async function listUnmanagedMods(): Promise<string[]> {
   return invoke<string[]>("list_unmanaged_mods");
+}
+
+export async function detectModConflicts(): Promise<ConflictReport> {
+  return invoke<ConflictReport>("detect_mod_conflicts");
 }
 
 // ── Profiles ────────────────────────────────────────────────────

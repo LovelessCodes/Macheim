@@ -17,6 +17,7 @@ import { useShallow } from "zustand/react/shallow";
 import { useEnqueueInstall } from "../../hooks/use-download-queue";
 import { useInstallFromFile } from "../../hooks/use-install-from-file";
 import { useInstalledMods } from "../../hooks/use-installed-mods";
+import { useModConflicts } from "../../hooks/use-mod-conflicts";
 import { useModToggle } from "../../hooks/use-mod-toggle";
 import { useModUninstall } from "../../hooks/use-mod-uninstall";
 import { useUpdateMods } from "../../hooks/use-package-install";
@@ -36,6 +37,7 @@ import { Switch } from "../ui/switch";
 import { toast } from "../ui/toast";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import ModConflictsPanel from "./ModConflictsPanel";
 import ModIcon from "./ModIcon";
 import ModSearchInput from "./ModSearchInput";
 
@@ -43,6 +45,7 @@ type ModFilter = "all" | "enabled" | "disabled";
 
 export default function InstalledModList() {
   const { data: installedMods = [], isPending: isLoading } = useInstalledMods();
+  const { data: conflicts } = useModConflicts();
   const { data: packages = [] } = usePackages();
   const { uninstall, uninstallingFullName } = useModUninstall();
   const enqueue = useEnqueueInstall();
@@ -220,6 +223,8 @@ export default function InstalledModList() {
           </Button>
         </div>
       </div>
+
+      <ModConflictsPanel report={conflicts ?? null} />
 
       {/* Mod List */}
       {isLoading && installedMods.length === 0 ? (
