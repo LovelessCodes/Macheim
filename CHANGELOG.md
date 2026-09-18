@@ -7,7 +7,11 @@ All notable changes to this fork are documented in this file. The format follows
 Upstream releases before this fork are listed on
 [lofcgi/macheim](https://github.com/lofcgi/macheim/releases).
 
-## [Unreleased]
+## [1.3.0] - 2026-09-18
+
+The reliability release: installs survive Valheim running and network drops, worlds and
+characters can be snapshotted, and an early exit produces a crash report naming the likely
+culprit instead of a mystery.
 
 ### Added
 
