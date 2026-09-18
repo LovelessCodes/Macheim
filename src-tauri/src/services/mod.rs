@@ -1,3 +1,4 @@
+pub mod app_settings;
 pub mod backup_manager;
 pub mod bepinex_installer;
 pub mod compatibility;

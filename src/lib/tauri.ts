@@ -11,6 +11,7 @@ import type {
   BackupInfo,
   CompatibilityStatus,
   CompatibilitySettings,
+  AppSettings,
   DownloadItem,
   DownloadKind,
   DownloadQueueSnapshot,
@@ -202,4 +203,14 @@ export async function launchModded(): Promise<void> {
 
 export async function launchVanilla(): Promise<void> {
   return invoke("launch_vanilla");
+}
+
+// ── App Settings ────────────────────────────────────────────────
+
+export async function getAppSettings(): Promise<AppSettings> {
+  return invoke<AppSettings>("get_app_settings");
+}
+
+export async function setConsoleEnabled(enabled: boolean): Promise<AppSettings> {
+  return invoke<AppSettings>("set_console_enabled", { enabled });
 }

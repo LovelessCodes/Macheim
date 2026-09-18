@@ -70,6 +70,10 @@ export interface GameStatus {
   active_profile: string;
 }
 
+export interface AppSettings {
+  console_enabled: boolean;
+}
+
 export interface ConfigFileSummary {
   path: string;
   filename: string;

@@ -73,6 +73,8 @@ All screenshots are 1200×800 captures of the running app; see
 
 ### Mod management
 
+- **Developer console toggle** - Decide whether "Play Modded" adds Valheim's `-console` flag,
+  from Settings
 - **Install from file** - Drag and drop mod `.zip` archives onto the window, or pick them with
   "Install from file" on the Installed Mods page; archives are matched back to their
   Thunderstore listing (so author, icon and update checks are correct) and queue like any

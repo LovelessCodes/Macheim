@@ -76,8 +76,11 @@ pub fn get_bundle_executable(app_path: &Path) -> AppResult<String> {
 /// Replicates the exact method used by the working "Valheim Modded.app":
 /// Opens Terminal.app and runs run_bepinex.sh there, creating a completely
 /// independent process outside the Tauri app's process tree.
-pub fn launch_modded(_app_path: &Path, game_root: &Path) -> AppResult<()> {
-    info!("Launching Valheim with BepInEx...");
+///
+/// `console` appends Valheim's `-console` flag so the in-game developer
+/// console is available.
+pub fn launch_modded(_app_path: &Path, game_root: &Path, console: bool) -> AppResult<()> {
+    info!("Launching Valheim with BepInEx (console: {})...", console);
 
     // Find doorstop library (may be in root or doorstop_libs/)
     let doorstop = find_doorstop_lib(game_root)
@@ -112,7 +115,8 @@ pub fn launch_modded(_app_path: &Path, game_root: &Path) -> AppResult<()> {
 
     // Write launcher script for Terminal.app (completely independent process)
     let launcher_script = game_root.join(".vmm_launch.sh");
-    let script_content = build_launch_script(game_root, &preloader, &doorstop, &executable);
+    let script_content =
+        build_launch_script(game_root, &preloader, &doorstop, &executable, console);
     std::fs::write(&launcher_script, &script_content)?;
 
     #[cfg(unix)]
@@ -141,7 +145,9 @@ fn build_launch_script(
     preloader: &Path,
     doorstop: &Path,
     executable: &Path,
+    console: bool,
 ) -> String {
+    let console_flag = if console { " -console" } else { "" };
     format!(
         r#"#!/bin/bash
 set -e
@@ -152,12 +158,13 @@ arch -x86_64 env \
   DOORSTOP_TARGET_ASSEMBLY={preloader} \
   DYLD_LIBRARY_PATH={game_root} \
   DYLD_INSERT_LIBRARIES={doorstop} \
-  {executable} -console
+  {executable}{console_flag}
 "#,
         game_root = shell_quote(game_root),
         preloader = shell_quote(preloader),
         doorstop = shell_quote(doorstop),
         executable = shell_quote(executable),
+        console_flag = console_flag,
     )
 }
 
@@ -196,10 +203,18 @@ mod tests {
     #[test]
     fn console_flag_and_apostrophe_paths_survive_script_generation() {
         let p = Path::new("/Volumes/Alice's Games/Valheim");
-        let script = build_launch_script(p, p, p, p);
+        let script = build_launch_script(p, p, p, p, true);
         assert!(script.contains("'\\''"));
         assert!(script.contains(" -console\n"));
         assert!(script.contains("arch -x86_64 env"));
         assert_eq!(shell_quote(Path::new("/tmp/$value")), "'/tmp/$value'");
+    }
+
+    #[test]
+    fn the_console_flag_is_optional() {
+        let p = Path::new("/tmp/Valheim");
+        let script = build_launch_script(p, p, p, p, false);
+        assert!(!script.contains("-console"));
+        assert!(script.contains("/tmp/Valheim"));
     }
 }
