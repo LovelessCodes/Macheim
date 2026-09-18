@@ -7,8 +7,8 @@ use crate::error::{AppError, AppResult};
 use crate::models::InstalledMod;
 use crate::services::download_queue::InstallControl;
 use crate::services::{
-    dependency_resolver, game_detector, launcher, mod_installer, package_sources,
-    profile_manager, thunderstore_client,
+    dependency_resolver, game_detector, launcher, mod_installer, package_sources, profile_manager,
+    thunderstore_client,
 };
 use crate::AppState;
 
@@ -169,9 +169,9 @@ pub async fn install_package(
             Ok(zip) => zip,
             // Retryable failures abort the whole item so the queue can resume
             // it later instead of recording a partial install.
-            Err(err @ (AppError::Cancelled
-            | AppError::NetworkTransient(_)
-            | AppError::GameRunning)) => {
+            Err(
+                err @ (AppError::Cancelled | AppError::NetworkTransient(_) | AppError::GameRunning),
+            ) => {
                 return Err(err);
             }
             Err(e) => {

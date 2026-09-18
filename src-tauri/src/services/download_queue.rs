@@ -194,8 +194,7 @@ impl DownloadQueue {
     /// Build the queue at the default app-data location.
     pub fn open_default() -> Self {
         Self::open(
-            crate::services::thunderstore_client::get_app_data_dir()
-                .join("download-queue.json"),
+            crate::services::thunderstore_client::get_app_data_dir().join("download-queue.json"),
         )
     }
 
@@ -340,7 +339,10 @@ impl DownloadQueue {
             .active
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        if active.as_ref().is_some_and(|(active_id, _)| *active_id == id) {
+        if active
+            .as_ref()
+            .is_some_and(|(active_id, _)| *active_id == id)
+        {
             *active = None;
         }
     }
@@ -420,7 +422,11 @@ impl DownloadQueue {
         item.installed_count = installed_count;
         item.error = None;
         item.message = if installed_count > 0 {
-            format!("Installed {} mod{}", installed_count, plural(installed_count))
+            format!(
+                "Installed {} mod{}",
+                installed_count,
+                plural(installed_count)
+            )
         } else {
             "Already up to date".to_string()
         };
@@ -534,9 +540,7 @@ impl DownloadQueue {
         };
         if !matches!(
             item.status,
-            DownloadStatus::Failed
-                | DownloadStatus::Cancelled
-                | DownloadStatus::WaitingForNetwork
+            DownloadStatus::Failed | DownloadStatus::Cancelled | DownloadStatus::WaitingForNetwork
         ) {
             return false;
         }
@@ -894,12 +898,7 @@ async fn process_item(app: &AppHandle, queue: &Arc<DownloadQueue>, id: u64) {
 
 /// Requeue an item once its backoff elapsed. Runs detached so other queued
 /// items keep downloading while this one waits.
-fn schedule_network_retry(
-    app: &AppHandle,
-    queue: &Arc<DownloadQueue>,
-    id: u64,
-    delay: Duration,
-) {
+fn schedule_network_retry(app: &AppHandle, queue: &Arc<DownloadQueue>, id: u64, delay: Duration) {
     let queue = Arc::clone(queue);
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
@@ -1014,7 +1013,10 @@ mod tests {
         queue.cancel(item.id);
 
         assert!(control.cancel_requested());
-        assert_eq!(queue.item(item.id).unwrap().status, DownloadStatus::Cancelled);
+        assert_eq!(
+            queue.item(item.id).unwrap().status,
+            DownloadStatus::Cancelled
+        );
         // A cancelled item is not requeued when the worker reports the abort.
         assert!(queue.set_status(item.id, DownloadStatus::Cancelled, "Cancelled"));
         assert_eq!(queue.next_queued(), None);
@@ -1047,7 +1049,10 @@ mod tests {
         assert!(queue.is_paused());
         assert_eq!(queue.next_queued(), None);
         assert_eq!(queue.item(first.id).unwrap().status, DownloadStatus::Paused);
-        assert_eq!(queue.item(second.id).unwrap().status, DownloadStatus::Paused);
+        assert_eq!(
+            queue.item(second.id).unwrap().status,
+            DownloadStatus::Paused
+        );
 
         assert!(queue.resume_all());
         assert!(!queue.is_paused());
@@ -1066,7 +1071,10 @@ mod tests {
             queue.item(first.id).unwrap().status,
             DownloadStatus::WaitingForGame
         );
-        assert_eq!(queue.item(second.id).unwrap().status, DownloadStatus::Paused);
+        assert_eq!(
+            queue.item(second.id).unwrap().status,
+            DownloadStatus::Paused
+        );
         assert!(!queue.defer_all_for_game());
     }
 

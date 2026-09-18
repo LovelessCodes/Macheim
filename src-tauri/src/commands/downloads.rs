@@ -31,7 +31,12 @@ pub async fn enqueue_install(
     profile_manager::validate_name(&full_name)?;
 
     let name = name.unwrap_or_else(|| full_name.clone());
-    let item = queue.enqueue(&full_name, &name, version, kind.unwrap_or(DownloadKind::Mod));
+    let item = queue.enqueue(
+        &full_name,
+        &name,
+        version,
+        kind.unwrap_or(DownloadKind::Mod),
+    );
     broadcast(&app, &queue);
     Ok(item)
 }

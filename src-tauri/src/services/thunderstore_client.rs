@@ -133,9 +133,11 @@ pub async fn download_mod_with_progress(
             notify_cdn_fallback_once();
         }
 
-        let response = client.get(url.clone()).send().await.map_err(|e| {
-            AppError::NetworkTransient(format!("Download failed: {}", e))
-        })?;
+        let response = client
+            .get(url.clone())
+            .send()
+            .await
+            .map_err(|e| AppError::NetworkTransient(format!("Download failed: {}", e)))?;
 
         if !matches!(response.status().as_u16(), 301 | 302 | 303 | 307 | 308) {
             break response;
