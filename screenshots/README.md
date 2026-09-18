@@ -6,11 +6,13 @@ running app at a 1200×800 window and shipped as WebP (see "Why WebP" below).
 | File                     | Page                           |
 | ------------------------ | ------------------------------ |
 | `browse-mods.webp`       | Browse Mods, default sort      |
+| `sidebar-collapsed.webp` | Browse Mods, sidebar icon-only |
 | `mod-details.webp`       | Mod detail panel open          |
 | `installed-mods.webp`    | Installed Mods                 |
 | `modpacks.webp`          | Modpacks                       |
 | `config-editor.webp`     | Config Editor with a file open |
 | `mac-compatibility.webp` | Mac Compatibility              |
+| `downloads-sheet.webp`   | Downloads sheet with a queue   |
 
 ## Capturing
 
@@ -53,7 +55,8 @@ because almost every page calls Tauri commands.
 ## Capture checklist
 
 - Use the **Default** profile, dark theme, and a clean window (no progress
-  overlay, no update toast, no hover tooltips).
+  overlay, no update toast, no hover tooltips). Park the cursor away from the
+  icon-only sidebar before shooting — otherwise an icon tooltip lands in frame.
 - The **Settings** page prints your real Steam/BepInEx paths — do not include it
   in public screenshots, or redact the paths first.
 - Mod names, counts and versions change over time; that's fine. What matters is
@@ -76,6 +79,26 @@ Revert the file when done. The same trick can force an overlay open (for example
 `ModGrid.tsx` can select the first package to screenshot the mod detail panel),
 but always restore the source afterwards — these edits are capture scaffolding,
 not features.
+
+## Update button and Downloads sheet
+
+Two parts of the UI only exist in transient states, so capturing them takes a
+little staging:
+
+- **Updater button** (sidebar titlebar): it renders only while `status` is
+  `available`, `downloading` or `ready`. Scaffold `updaterStore` with
+  `status: "available"` and a plausible `version`, and push
+  `STARTUP_CHECK_DELAY_MS` past the capture window so the real background check
+  does not flip the state (and fire an update toast) while you shoot.
+- **Downloads sheet**: open it (`downloadStore` `panelOpen: true`) and seed
+  `items` with representative rows — downloading, queued, installed history and
+  a failed row — since the real backend queue is usually empty. Block
+  `setSnapshot` so the empty queue does not wipe the seed, and hide
+  `ProgressOverlay` so the bottom status card stays out of the frame.
+
+These are hook/store initial states, which Vite's Fast Refresh may preserve
+instead of applying. Touch `main.tsx` (any comment change) to force a full
+reload, then revert every scaffold file before committing.
 
 ## Why WebP
 
