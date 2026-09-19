@@ -31,20 +31,36 @@ pub async fn fetch_all_packages(force_refresh: bool) -> AppResult<Vec<Thundersto
 /// Package list from the on-disk caches only, never the network. Used for
 /// best-effort work such as attributing a local archive to a store package.
 pub fn cached_packages() -> Vec<ThunderstorePackage> {
-    let thunderstore: Vec<ThunderstorePackage> =
-        package_cache::load_fresh_cache(&package_cache::cache_dir("thunderstore"))
-            .unwrap_or_default();
-    let hexium: Vec<ThunderstorePackage> =
-        package_cache::load_fresh_cache(&package_cache::cache_dir("hexium"))
-            .unwrap_or_default()
-            .into_iter()
-            .map(|mut pkg: ThunderstorePackage| {
-                pkg.source = PackageSource::Hexium;
-                pkg
-            })
-            .collect();
+    merge_cached(
+        package_cache::load_fresh_cache(&package_cache::cache_dir("thunderstore")),
+        package_cache::load_fresh_cache(&package_cache::cache_dir("hexium")),
+    )
+}
 
-    merge_packages(thunderstore, hexium)
+/// Same as [`cached_packages`] but ignoring the freshness window. Detail views
+/// use this so a cold in-memory cache does not stall on the network when the
+/// UI already has a (possibly older) listing to show.
+pub fn cached_packages_any_age() -> Vec<ThunderstorePackage> {
+    merge_cached(
+        package_cache::load_disk_cache(&package_cache::cache_dir("thunderstore")),
+        package_cache::load_disk_cache(&package_cache::cache_dir("hexium")),
+    )
+}
+
+fn merge_cached(
+    thunderstore: Option<Vec<ThunderstorePackage>>,
+    hexium: Option<Vec<ThunderstorePackage>>,
+) -> Vec<ThunderstorePackage> {
+    let hexium = hexium
+        .unwrap_or_default()
+        .into_iter()
+        .map(|mut pkg: ThunderstorePackage| {
+            pkg.source = PackageSource::Hexium;
+            pkg
+        })
+        .collect();
+
+    merge_packages(thunderstore.unwrap_or_default(), hexium)
 }
 
 /// Merge `secondary` into `primary`. Packages present in both stores are
