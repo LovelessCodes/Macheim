@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { usePackageInstall } from "../../hooks/use-package-install";
 import { downloadStatusLabel } from "../../lib/downloads";
-import { formatDownloads } from "../../lib/format";
+import { formatDate, formatDownloads, formatRelativeDate } from "../../lib/format";
 import type { ThunderstorePackage } from "../../lib/types";
 import { useDownloadStore } from "../../store/downloadStore";
 import { useModStore } from "../../store/modStore";
@@ -54,16 +54,23 @@ export default function ModCard({
           <CardTitle className="truncate transition-colors group-hover:text-[var(--color-accent-amber)]">
             {pkg.name}
           </CardTitle>
-          <CardDescription className="flex items-center gap-1.5">
+          <CardDescription className="flex min-w-0 items-center gap-1.5">
             <span className="truncate">by {pkg.owner}</span>
             {pkg.source === "hexium" && (
               <Badge
                 variant="outline"
-                className="border-accent-primary/40 text-accent-primary px-1.5 text-[10px]"
+                className="border-accent-primary/40 text-accent-primary shrink-0 px-1.5 text-[10px]"
               >
                 Hexium
               </Badge>
             )}
+            <span
+              className="flex shrink-0 items-center gap-1"
+              title={`Last updated ${formatDate(pkg.date_updated)}`}
+            >
+              <Clock className="size-3" />
+              {formatRelativeDate(pkg.date_updated)}
+            </span>
           </CardDescription>
           <CardDescription className="mt-1 line-clamp-2 leading-relaxed">
             {pkg.description || "No description"}
@@ -72,12 +79,16 @@ export default function ModCard({
       </CardHeader>
 
       <CardFooter className="mt-auto justify-between">
-        <div className="text-muted-foreground flex items-center gap-2 text-xs">
-          <span className="flex items-center gap-1">
+        <div className="text-muted-foreground flex min-w-0 items-center gap-2 text-xs">
+          <span className="flex shrink-0 items-center gap-1">
             <Download className="size-3" />
             {formatDownloads(pkg.downloads)}
           </span>
-          {showVersion && <Badge variant="outline">v{pkg.version_number}</Badge>}
+          {showVersion && (
+            <Badge variant="outline" className="shrink-0">
+              v{pkg.version_number}
+            </Badge>
+          )}
           {extraMeta}
         </div>
 
@@ -87,6 +98,7 @@ export default function ModCard({
           onClick={handleInstall}
           disabled={isInstalled}
           title={isQueued ? "Open downloads" : undefined}
+          className="shrink-0"
         >
           {isInstalled ? (
             <>
