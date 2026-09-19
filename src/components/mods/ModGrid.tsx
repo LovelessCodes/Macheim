@@ -18,6 +18,8 @@ export default function ModGrid() {
   const setSelectedCategories = useModStore((s) => s.setSelectedCategories);
   const selectedSource = useModStore((s) => s.selectedSource);
   const setSelectedSource = useModStore((s) => s.setSelectedSource);
+  const selectedAuthor = useModStore((s) => s.selectedAuthor);
+  const setSelectedAuthor = useModStore((s) => s.setSelectedAuthor);
   const sortBy = useModStore((s) => s.sortBy);
   const setSortBy = useModStore((s) => s.setSortBy);
   const sortDirection = useModStore((s) => s.sortDirection);
@@ -26,11 +28,24 @@ export default function ModGrid() {
   const filtered = useMemo(
     () =>
       sortPackages(
-        filterPackages(packages, { searchQuery, selectedCategories, selectedSource }),
+        filterPackages(packages, {
+          searchQuery,
+          selectedCategories,
+          selectedSource,
+          selectedAuthor,
+        }),
         sortBy,
         sortDirection,
       ),
-    [packages, searchQuery, selectedCategories, selectedSource, sortBy, sortDirection],
+    [
+      packages,
+      searchQuery,
+      selectedCategories,
+      selectedSource,
+      selectedAuthor,
+      sortBy,
+      sortDirection,
+    ],
   );
 
   const categories = useMemo(() => {
@@ -38,6 +53,15 @@ export default function ModGrid() {
     for (const pkg of packages) {
       if (pkg.is_deprecated || isModpackCategory(pkg)) continue;
       for (const cat of pkg.categories ?? []) set.add(cat);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [packages]);
+
+  const authors = useMemo(() => {
+    const set = new Set<string>();
+    for (const pkg of packages) {
+      if (pkg.is_deprecated || isModpackCategory(pkg)) continue;
+      set.add(pkg.owner);
     }
     return [...set].sort((a, b) => a.localeCompare(b));
   }, [packages]);
@@ -57,6 +81,9 @@ export default function ModGrid() {
         onSelectedCategoriesChange={setSelectedCategories}
         sourceFilter={selectedSource}
         onSourceFilterChange={setSelectedSource}
+        authors={authors}
+        selectedAuthor={selectedAuthor}
+        onSelectedAuthorChange={setSelectedAuthor}
       >
         {filtered.length.toLocaleString()} mods
       </ModToolbar>

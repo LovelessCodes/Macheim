@@ -32,14 +32,24 @@ export default function ModpackBrowser() {
 
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState<PackageSourceFilter>("all");
+  const [authorFilter, setAuthorFilter] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>("downloads");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
+  const authors = useMemo(() => {
+    const set = new Set<string>();
+    for (const pkg of packages) {
+      if (isModpack(pkg)) set.add(pkg.owner);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [packages]);
 
   const modpacks = useMemo(() => {
     const q = search.trim().toLowerCase();
     const matching = packages.filter((pkg) => {
       if (!isModpack(pkg)) return false;
       if (sourceFilter !== "all" && pkg.source !== sourceFilter) return false;
+      if (authorFilter && pkg.owner !== authorFilter) return false;
       if (!q) return true;
       return (
         pkg.name.toLowerCase().includes(q) ||
@@ -48,7 +58,7 @@ export default function ModpackBrowser() {
       );
     });
     return sortPackages(matching, sortBy, sortDirection);
-  }, [packages, search, sourceFilter, sortBy, sortDirection]);
+  }, [packages, search, sourceFilter, authorFilter, sortBy, sortDirection]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -62,6 +72,9 @@ export default function ModpackBrowser() {
         onSortDirectionChange={setSortDirection}
         sourceFilter={sourceFilter}
         onSourceFilterChange={setSourceFilter}
+        authors={authors}
+        selectedAuthor={authorFilter}
+        onSelectedAuthorChange={setAuthorFilter}
       >
         {modpacks.length.toLocaleString()} modpacks
       </ModToolbar>

@@ -56,6 +56,18 @@ test("excludes modpacks for both category spellings", () => {
   expect(isModpackCategory(packages[2]!)).toBe(false);
 });
 
+test("filters packages by author", () => {
+  const packages = [
+    pkg({ full_name: "AuthorOne-Mod", owner: "AuthorOne" }),
+    pkg({ full_name: "AuthorTwo-Mod", owner: "AuthorTwo" }),
+  ];
+
+  expect(filterPackages(packages, { selectedAuthor: "AuthorOne" }).map((p) => p.full_name)).toEqual(
+    ["AuthorOne-Mod"],
+  );
+  expect(filterPackages(packages, { selectedAuthor: null })).toHaveLength(2);
+});
+
 test("manual mod matches the package owned by its folder", () => {
   const packages = [
     pkg({ full_name: "JoelOliMclean-NoRainDamage", name: "NoRainDamage", owner: "JoelOliMclean" }),
