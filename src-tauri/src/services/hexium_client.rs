@@ -24,7 +24,7 @@ pub async fn fetch_packages(force_refresh: bool) -> AppResult<Vec<ThunderstorePa
         .map(|mut pkg| {
             pkg.source = PackageSource::Hexium;
             for version in &mut pkg.versions {
-                version.source = PackageSource::Hexium;
+                version.sources = vec![PackageSource::Hexium];
             }
             pkg
         })

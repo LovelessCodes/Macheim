@@ -136,7 +136,7 @@ mod tests {
             file_size: 1,
             is_active: true,
             uuid4: None,
-            source: PackageSource::Thunderstore,
+            sources: Vec::new(),
         }
     }
 
@@ -195,7 +195,7 @@ mod tests {
     fn duplicate_listings_absorb_versions_and_alternates() {
         let primary = vec![pkg("Author-Mod", "1.0.0", PackageSource::Thunderstore)];
         let mut hexium = pkg("Author-Mod", "1.1.0", PackageSource::Hexium);
-        hexium.versions[0].source = PackageSource::Hexium;
+        hexium.versions[0].sources = vec![PackageSource::Hexium];
         hexium.package_url = "https://hexium.example/mods/Author/Mod".to_string();
 
         let merged = merge_packages(primary, vec![hexium]);
@@ -207,12 +207,40 @@ mod tests {
         // ...but both versions survive, newest first and store-tagged.
         assert_eq!(package.versions.len(), 2);
         assert_eq!(package.versions[0].version_number, "1.1.0");
-        assert_eq!(package.versions[0].source, PackageSource::Hexium);
+        assert_eq!(package.versions[0].sources, vec![PackageSource::Hexium]);
         assert_eq!(package.versions[1].version_number, "1.0.0");
-        assert_eq!(package.versions[1].source, PackageSource::Thunderstore);
+        assert_eq!(
+            package.versions[1].sources,
+            vec![PackageSource::Thunderstore]
+        );
         // ...and the store it displaced is still linked.
         assert_eq!(package.alternates.len(), 1);
         assert_eq!(package.alternates[0].source, PackageSource::Thunderstore);
+    }
+
+    #[test]
+    fn shared_versions_note_both_stores() {
+        let mut primary = pkg("Author-Mod", "1.1.0", PackageSource::Thunderstore);
+        primary.versions.push(version("1.0.0"));
+        let mut hexium = pkg("Author-Mod", "1.1.0", PackageSource::Hexium);
+        hexium.versions[0].sources = vec![PackageSource::Hexium];
+
+        let merged = merge_packages(vec![primary], vec![hexium]);
+
+        let package = &merged[0];
+        // Equal versions keep the primary listing...
+        assert_eq!(package.source, PackageSource::Thunderstore);
+        // ...but the shared version records both stores.
+        assert_eq!(package.versions.len(), 2);
+        let shared = package
+            .versions
+            .iter()
+            .find(|version| version.version_number == "1.1.0")
+            .unwrap();
+        assert_eq!(
+            shared.sources,
+            vec![PackageSource::Thunderstore, PackageSource::Hexium]
+        );
     }
 
     #[test]

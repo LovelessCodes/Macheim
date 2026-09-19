@@ -269,7 +269,7 @@ mod tests {
                 file_size: 0,
                 is_active: true,
                 uuid4: None,
-                source: crate::models::PackageSource::Thunderstore,
+                sources: Vec::new(),
             }],
             categories: Vec::new(),
             is_pinned: false,

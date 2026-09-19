@@ -39,8 +39,8 @@ pub struct ThunderstorePackage {
 
 impl ThunderstorePackage {
     /// Fold another store's listing of the same package into this one: keep
-    /// every distinct version (tagged with its store) and remember where else
-    /// the package can be found.
+    /// every distinct version, note which stores carry each of them, and
+    /// remember where else the package can be found.
     pub fn absorb(&mut self, other: &ThunderstorePackage) {
         if other.source != self.source {
             let listing = PackageListingRef {
@@ -57,13 +57,34 @@ impl ThunderstorePackage {
             }
         }
 
+        // Materialise the implied source of our own versions before merging,
+        // otherwise a later union would misread their empty list.
+        for version in &mut self.versions {
+            if version.sources.is_empty() {
+                version.sources.push(self.source);
+            }
+        }
+
         for version in &other.versions {
-            if !self
+            let mut incoming = version.clone();
+            if incoming.sources.is_empty() {
+                incoming.sources.push(other.source);
+            }
+            match self
                 .versions
-                .iter()
-                .any(|existing| existing.version_number == version.version_number)
+                .iter_mut()
+                .find(|existing| existing.version_number == incoming.version_number)
             {
-                self.versions.push(version.clone());
+                // Both stores carry this version; record the extra store
+                // instead of replacing the entry.
+                Some(existing) => {
+                    for source in incoming.sources {
+                        if !existing.sources.contains(&source) {
+                            existing.sources.push(source);
+                        }
+                    }
+                }
+                None => self.versions.push(incoming),
             }
         }
         // Versions come newest-first from the APIs; the merged list has to keep
@@ -90,9 +111,11 @@ pub struct PackageVersion {
     pub is_active: bool,
     #[serde(default)]
     pub uuid4: Option<String>,
-    /// Store this version was published to; merged listings can mix sources.
+    /// Stores that carry this version. Empty means the package's own store
+    /// (older payloads and Thunderstore's API pre-date the field); merged
+    /// listings can have several.
     #[serde(default)]
-    pub source: PackageSource,
+    pub sources: Vec<PackageSource>,
 }
 
 /// Lightweight package info for search results / listing
@@ -217,7 +240,7 @@ mod tests {
             file_size: 1,
             is_active: true,
             uuid4: None,
-            source: PackageSource::Thunderstore,
+            sources: Vec::new(),
         }
     }
 

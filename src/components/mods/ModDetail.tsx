@@ -216,6 +216,11 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
                   {detail.versions.slice(0, 15).map((v, i) => {
                     const isCurrent = v.version_number === installedVersion;
                     const isVersionQueued = queuedVersion === v.version_number;
+                    // Empty means an older payload that never recorded its
+                    // store; those all came from Thunderstore.
+                    const versionSources: PackageSource[] = v.sources?.length
+                      ? v.sources
+                      : ["thunderstore"];
                     return (
                       <div
                         key={v.version_number}
@@ -234,20 +239,23 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
                               LATEST
                             </Badge>
                           )}
-                          {/* Disclose where a version came from when the merged
-                              listing mixes stores. */}
-                          {v.source && v.source !== pkg.source && (
-                            <Badge
-                              variant="outline"
-                              className={
-                                v.source === "hexium"
-                                  ? "border-accent-primary/40 text-accent-primary shrink-0 px-1.5 text-[9px]"
-                                  : "shrink-0 px-1.5 text-[9px]"
-                              }
-                            >
-                              {v.source === "hexium" ? "Hexium" : "Thunderstore"}
-                            </Badge>
-                          )}
+                          {/* Disclose the other stores that carry a version,
+                              so a shared release shows both. */}
+                          {versionSources
+                            .filter((source) => source !== pkg.source)
+                            .map((source) => (
+                              <Badge
+                                key={source}
+                                variant="outline"
+                                className={
+                                  source === "hexium"
+                                    ? "border-accent-primary/40 text-accent-primary shrink-0 px-1.5 text-[9px]"
+                                    : "shrink-0 px-1.5 text-[9px]"
+                                }
+                              >
+                                {source === "hexium" ? "Hexium" : "Thunderstore"}
+                              </Badge>
+                            ))}
                         </div>
                         <div className="text-muted-foreground flex items-center gap-3 text-xs">
                           <span>{formatDownloads(v.downloads)}</span>

@@ -34,8 +34,8 @@ export interface PackageVersion {
   description: string;
   icon: string;
   date_created: string;
-  /** Store this version was published to; merged listings can mix sources. */
-  source?: PackageSource;
+  /** Stores that carry this version; empty means Thunderstore. */
+  sources?: PackageSource[];
 }
 
 export interface PackageDetail {
