@@ -23,6 +23,7 @@ import { useModUninstall } from "../../hooks/use-mod-uninstall";
 import { useUpdateMods } from "../../hooks/use-package-install";
 import { usePackages } from "../../hooks/use-packages";
 import { useSyncMods } from "../../hooks/use-sync-mods";
+import { groupPackagesByName, matchManualMod } from "../../lib/packages";
 import { listUnmanagedMods } from "../../lib/tauri";
 import type { InstalledMod } from "../../lib/types";
 import { isDownloadActive, isDownloadPending } from "../../lib/types";
@@ -79,6 +80,15 @@ export default function InstalledModList() {
     [packages],
   );
 
+  const packagesByName = useMemo(() => groupPackagesByName(packages), [packages]);
+
+  // Store-managed mods resolve directly; manually installed ones are matched
+  // by their plugin name so the row can show the real listing.
+  const resolvePackage = (mod: InstalledMod) =>
+    packageByFullName.get(mod.full_name) ?? matchManualMod(mod, packagesByName);
+
+  const isManual = (mod: InstalledMod) => mod.version === "0.0.0";
+
   const updatable = useMemo(
     () =>
       installedMods.flatMap((mod) => {
@@ -95,7 +105,7 @@ export default function InstalledModList() {
   };
 
   const openDetail = (mod: InstalledMod) => {
-    const pkg = packageByFullName.get(mod.full_name);
+    const pkg = resolvePackage(mod);
     if (!pkg) {
       toast.add({
         type: "info",
@@ -237,7 +247,9 @@ export default function InstalledModList() {
           keyOf={(mod) => mod.full_name}
           estimateRowHeight={66}
           renderItem={(mod) => {
-            const pkg = packageByFullName.get(mod.full_name);
+            const directPkg = packageByFullName.get(mod.full_name);
+            const pkg = directPkg ?? matchManualMod(mod, packagesByName);
+            const update = directPkg && directPkg.version_number !== mod.version ? directPkg : null;
             const isQueued = queuedNames.includes(mod.full_name);
             const isUpdating = activeNames.includes(mod.full_name);
             return (
@@ -248,23 +260,36 @@ export default function InstalledModList() {
                   !mod.enabled && "opacity-50",
                 )}
               >
-                <ModIcon src={mod.icon} alt={mod.name} className="size-10" iconClassName="size-4" />
+                <ModIcon
+                  src={pkg?.icon || mod.icon}
+                  alt={mod.name}
+                  className="size-10"
+                  iconClassName="size-4"
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <h4 className="text-foreground truncate text-sm font-semibold">{mod.name}</h4>
-                    <Badge variant="outline" className="shrink-0">
-                      v{mod.version}
-                    </Badge>
+                    {isManual(mod) ? (
+                      <Badge variant="secondary" className="shrink-0">
+                        Manual
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="shrink-0">
+                        v{mod.version}
+                      </Badge>
+                    )}
                     {!mod.enabled && (
                       <Badge variant="secondary" className="shrink-0">
                         Disabled
                       </Badge>
                     )}
                   </div>
-                  <p className="text-muted-foreground truncate text-xs">by {mod.author}</p>
+                  <p className="text-muted-foreground truncate text-xs">
+                    by {pkg?.owner ?? mod.author}
+                  </p>
                 </div>
 
-                {pkg && pkg.version_number !== mod.version && (
+                {update && (
                   <Tooltip>
                     <TooltipTrigger
                       render={
@@ -275,7 +300,7 @@ export default function InstalledModList() {
                           aria-label={
                             isQueued
                               ? `${mod.name} update is queued`
-                              : `Update ${mod.name} to v${pkg.version_number}`
+                              : `Update ${mod.name} to v${update.version_number}`
                           }
                           onClick={(e) => {
                             e.stopPropagation();
@@ -286,7 +311,7 @@ export default function InstalledModList() {
                             void enqueue({
                               fullName: mod.full_name,
                               name: mod.name,
-                              version: pkg.version_number,
+                              version: update.version_number,
                             });
                           }}
                         />
@@ -303,7 +328,7 @@ export default function InstalledModList() {
                     <TooltipContent>
                       {isQueued
                         ? "Update queued — open downloads"
-                        : `Update to v${pkg.version_number}`}
+                        : `Update to v${update.version_number}`}
                     </TooltipContent>
                   </Tooltip>
                 )}

@@ -1,6 +1,12 @@
 import { expect, test } from "bun:test";
 
-import { filterPackages, isModpackCategory, sortPackages } from "./packages";
+import {
+  filterPackages,
+  groupPackagesByName,
+  isModpackCategory,
+  matchManualMod,
+  sortPackages,
+} from "./packages";
 import type { ThunderstorePackage } from "./types";
 
 function pkg(overrides: Partial<ThunderstorePackage>): ThunderstorePackage {
@@ -48,6 +54,68 @@ test("excludes modpacks for both category spellings", () => {
   expect(isModpackCategory(packages[0]!)).toBe(true);
   expect(isModpackCategory(packages[1]!)).toBe(true);
   expect(isModpackCategory(packages[2]!)).toBe(false);
+});
+
+test("manual mod matches the package owned by its folder", () => {
+  const packages = [
+    pkg({ full_name: "JoelOliMclean-NoRainDamage", name: "NoRainDamage", owner: "JoelOliMclean" }),
+    pkg({ full_name: "Aicho-NoRainDamage", name: "NoRainDamage", owner: "Aicho" }),
+    pkg({ full_name: "Jowleth-NoRainDamage", name: "NoRainDamage", owner: "Jowleth" }),
+  ];
+  const byName = groupPackagesByName(packages);
+
+  const matched = matchManualMod(
+    { full_name: "Jowleth", name: "NoRainDamage", author: "Unknown", version: "0.0.0" },
+    byName,
+  );
+
+  expect(matched?.full_name).toBe("Jowleth-NoRainDamage");
+});
+
+test("manual mod with an ambiguous plugin name stays unmatched", () => {
+  const packages = [
+    pkg({ full_name: "JoelOliMclean-NoRainDamage", name: "NoRainDamage", owner: "JoelOliMclean" }),
+    pkg({ full_name: "Aicho-NoRainDamage", name: "NoRainDamage", owner: "Aicho" }),
+  ];
+  const byName = groupPackagesByName(packages);
+
+  const matched = matchManualMod(
+    { full_name: "NoRainDamage.dll", name: "NoRainDamage", author: "Unknown", version: "0.0.0" },
+    byName,
+  );
+
+  expect(matched).toBeUndefined();
+});
+
+test("a sole candidate matches by plugin name alone", () => {
+  const byName = groupPackagesByName([
+    pkg({ full_name: "Author-PhantomMod", name: "PhantomMod", owner: "Author" }),
+  ]);
+
+  const matched = matchManualMod(
+    { full_name: "PhantomMod.dll", name: "PhantomMod", author: "Unknown", version: "0.0.0" },
+    byName,
+  );
+
+  expect(matched?.full_name).toBe("Author-PhantomMod");
+});
+
+test("store-managed versions are never matched as manual", () => {
+  const byName = groupPackagesByName([
+    pkg({ full_name: "Jowleth-NoRainDamage", name: "NoRainDamage", owner: "Jowleth" }),
+  ]);
+
+  const matched = matchManualMod(
+    {
+      full_name: "Jowleth-NoRainDamage",
+      name: "NoRainDamage",
+      author: "Jowleth",
+      version: "1.2.2",
+    },
+    byName,
+  );
+
+  expect(matched).toBeUndefined();
 });
 
 test("sorts by last updated in both directions", () => {
