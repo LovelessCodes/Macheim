@@ -197,7 +197,7 @@ fn is_manual_placeholder(m: &InstalledMod) -> bool {
     m.manual || m.description == MANUAL_DESCRIPTION
 }
 
-fn is_plugin_file(path: &Path) -> bool {
+pub(crate) fn is_plugin_file(path: &Path) -> bool {
     path.extension().is_some_and(|e| {
         e.eq_ignore_ascii_case("dll")
             || e.eq_ignore_ascii_case("dylib")
@@ -236,10 +236,11 @@ fn plugin_file_name(path: &Path) -> String {
 
 /// DLL names shipped by tracked mods. A loose copy left in `plugins/` (for
 /// example, a manual install that a store package later replaced) is the same
-/// plugin, so it must not be listed as a second, unknown mod.
-fn managed_dll_names(profile: &Profile, bepinex: &Path) -> HashSet<String> {
+/// plugin, so it must not be listed as a second, unknown mod, counted as a
+/// duplicate conflict or kept as "unmanaged".
+pub(crate) fn managed_dll_names(mods: &[InstalledMod], bepinex: &Path) -> HashSet<String> {
     let mut names = HashSet::new();
-    for m in &profile.mods {
+    for m in mods {
         if is_manual_placeholder(m) {
             continue;
         }
@@ -285,7 +286,7 @@ fn register_manual_mods(profile: &mut Profile, bepinex: &Path) -> AppResult<Vec<
         .mods
         .retain(|m| !is_manual_placeholder(m) && m.full_name != MANAGED_DIR);
 
-    let managed_dlls = managed_dll_names(profile, bepinex);
+    let managed_dlls = managed_dll_names(&profile.mods, bepinex);
 
     let mut tracked: HashSet<_> = profile.mods.iter().map(|m| m.full_name.clone()).collect();
     let mut added = Vec::new();

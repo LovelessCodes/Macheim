@@ -282,16 +282,23 @@ async fn sync_mods_inner(
                 .unwrap_or_default()
                 .to_string(),
         );
+        let managed_dlls =
+            profile_manager::managed_dll_names(&profile.mods, &game_root.join("BepInEx"));
 
         if let Ok(entries) = std::fs::read_dir(&plugins_dir) {
             for entry in entries.flatten() {
                 let name = entry.file_name().to_string_lossy().to_string();
-                if entry.file_type()?.is_dir()
+                let is_dir = entry.file_type()?.is_dir();
+                let unmanaged_dir = is_dir
                     && !name.starts_with('.')
                     && name != crate::services::compatibility::MANAGED_DIR
-                    && !profile_names.contains(&name)
-                    && approved.contains(&name)
-                {
+                    && !profile_names.contains(&name);
+                // Loose plugin files are leftovers once an installed mod
+                // ships the same DLL from its own folder.
+                let leftover_file = !is_dir
+                    && profile_manager::is_plugin_file(&entry.path())
+                    && managed_dlls.contains(&name.to_lowercase());
+                if (unmanaged_dir || leftover_file) && approved.contains(&name) {
                     crate::services::compatibility::reject_symlink_ancestors(&entry.path())?;
                     std::fs::create_dir_all(&recovery)?;
                     std::fs::rename(entry.path(), recovery.join(&name))?;
@@ -369,16 +376,23 @@ pub async fn list_unmanaged_mods(
     let profile = profile_manager::load_profile(&active_profile)?;
 
     let profile_names: HashSet<String> = profile.mods.iter().map(|m| m.full_name.clone()).collect();
+    let managed_dlls =
+        profile_manager::managed_dll_names(&profile.mods, &game_root.join("BepInEx"));
     let mut unmanaged = Vec::new();
 
     if let Ok(entries) = std::fs::read_dir(&plugins_dir) {
         for entry in entries.flatten() {
             let name = entry.file_name().to_string_lossy().to_string();
-            if entry.file_type()?.is_dir()
+            let is_dir = entry.file_type()?.is_dir();
+            let unmanaged_dir = is_dir
                 && !name.starts_with('.')
                 && name != crate::services::compatibility::MANAGED_DIR
-                && !profile_names.contains(&name)
-            {
+                && !profile_names.contains(&name);
+            // Loose plugin leftovers of an installed mod are recoverable too.
+            let leftover_file = !is_dir
+                && profile_manager::is_plugin_file(&entry.path())
+                && managed_dlls.contains(&name.to_lowercase());
+            if unmanaged_dir || leftover_file {
                 unmanaged.push(name);
             }
         }

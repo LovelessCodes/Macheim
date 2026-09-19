@@ -1,10 +1,10 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::Path;
 
 use serde::Serialize;
 
 use crate::models::{InstalledMod, ParsedDependency, ThunderstorePackage};
-use crate::services::compatibility;
+use crate::services::{compatibility, profile_manager};
 
 /// BepInEx is pinned at different versions by many mods; the loader is
 /// managed by Macheim itself, so those mismatches are not conflicts.
@@ -55,17 +55,25 @@ pub fn detect_conflicts(
     mods: &[InstalledMod],
     packages: &[ThunderstorePackage],
 ) -> ConflictReport {
+    let bepinex = game_root.join("BepInEx");
+    let managed_dlls = profile_manager::managed_dll_names(mods, &bepinex);
+
     let (dependency_conflicts, version_mismatches) = detect_dependency_issues(mods, packages);
     ConflictReport {
-        duplicate_dlls: detect_duplicate_plugins(&game_root.join("BepInEx/plugins")),
+        duplicate_dlls: detect_duplicate_plugins(&bepinex.join("plugins"), &managed_dlls),
         dependency_conflicts,
         version_mismatches,
     }
 }
 
 /// Group plugin files by name across mod folders. Files repeated inside a
-/// single mod are not cross-mod conflicts and are ignored.
-fn detect_duplicate_plugins(plugins_dir: &Path) -> Vec<DuplicateDll> {
+/// single mod are not cross-mod conflicts and are ignored, and neither are
+/// loose leftovers of a plugin an installed mod already ships — the profile
+/// scan folds those into their mod instead of listing them separately.
+fn detect_duplicate_plugins(
+    plugins_dir: &Path,
+    managed_dlls: &HashSet<String>,
+) -> Vec<DuplicateDll> {
     let Ok(entries) = std::fs::read_dir(plugins_dir) else {
         return Vec::new();
     };
@@ -91,7 +99,7 @@ fn detect_duplicate_plugins(plugins_dir: &Path) -> Vec<DuplicateDll> {
                     .or_insert_with(|| (file.clone(), BTreeSet::new()));
                 group.1.insert(mod_name.clone());
             }
-        } else if is_plugin_file(&path) {
+        } else if is_plugin_file(&path) && !managed_dlls.contains(&mod_name.to_lowercase()) {
             let group = owners
                 .entry(mod_name.to_lowercase())
                 .or_insert_with(|| (mod_name.clone(), BTreeSet::new()));
@@ -307,6 +315,34 @@ mod tests {
 
         assert_eq!(report.duplicate_dlls.len(), 1);
         assert_eq!(report.duplicate_dlls[0].mods, vec!["Loose.dll", "ModA"]);
+    }
+
+    #[test]
+    fn loose_plugin_covered_by_installed_mod_is_not_reported() {
+        let game = tempfile::tempdir().unwrap();
+        let plugins = game.path().join("BepInEx/plugins");
+        // Leftover from a manual install that a store package replaced.
+        write_plugin(&plugins, "Loose.dll");
+        write_plugin(&plugins, "Author-Mod/Loose.dll");
+
+        let mods = vec![installed("Author-Mod", "1.0.0")];
+        let report = detect_conflicts(game.path(), &mods, &[]);
+
+        assert!(report.duplicate_dlls.is_empty());
+    }
+
+    #[test]
+    fn duplicate_across_installed_mods_is_still_reported() {
+        let game = tempfile::tempdir().unwrap();
+        let plugins = game.path().join("BepInEx/plugins");
+        write_plugin(&plugins, "ModA/Jotunn.dll");
+        write_plugin(&plugins, "ModB/Jotunn.dll");
+
+        let mods = vec![installed("ModA", "1.0.0"), installed("ModB", "1.0.0")];
+        let report = detect_conflicts(game.path(), &mods, &[]);
+
+        assert_eq!(report.duplicate_dlls.len(), 1);
+        assert_eq!(report.duplicate_dlls[0].mods, vec!["ModA", "ModB"]);
     }
 
     #[test]
