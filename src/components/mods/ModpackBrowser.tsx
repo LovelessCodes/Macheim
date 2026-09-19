@@ -2,7 +2,6 @@ import { Layers, Star } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { usePackages } from "../../hooks/use-packages";
-import { formatDate } from "../../lib/format";
 import { isModpackCategory, sortPackages } from "../../lib/packages";
 import type {
   PackageSourceFilter,
@@ -86,7 +85,6 @@ export default function ModpackBrowser() {
                     <Star className="size-3" />
                     {pkg.rating_score}
                   </span>
-                  <span>{formatDate(pkg.date_updated)}</span>
                 </>
               }
             />

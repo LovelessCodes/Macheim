@@ -15,11 +15,11 @@ import CategoryFilter from "./CategoryFilter";
 import ModSearchInput from "./ModSearchInput";
 import SourceFilter from "./SourceFilter";
 
-const sortTabs: { value: SortOption; label: string; icon: typeof Flame }[] = [
-  { value: "downloads", label: "Popular", icon: Flame },
-  { value: "updated", label: "Newest", icon: Clock },
-  { value: "rating", label: "Top Rated", icon: Star },
-  { value: "name", label: "A-Z", icon: ArrowDownAZ },
+const sortTabs: { value: SortOption; label: string; title: string; icon: typeof Flame }[] = [
+  { value: "downloads", label: "Popular", title: "Sort by total downloads", icon: Flame },
+  { value: "updated", label: "Updated", title: "Sort by last update", icon: Clock },
+  { value: "rating", label: "Top Rated", title: "Sort by rating", icon: Star },
+  { value: "name", label: "A-Z", title: "Sort by name", icon: ArrowDownAZ },
 ];
 
 interface ModToolbarProps {
@@ -86,7 +86,7 @@ export default function ModToolbar({
         {sortTabs.map((tab) => {
           const Icon = tab.icon;
           return (
-            <ToggleGroupItem key={tab.value} value={tab.value}>
+            <ToggleGroupItem key={tab.value} value={tab.value} title={tab.title}>
               <Icon />
               {tab.label}
             </ToggleGroupItem>

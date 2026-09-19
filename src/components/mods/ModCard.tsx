@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { usePackageInstall } from "../../hooks/use-package-install";
 import { downloadStatusLabel } from "../../lib/downloads";
-import { formatDownloads } from "../../lib/format";
+import { formatDate, formatDownloads } from "../../lib/format";
 import type { ThunderstorePackage } from "../../lib/types";
 import { useDownloadStore } from "../../store/downloadStore";
 import { useModStore } from "../../store/modStore";
@@ -73,11 +73,18 @@ export default function ModCard({
 
       <CardFooter className="mt-auto justify-between">
         <div className="text-muted-foreground flex items-center gap-2 text-xs">
-          <span className="flex items-center gap-1">
+          <span className="flex shrink-0 items-center gap-1">
             <Download className="size-3" />
             {formatDownloads(pkg.downloads)}
           </span>
           {showVersion && <Badge variant="outline">v{pkg.version_number}</Badge>}
+          <span
+            className="flex shrink-0 items-center gap-1"
+            title={`Last updated ${formatDate(pkg.date_updated)}`}
+          >
+            <Clock className="size-3" />
+            {formatDate(pkg.date_updated)}
+          </span>
           {extraMeta}
         </div>
 

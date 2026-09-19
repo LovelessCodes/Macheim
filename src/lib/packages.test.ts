@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 
-import { filterPackages, isModpackCategory } from "./packages";
+import { filterPackages, isModpackCategory, sortPackages } from "./packages";
 import type { ThunderstorePackage } from "./types";
 
 function pkg(overrides: Partial<ThunderstorePackage>): ThunderstorePackage {
@@ -48,4 +48,18 @@ test("excludes modpacks for both category spellings", () => {
   expect(isModpackCategory(packages[0]!)).toBe(true);
   expect(isModpackCategory(packages[1]!)).toBe(true);
   expect(isModpackCategory(packages[2]!)).toBe(false);
+});
+
+test("sorts by last updated in both directions", () => {
+  const older = pkg({ full_name: "Author-Older", date_updated: "2026-01-01T00:00:00Z" });
+  const newer = pkg({ full_name: "Author-Newer", date_updated: "2026-06-01T00:00:00Z" });
+
+  expect(sortPackages([older, newer], "updated", "desc").map((p) => p.full_name)).toEqual([
+    "Author-Newer",
+    "Author-Older",
+  ]);
+  expect(sortPackages([older, newer], "updated", "asc").map((p) => p.full_name)).toEqual([
+    "Author-Older",
+    "Author-Newer",
+  ]);
 });
