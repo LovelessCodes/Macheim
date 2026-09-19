@@ -46,10 +46,10 @@ export function groupPackagesByName(
  * unless one candidate remains.
  */
 export function matchManualMod(
-  mod: Pick<InstalledMod, "full_name" | "name" | "author" | "version">,
+  mod: Pick<InstalledMod, "full_name" | "name" | "author" | "manual">,
   packagesByName: Map<string, ThunderstorePackage[]>,
 ): ThunderstorePackage | undefined {
-  if (mod.version !== "0.0.0") return undefined;
+  if (!mod.manual) return undefined;
 
   const candidates = packagesByName.get(normalizeKey(mod.name));
   if (!candidates || candidates.length === 0) return undefined;

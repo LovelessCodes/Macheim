@@ -65,7 +65,7 @@ test("manual mod matches the package owned by its folder", () => {
   const byName = groupPackagesByName(packages);
 
   const matched = matchManualMod(
-    { full_name: "Jowleth", name: "NoRainDamage", author: "Unknown", version: "0.0.0" },
+    { full_name: "Jowleth", name: "NoRainDamage", author: "Unknown", manual: true },
     byName,
   );
 
@@ -80,7 +80,7 @@ test("manual mod with an ambiguous plugin name stays unmatched", () => {
   const byName = groupPackagesByName(packages);
 
   const matched = matchManualMod(
-    { full_name: "NoRainDamage.dll", name: "NoRainDamage", author: "Unknown", version: "0.0.0" },
+    { full_name: "NoRainDamage.dll", name: "NoRainDamage", author: "Unknown", manual: true },
     byName,
   );
 
@@ -93,14 +93,14 @@ test("a sole candidate matches by plugin name alone", () => {
   ]);
 
   const matched = matchManualMod(
-    { full_name: "PhantomMod.dll", name: "PhantomMod", author: "Unknown", version: "0.0.0" },
+    { full_name: "PhantomMod.dll", name: "PhantomMod", author: "Unknown", manual: true },
     byName,
   );
 
   expect(matched?.full_name).toBe("Author-PhantomMod");
 });
 
-test("store-managed versions are never matched as manual", () => {
+test("managed installs are never matched as manual", () => {
   const byName = groupPackagesByName([
     pkg({ full_name: "Jowleth-NoRainDamage", name: "NoRainDamage", owner: "Jowleth" }),
   ]);
@@ -110,7 +110,7 @@ test("store-managed versions are never matched as manual", () => {
       full_name: "Jowleth-NoRainDamage",
       name: "NoRainDamage",
       author: "Jowleth",
-      version: "1.2.2",
+      manual: false,
     },
     byName,
   );

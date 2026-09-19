@@ -326,6 +326,7 @@ pub fn install_mod_from_bytes(
         dependencies: dependencies.to_vec(),
         installed_at: chrono::Utc::now().to_rfc3339(),
         icon: icon.to_string(),
+        manual: false,
     };
 
     info!(

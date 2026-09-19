@@ -87,7 +87,7 @@ export default function InstalledModList() {
   const resolvePackage = (mod: InstalledMod) =>
     packageByFullName.get(mod.full_name) ?? matchManualMod(mod, packagesByName);
 
-  const isManual = (mod: InstalledMod) => mod.version === "0.0.0";
+  const isManual = (mod: InstalledMod) => mod.manual === true;
 
   const updatable = useMemo(
     () =>
@@ -269,7 +269,7 @@ export default function InstalledModList() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <h4 className="text-foreground truncate text-sm font-semibold">{mod.name}</h4>
-                    {isManual(mod) ? (
+                    {isManual(mod) && mod.version === "0.0.0" ? (
                       <Badge variant="secondary" className="shrink-0">
                         Manual
                       </Badge>

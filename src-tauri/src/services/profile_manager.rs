@@ -1,6 +1,6 @@
 use super::{
     compatibility::{atomic_write, reject_symlink_ancestors, MANAGED_DIR},
-    thunderstore_client,
+    plugin_version, thunderstore_client,
 };
 use crate::error::{AppError, AppResult};
 use crate::models::{InstalledMod, Profile};
@@ -193,7 +193,8 @@ pub fn import_existing_mods(name: &str, root: &Path) -> AppResult<Vec<String>> {
 const MANUAL_DESCRIPTION: &str = "Manually installed (version unverified)";
 
 fn is_manual_placeholder(m: &InstalledMod) -> bool {
-    m.description == MANUAL_DESCRIPTION
+    // The description check covers profiles written before the flag existed.
+    m.manual || m.description == MANUAL_DESCRIPTION
 }
 
 fn is_plugin_file(path: &Path) -> bool {
@@ -204,9 +205,9 @@ fn is_plugin_file(path: &Path) -> bool {
     })
 }
 
-/// Plugin file names under `dir`, searched recursively.
-fn plugin_files(dir: &Path) -> Vec<String> {
-    fn visit(dir: &Path, files: &mut Vec<String>) {
+/// Plugin files under `dir`, searched recursively.
+fn plugin_files(dir: &Path) -> Vec<PathBuf> {
+    fn visit(dir: &Path, files: &mut Vec<PathBuf>) {
         let Ok(entries) = std::fs::read_dir(dir) else {
             return;
         };
@@ -215,9 +216,7 @@ fn plugin_files(dir: &Path) -> Vec<String> {
             if path.is_dir() {
                 visit(&path, files);
             } else if is_plugin_file(&path) {
-                if let Some(name) = path.file_name() {
-                    files.push(name.to_string_lossy().into_owned());
-                }
+                files.push(path);
             }
         }
     }
@@ -227,6 +226,12 @@ fn plugin_files(dir: &Path) -> Vec<String> {
         visit(dir, &mut files);
     }
     files
+}
+
+fn plugin_file_name(path: &Path) -> String {
+    path.file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default()
 }
 
 /// DLL names shipped by tracked mods. A loose copy left in `plugins/` (for
@@ -240,7 +245,7 @@ fn managed_dll_names(profile: &Profile, bepinex: &Path) -> HashSet<String> {
         }
         for dir in ["plugins", "plugins_disabled"] {
             for file in plugin_files(&bepinex.join(dir).join(&m.full_name)) {
-                names.insert(file.to_lowercase());
+                names.insert(plugin_file_name(&file).to_lowercase());
             }
         }
     }
@@ -254,7 +259,22 @@ fn folder_is_manual_mod(dir: &Path, managed_dlls: &HashSet<String>) -> bool {
     !files.is_empty()
         && !files
             .iter()
-            .all(|file| managed_dlls.contains(&file.to_lowercase()))
+            .all(|file| managed_dlls.contains(&plugin_file_name(file).to_lowercase()))
+}
+
+/// Version advertised by the plugin that represents the folder: the only
+/// plugin, or the one named after the mod in multi-plugin folders.
+fn folder_plugin_version(dir: &Path, display_name: &str, fallback: &str) -> Option<String> {
+    let files = plugin_files(dir);
+    let chosen = if files.len() == 1 {
+        files.first()
+    } else {
+        files.iter().find(|file| {
+            let stem = plugin_display_name(&plugin_file_name(file), "");
+            stem.eq_ignore_ascii_case(display_name) || stem.eq_ignore_ascii_case(fallback)
+        })
+    }?;
+    plugin_version::read_plugin_version(chosen)
 }
 
 fn register_manual_mods(profile: &mut Profile, bepinex: &Path) -> AppResult<Vec<String>> {
@@ -308,16 +328,23 @@ fn register_manual_mods(profile: &mut Profile, bepinex: &Path) -> AppResult<Vec<
             } else {
                 plugin_display_name(&name, mod_name)
             };
+            let version = if ty.is_dir() {
+                folder_plugin_version(&entry.path(), &display_name, mod_name)
+            } else {
+                plugin_version::read_plugin_version(&entry.path())
+            }
+            .unwrap_or_else(|| "0.0.0".to_string());
             profile.mods.push(InstalledMod {
                 full_name: name.clone(),
                 author: author.into(),
                 name: display_name,
-                version: "0.0.0".into(),
+                version,
                 description: MANUAL_DESCRIPTION.into(),
                 enabled,
                 dependencies: vec![],
                 installed_at: chrono::Utc::now().to_rfc3339(),
                 icon: String::new(),
+                manual: true,
             });
             tracked.insert(name.clone());
             added.push(name);
@@ -345,7 +372,7 @@ fn folder_display_name(dir: &Path, fallback: &str) -> String {
     if files.len() != 1 {
         return fallback.to_string();
     }
-    plugin_display_name(&files[0], fallback)
+    plugin_display_name(&plugin_file_name(&files[0]), fallback)
 }
 pub fn add_mod_to_profile(name: &str, installed: InstalledMod) -> AppResult<()> {
     let mut p = load_profile(name)?;
@@ -480,6 +507,7 @@ mod tests {
             dependencies: vec![],
             installed_at: "2026-01-01T00:00:00Z".into(),
             icon: String::new(),
+            manual: false,
         }
     }
 
@@ -487,6 +515,7 @@ mod tests {
         let mut m = installed_mod(full_name, MANUAL_DESCRIPTION);
         m.author = "Unknown".into();
         m.version = "0.0.0".into();
+        m.manual = true;
         m
     }
 

@@ -52,6 +52,8 @@ export interface InstalledMod {
   icon: string;
   dependencies: string[];
   installed_at: string;
+  /** Discovered on disk instead of installed by Macheim. */
+  manual?: boolean;
 }
 
 export interface Profile {

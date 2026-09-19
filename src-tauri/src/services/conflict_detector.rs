@@ -234,6 +234,7 @@ mod tests {
             dependencies: Vec::new(),
             installed_at: String::new(),
             icon: String::new(),
+            manual: false,
         }
     }
 
