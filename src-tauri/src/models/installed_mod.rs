@@ -15,6 +15,10 @@ pub struct InstalledMod {
     /// Icon URL from Thunderstore
     #[serde(default)]
     pub icon: String,
+    /// Discovered on disk instead of installed by Macheim. Manual records are
+    /// rebuilt on every profile scan and matched to store listings by name.
+    #[serde(default)]
+    pub manual: bool,
 }
 
 impl InstalledMod {

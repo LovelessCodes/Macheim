@@ -1,6 +1,6 @@
 use super::{
     compatibility::{atomic_write, reject_symlink_ancestors, MANAGED_DIR},
-    thunderstore_client,
+    plugin_version, thunderstore_client,
 };
 use crate::error::{AppError, AppResult};
 use crate::models::{InstalledMod, Profile};
@@ -188,9 +188,107 @@ pub fn import_existing_mods(name: &str, root: &Path) -> AppResult<Vec<String>> {
     save_profile(&profile)?;
     Ok(added)
 }
+/// Marker for mods the scanner registered from the filesystem. It only knows
+/// the file name, not who published the mod or which version it is.
+const MANUAL_DESCRIPTION: &str = "Manually installed (version unverified)";
+
+fn is_manual_placeholder(m: &InstalledMod) -> bool {
+    // The description check covers profiles written before the flag existed.
+    m.manual || m.description == MANUAL_DESCRIPTION
+}
+
+pub(crate) fn is_plugin_file(path: &Path) -> bool {
+    path.extension().is_some_and(|e| {
+        e.eq_ignore_ascii_case("dll")
+            || e.eq_ignore_ascii_case("dylib")
+            || e.eq_ignore_ascii_case("so")
+    })
+}
+
+/// Plugin files under `dir`, searched recursively.
+fn plugin_files(dir: &Path) -> Vec<PathBuf> {
+    fn visit(dir: &Path, files: &mut Vec<PathBuf>) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                visit(&path, files);
+            } else if is_plugin_file(&path) {
+                files.push(path);
+            }
+        }
+    }
+
+    let mut files = Vec::new();
+    if dir.is_dir() {
+        visit(dir, &mut files);
+    }
+    files
+}
+
+fn plugin_file_name(path: &Path) -> String {
+    path.file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default()
+}
+
+/// DLL names shipped by tracked mods. A loose copy left in `plugins/` (for
+/// example, a manual install that a store package later replaced) is the same
+/// plugin, so it must not be listed as a second, unknown mod, counted as a
+/// duplicate conflict or kept as "unmanaged".
+pub(crate) fn managed_dll_names(mods: &[InstalledMod], bepinex: &Path) -> HashSet<String> {
+    let mut names = HashSet::new();
+    for m in mods {
+        if is_manual_placeholder(m) {
+            continue;
+        }
+        for dir in ["plugins", "plugins_disabled"] {
+            for file in plugin_files(&bepinex.join(dir).join(&m.full_name)) {
+                names.insert(plugin_file_name(&file).to_lowercase());
+            }
+        }
+    }
+    names
+}
+
+/// A manual folder is only a mod when it actually carries plugin files, and it
+/// is redundant when every one of them is already provided by a tracked mod.
+fn folder_is_manual_mod(dir: &Path, managed_dlls: &HashSet<String>) -> bool {
+    let files = plugin_files(dir);
+    !files.is_empty()
+        && !files
+            .iter()
+            .all(|file| managed_dlls.contains(&plugin_file_name(file).to_lowercase()))
+}
+
+/// Version advertised by the plugin that represents the folder: the only
+/// plugin, or the one named after the mod in multi-plugin folders.
+fn folder_plugin_version(dir: &Path, display_name: &str, fallback: &str) -> Option<String> {
+    let files = plugin_files(dir);
+    let chosen = if files.len() == 1 {
+        files.first()
+    } else {
+        files.iter().find(|file| {
+            let stem = plugin_display_name(&plugin_file_name(file), "");
+            stem.eq_ignore_ascii_case(display_name) || stem.eq_ignore_ascii_case(fallback)
+        })
+    }?;
+    plugin_version::read_plugin_version(chosen)
+}
+
 fn register_manual_mods(profile: &mut Profile, bepinex: &Path) -> AppResult<Vec<String>> {
+    // Manual entries are derived, not authoritative: drop them and rebuild
+    // from the filesystem so display names, enabled state and stale entries
+    // stay in sync with what is actually installed.
+    profile
+        .mods
+        .retain(|m| !is_manual_placeholder(m) && m.full_name != MANAGED_DIR);
+
+    let managed_dlls = managed_dll_names(&profile.mods, bepinex);
+
     let mut tracked: HashSet<_> = profile.mods.iter().map(|m| m.full_name.clone()).collect();
-    profile.mods.retain(|m| m.full_name != MANAGED_DIR);
     let mut added = Vec::new();
     for (dir, enabled) in [("plugins", true), ("plugins_disabled", false)] {
         let path = bepinex.join(dir);
@@ -213,24 +311,69 @@ fn register_manual_mods(profile: &mut Profile, bepinex: &Path) -> AppResult<Vec<
             {
                 continue;
             }
+            if ty.is_dir() {
+                // Folders without plugins are data (translations, caches), and
+                // folders whose plugins a tracked mod already ships are
+                // leftovers of an earlier manual install.
+                if !folder_is_manual_mod(&entry.path(), &managed_dlls) {
+                    continue;
+                }
+            } else if managed_dlls.contains(&name.to_lowercase()) {
+                // A tracked mod already loads this DLL from its own folder.
+                continue;
+            }
             validate_name(&name)?;
             let (author, mod_name) = name.split_once('-').unwrap_or(("Unknown", &name));
+            let display_name = if ty.is_dir() {
+                folder_display_name(&entry.path(), mod_name)
+            } else {
+                plugin_display_name(&name, mod_name)
+            };
+            let version = if ty.is_dir() {
+                folder_plugin_version(&entry.path(), &display_name, mod_name)
+            } else {
+                plugin_version::read_plugin_version(&entry.path())
+            }
+            .unwrap_or_else(|| "0.0.0".to_string());
             profile.mods.push(InstalledMod {
                 full_name: name.clone(),
                 author: author.into(),
-                name: mod_name.into(),
-                version: "0.0.0".into(),
-                description: "Manually installed (version unverified)".into(),
+                name: display_name,
+                version,
+                description: MANUAL_DESCRIPTION.into(),
                 enabled,
                 dependencies: vec![],
                 installed_at: chrono::Utc::now().to_rfc3339(),
                 icon: String::new(),
+                manual: true,
             });
             tracked.insert(name.clone());
             added.push(name);
         }
     }
     Ok(added)
+}
+
+/// Plugin file name without its extension; `fallback` when there is nothing
+/// usable (e.g. a lone ".dll").
+fn plugin_display_name(file: &str, fallback: &str) -> String {
+    Path::new(file)
+        .file_stem()
+        .map(|stem| stem.to_string_lossy().into_owned())
+        .filter(|stem| !stem.is_empty())
+        .unwrap_or_else(|| fallback.to_string())
+}
+
+/// Display name for a manual folder: its plugin is the mod, so a folder with a
+/// single plugin (e.g. `Jowleth/NoRainDamage.dll`) shows the plugin name. The
+/// folder name stays the `full_name` because uninstall and toggle operate on
+/// that path.
+fn folder_display_name(dir: &Path, fallback: &str) -> String {
+    let files = plugin_files(dir);
+    if files.len() != 1 {
+        return fallback.to_string();
+    }
+    plugin_display_name(&plugin_file_name(&files[0]), fallback)
 }
 pub fn add_mod_to_profile(name: &str, installed: InstalledMod) -> AppResult<()> {
     let mut p = load_profile(name)?;
@@ -353,6 +496,160 @@ fn copy_dir_recursive(source: &Path, target: &Path) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn installed_mod(full_name: &str, description: &str) -> InstalledMod {
+        InstalledMod {
+            full_name: full_name.into(),
+            author: full_name.split('-').next().unwrap_or(full_name).into(),
+            name: full_name.rsplit('-').next().unwrap_or(full_name).into(),
+            version: "1.0.0".into(),
+            description: description.into(),
+            enabled: true,
+            dependencies: vec![],
+            installed_at: "2026-01-01T00:00:00Z".into(),
+            icon: String::new(),
+            manual: false,
+        }
+    }
+
+    fn manual_placeholder(full_name: &str) -> InstalledMod {
+        let mut m = installed_mod(full_name, MANUAL_DESCRIPTION);
+        m.author = "Unknown".into();
+        m.version = "0.0.0".into();
+        m.manual = true;
+        m
+    }
+
+    #[test]
+    fn asset_only_folder_is_not_registered() {
+        let game = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(game.path().join("plugins/Translations")).unwrap();
+        std::fs::write(game.path().join("plugins/Translations/sv.json"), b"{}").unwrap();
+
+        let mut p = Profile::new("Test".into(), "".into());
+        p.mods.push(manual_placeholder("Translations"));
+
+        let added = register_manual_mods(&mut p, game.path()).unwrap();
+
+        assert!(added.is_empty());
+        assert!(p.mods.is_empty());
+    }
+
+    #[test]
+    fn manual_folder_shows_its_plugin_name() {
+        let game = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(game.path().join("plugins/Jowleth")).unwrap();
+        std::fs::write(
+            game.path().join("plugins/Jowleth/NoRainDamage.dll"),
+            b"plugin",
+        )
+        .unwrap();
+
+        let mut p = Profile::new("Test".into(), "".into());
+        // A stale placeholder from an earlier scan is refreshed, not kept.
+        p.mods.push(manual_placeholder("Jowleth"));
+
+        let added = register_manual_mods(&mut p, game.path()).unwrap();
+
+        assert_eq!(added, vec!["Jowleth"]);
+        assert_eq!(p.mods.len(), 1);
+        assert_eq!(p.mods[0].full_name, "Jowleth");
+        assert_eq!(p.mods[0].name, "NoRainDamage");
+    }
+
+    #[test]
+    fn loose_dll_display_name_drops_extension() {
+        let game = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(game.path().join("plugins")).unwrap();
+        std::fs::write(game.path().join("plugins/Things.dll"), b"plugin").unwrap();
+
+        let mut p = Profile::new("Test".into(), "".into());
+
+        register_manual_mods(&mut p, game.path()).unwrap();
+
+        assert_eq!(p.mods.len(), 1);
+        assert_eq!(p.mods[0].full_name, "Things.dll");
+        assert_eq!(p.mods[0].name, "Things");
+    }
+
+    #[test]
+    fn folder_provided_by_tracked_mod_is_pruned() {
+        let game = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(game.path().join("plugins/Author-SleepSkip")).unwrap();
+        std::fs::write(
+            game.path().join("plugins/Author-SleepSkip/SleepSkip.dll"),
+            b"managed",
+        )
+        .unwrap();
+        std::fs::create_dir_all(game.path().join("plugins/Leftover")).unwrap();
+        std::fs::write(game.path().join("plugins/Leftover/SleepSkip.dll"), b"loose").unwrap();
+
+        let mut p = Profile::new("Test".into(), "".into());
+        p.mods.push(installed_mod("Author-SleepSkip", "real mod"));
+        p.mods.push(manual_placeholder("Leftover"));
+
+        let added = register_manual_mods(&mut p, game.path()).unwrap();
+
+        assert!(added.is_empty());
+        assert_eq!(p.mods.len(), 1);
+        assert_eq!(p.mods[0].full_name, "Author-SleepSkip");
+    }
+
+    #[test]
+    fn loose_dll_provided_by_tracked_mod_is_not_registered() {
+        let game = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(game.path().join("plugins/Author-SleepSkip")).unwrap();
+        std::fs::write(
+            game.path().join("plugins/Author-SleepSkip/SleepSkip.dll"),
+            b"managed",
+        )
+        .unwrap();
+        std::fs::write(game.path().join("plugins/SleepSkip.dll"), b"loose").unwrap();
+
+        let mut p = Profile::new("Test".into(), "".into());
+        p.mods.push(installed_mod("Author-SleepSkip", "real mod"));
+
+        let added = register_manual_mods(&mut p, game.path()).unwrap();
+
+        assert!(added.is_empty());
+        assert_eq!(p.mods.len(), 1);
+        assert_eq!(p.mods[0].full_name, "Author-SleepSkip");
+    }
+
+    #[test]
+    fn manual_placeholder_is_pruned_when_tracked_mod_provides_dll() {
+        let game = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(game.path().join("plugins/Author-SleepSkip")).unwrap();
+        std::fs::write(
+            game.path().join("plugins/Author-SleepSkip/SleepSkip.dll"),
+            b"managed",
+        )
+        .unwrap();
+        std::fs::write(game.path().join("plugins/SleepSkip.dll"), b"loose").unwrap();
+
+        let mut p = Profile::new("Test".into(), "".into());
+        p.mods.push(installed_mod("Author-SleepSkip", "real mod"));
+        p.mods.push(manual_placeholder("SleepSkip.dll"));
+
+        register_manual_mods(&mut p, game.path()).unwrap();
+
+        assert_eq!(p.mods.len(), 1);
+        assert_eq!(p.mods[0].full_name, "Author-SleepSkip");
+    }
+
+    #[test]
+    fn manual_placeholder_is_pruned_when_file_is_gone() {
+        let game = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(game.path().join("plugins")).unwrap();
+
+        let mut p = Profile::new("Test".into(), "".into());
+        p.mods.push(manual_placeholder("Gone.dll"));
+
+        register_manual_mods(&mut p, game.path()).unwrap();
+
+        assert!(p.mods.is_empty());
+    }
+
     #[test]
     fn rejects_paths_and_empty_profile_names() {
         for name in [

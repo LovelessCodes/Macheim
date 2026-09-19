@@ -335,6 +335,7 @@ mod tests {
                 dependencies: vec![],
                 installed_at: "".into(),
                 icon: "".into(),
+                manual: false,
             });
         }
         std::fs::create_dir_all(root.path().join("BepInEx/core")).unwrap();
