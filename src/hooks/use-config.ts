@@ -5,10 +5,22 @@ import { configFilesQueryKey, configQueryKey } from "../lib/query-keys";
 import { getConfig, getConfigFiles, saveConfig } from "../lib/tauri";
 import type { ConfigFile } from "../lib/types";
 
+/**
+ * Config files change outside Macheim (in-game ConfigManager, manual edits,
+ * mod updates), so never serve them from cache: fetch on every mount and when
+ * the app window regains focus.
+ */
+const CONFIG_QUERY_OPTIONS = {
+  staleTime: 0,
+  refetchOnMount: "always",
+  refetchOnWindowFocus: "always",
+} as const;
+
 export function useConfigFiles() {
   return useQuery({
     queryKey: configFilesQueryKey,
     queryFn: getConfigFiles,
+    ...CONFIG_QUERY_OPTIONS,
   });
 }
 
@@ -18,6 +30,7 @@ export function useConfig(path: string | null) {
     queryFn: () => getConfig(path as string),
     enabled: path !== null,
     meta: { errorTitle: "Failed to load config" },
+    ...CONFIG_QUERY_OPTIONS,
   });
 }
 

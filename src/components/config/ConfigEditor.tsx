@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "cn";
 import {
   FileText,
@@ -11,6 +12,7 @@ import {
 import { useState, useCallback } from "react";
 
 import { useConfig, useConfigFiles, useSaveConfig } from "../../hooks/use-config";
+import { configQueryKey } from "../../lib/query-keys";
 import type { ConfigFile, ConfigFileSummary, ConfigEntry, ConfigSection } from "../../lib/types";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -22,6 +24,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from ".
 export default function ConfigEditor() {
   const { data: configFiles = [], isPending: isLoadingFiles } = useConfigFiles();
   const saveConfigMutation = useSaveConfig();
+  const queryClient = useQueryClient();
 
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const {
@@ -34,10 +37,19 @@ export default function ConfigEditor() {
 
   const [editedEntries, setEditedEntries] = useState<Map<string, string>>(new Map());
 
-  const handleSelectFile = useCallback((file: ConfigFileSummary) => {
-    setSelectedPath(file.path);
-    setEditedEntries(new Map());
-  }, []);
+  const handleSelectFile = useCallback(
+    (file: ConfigFileSummary) => {
+      // Re-selecting the open file refetches it, so edits made outside Macheim
+      // are picked up without switching files.
+      if (selectedPath === file.path) {
+        void queryClient.invalidateQueries({ queryKey: configQueryKey(file.path) });
+      } else {
+        setSelectedPath(file.path);
+      }
+      setEditedEntries(new Map());
+    },
+    [queryClient, selectedPath],
+  );
 
   const handleEntryChange = (sectionName: string, key: string, value: string) => {
     const entryKey = `${sectionName}::${key}`;
