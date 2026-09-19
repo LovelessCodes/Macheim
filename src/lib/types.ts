@@ -1,6 +1,11 @@
 export type PackageSource = "thunderstore" | "hexium";
 export type PackageSourceFilter = PackageSource | "all";
 
+export interface PackageListingRef {
+  source: PackageSource;
+  package_url: string;
+}
+
 export interface ThunderstorePackage {
   name: string;
   full_name: string;
@@ -15,6 +20,8 @@ export interface ThunderstorePackage {
   categories: string[];
   date_updated: string;
   source: PackageSource;
+  /** Other stores that carry the same package. */
+  alternates?: PackageListingRef[];
 }
 
 export interface PackageVersion {
@@ -27,6 +34,8 @@ export interface PackageVersion {
   description: string;
   icon: string;
   date_created: string;
+  /** Stores that carry this version; empty means Thunderstore. */
+  sources?: PackageSource[];
 }
 
 export interface PackageDetail {
@@ -40,6 +49,7 @@ export interface PackageDetail {
   versions: PackageVersion[];
   categories: string[];
   source: PackageSource;
+  alternates?: PackageListingRef[];
 }
 
 export interface InstalledMod {
