@@ -52,6 +52,19 @@ function ComboboxChip({ className, children, ...props }: ComboboxPrimitive.Chip.
   );
 }
 
+function ComboboxClear({ className, ...props }: ComboboxPrimitive.Clear.Props) {
+  return (
+    <ComboboxPrimitive.Clear
+      data-slot="combobox-clear"
+      className={cn(
+        "text-muted-foreground hover:text-foreground shrink-0 cursor-default outline-none",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
 function ComboboxContent({
   className,
   children,
@@ -139,6 +152,7 @@ export {
   ComboboxChips,
   ComboboxInput,
   ComboboxChip,
+  ComboboxClear,
   ComboboxContent,
   ComboboxEmpty,
   ComboboxList,

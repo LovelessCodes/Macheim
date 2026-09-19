@@ -10,6 +10,7 @@ export interface PackageFilter {
   searchQuery?: string;
   selectedCategories?: string[];
   selectedSource?: PackageSourceFilter;
+  selectedAuthor?: string | null;
 }
 
 export function isModpackCategory(pkg: ThunderstorePackage): boolean {
@@ -67,13 +68,22 @@ export function matchManualMod(
 
 export function filterPackages(
   packages: ThunderstorePackage[],
-  { searchQuery = "", selectedCategories = [], selectedSource = "all" }: PackageFilter,
+  {
+    searchQuery = "",
+    selectedCategories = [],
+    selectedSource = "all",
+    selectedAuthor = null,
+  }: PackageFilter,
 ): ThunderstorePackage[] {
   // Browse Mods excludes modpacks (they have their own page).
   let filtered = packages.filter((pkg) => !pkg.is_deprecated && !isModpackCategory(pkg));
 
   if (selectedSource !== "all") {
     filtered = filtered.filter((pkg) => pkg.source === selectedSource);
+  }
+
+  if (selectedAuthor) {
+    filtered = filtered.filter((pkg) => pkg.owner === selectedAuthor);
   }
 
   if (selectedCategories.length > 0) {

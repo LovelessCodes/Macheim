@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 import type { PackageSourceFilter, SortDirection, SortOption } from "../../lib/types";
 import { Button } from "../ui/button";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
+import AuthorFilter from "./AuthorFilter";
 import CategoryFilter from "./CategoryFilter";
 import ModSearchInput from "./ModSearchInput";
 import SourceFilter from "./SourceFilter";
@@ -35,6 +36,9 @@ interface ModToolbarProps {
   onSelectedCategoriesChange?: (value: string[]) => void;
   sourceFilter?: PackageSourceFilter;
   onSourceFilterChange?: (value: PackageSourceFilter) => void;
+  authors?: string[];
+  selectedAuthor?: string | null;
+  onSelectedAuthorChange?: (value: string | null) => void;
   children?: ReactNode;
 }
 
@@ -51,6 +55,9 @@ export default function ModToolbar({
   onSelectedCategoriesChange,
   sourceFilter,
   onSourceFilterChange,
+  authors,
+  selectedAuthor,
+  onSelectedAuthorChange,
   children,
 }: ModToolbarProps) {
   return (
@@ -64,6 +71,14 @@ export default function ModToolbar({
 
       {onSourceFilterChange && (
         <SourceFilter value={sourceFilter ?? "all"} onChange={onSourceFilterChange} />
+      )}
+
+      {authors && authors.length > 0 && onSelectedAuthorChange && (
+        <AuthorFilter
+          authors={authors}
+          value={selectedAuthor ?? null}
+          onChange={onSelectedAuthorChange}
+        />
       )}
 
       {categories && categories.length > 0 && onSelectedCategoriesChange && (
