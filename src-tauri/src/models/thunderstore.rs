@@ -75,7 +75,10 @@ impl From<&ThunderstorePackage> for PackageListing {
             description: latest.map(|v| v.description.clone()).unwrap_or_default(),
             version_number: latest.map(|v| v.version_number.clone()).unwrap_or_default(),
             rating_score: pkg.rating_score,
-            downloads: latest.map(|v| v.downloads).unwrap_or(0),
+            // Cumulative across every published version, matching what the
+            // store shows, so the "Downloads" sort is not biased by whichever
+            // version happens to be the latest.
+            downloads: pkg.versions.iter().map(|v| v.downloads).sum(),
             is_deprecated: pkg.is_deprecated,
             icon: latest.map(|v| v.icon.clone()).unwrap_or_default(),
             categories: pkg.categories.clone(),
@@ -141,5 +144,69 @@ impl ParsedDependency {
             full_name,
             version,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn version(version_number: &str, downloads: u64, description: &str) -> PackageVersion {
+        PackageVersion {
+            name: "Mod".to_string(),
+            full_name: "Author-Mod".to_string(),
+            version_number: version_number.to_string(),
+            dependencies: Vec::new(),
+            download_url: format!("https://example.com/{}.zip", version_number),
+            downloads,
+            description: description.to_string(),
+            icon: String::new(),
+            date_created: "2026-01-01T00:00:00Z".to_string(),
+            file_size: 1,
+            is_active: true,
+            uuid4: None,
+        }
+    }
+
+    fn package(versions: Vec<PackageVersion>) -> ThunderstorePackage {
+        ThunderstorePackage {
+            name: "Mod".to_string(),
+            full_name: "Author-Mod".to_string(),
+            owner: "Author".to_string(),
+            package_url: "https://example.com/Author-Mod".to_string(),
+            date_updated: "2026-01-01T00:00:00Z".to_string(),
+            is_deprecated: false,
+            rating_score: 1,
+            versions,
+            categories: Vec::new(),
+            is_pinned: false,
+            source: PackageSource::Thunderstore,
+        }
+    }
+
+    #[test]
+    fn listing_downloads_are_cumulative_across_versions() {
+        let pkg = package(vec![
+            version("2.0.0", 300, "latest"),
+            version("1.0.0", 200, "older"),
+            version("0.9.0", 50, "oldest"),
+        ]);
+
+        let listing = PackageListing::from(&pkg);
+
+        assert_eq!(listing.downloads, 550);
+    }
+
+    #[test]
+    fn listing_metadata_still_comes_from_latest_version() {
+        let pkg = package(vec![
+            version("2.0.0", 300, "latest"),
+            version("1.0.0", 200, "older"),
+        ]);
+
+        let listing = PackageListing::from(&pkg);
+
+        assert_eq!(listing.version_number, "2.0.0");
+        assert_eq!(listing.description, "latest");
     }
 }
