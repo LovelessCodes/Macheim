@@ -64,6 +64,13 @@ pub fn load_fresh_cache<T: DeserializeOwned>(dir: &Path) -> Option<Vec<T>> {
     load_cache(dir).ok()
 }
 
+/// Load a package list from disk ignoring the freshness window. Callers that
+/// only need a lookup (e.g. details of a package the UI already lists) prefer
+/// stale-but-instant data over a slow network round trip.
+pub fn load_disk_cache<T: DeserializeOwned>(dir: &Path) -> Option<Vec<T>> {
+    load_cache(dir).ok()
+}
+
 /// Fetch a package list from a Thunderstore-compatible API, using the disk
 /// cache when it is fresh (< 30 minutes).
 pub async fn fetch_cached_packages<T: DeserializeOwned + Serialize>(

@@ -54,6 +54,21 @@ pub async fn get_package_details(
         }
     }
 
+    // Fall back to the disk cache (any age) before the network: the listing the
+    // user just clicked on came from that cache, so its details are almost
+    // always there and load instantly even when the cache is cold.
+    let disk_packages = package_sources::cached_packages_any_age();
+    if let Some(found) = thunderstore_client::find_package(&disk_packages, &full_name).cloned() {
+        let mut state = state
+            .lock()
+            .map_err(|e| AppError::Network(format!("Failed to lock state: {}", e)))?;
+        if state.package_cache.is_none() {
+            state.package_cache = Some(disk_packages);
+            state.cache_updated_at = Some(chrono::Utc::now());
+        }
+        return Ok(found);
+    }
+
     info!("Package cache not loaded, fetching packages first...");
     let packages = package_sources::fetch_all_packages(false).await?;
     let found = thunderstore_client::find_package(&packages, &full_name).cloned();

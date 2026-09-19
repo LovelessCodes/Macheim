@@ -135,6 +135,23 @@ pub fn run() {
             app.manage(Arc::clone(&queue));
             services::download_queue::spawn_worker(app.handle().clone());
 
+            // Warm the in-memory package cache from disk. The frontend can
+            // serve its listing from the persisted query cache without ever
+            // calling fetch_packages, and parsing the package files on the
+            // first detail open would stall for seconds.
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                let packages = services::package_sources::cached_packages_any_age();
+                if packages.is_empty() {
+                    return;
+                }
+                if let Ok(mut state) = handle.state::<Mutex<AppState>>().lock() {
+                    if state.package_cache.is_none() {
+                        state.package_cache = Some(packages);
+                    }
+                }
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
