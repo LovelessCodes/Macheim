@@ -48,7 +48,17 @@ export default function ModCard({
       className="group hover:bg-muted/40 cursor-pointer gap-3 transition-colors"
     >
       <CardHeader className="grid-cols-[auto_1fr] items-start gap-3">
-        <ModIcon src={pkg.icon} alt={pkg.name} className="size-14" iconClassName="size-6" />
+        <div className="flex w-14 flex-col items-center gap-1">
+          <ModIcon src={pkg.icon} alt={pkg.name} className="size-14" iconClassName="size-6" />
+          {pkg.source === "hexium" && (
+            <Badge
+              variant="outline"
+              className="border-accent-primary/40 text-accent-primary px-1.5 text-[10px]"
+            >
+              Hexium
+            </Badge>
+          )}
+        </div>
 
         <div className="grid min-w-0 gap-0.5">
           <CardTitle className="truncate transition-colors group-hover:text-[var(--color-accent-amber)]">
@@ -56,14 +66,6 @@ export default function ModCard({
           </CardTitle>
           <CardDescription className="flex min-w-0 items-center gap-1.5">
             <span className="truncate">by {pkg.owner}</span>
-            {pkg.source === "hexium" && (
-              <Badge
-                variant="outline"
-                className="border-accent-primary/40 text-accent-primary shrink-0 px-1.5 text-[10px]"
-              >
-                Hexium
-              </Badge>
-            )}
             <span
               className="flex shrink-0 items-center gap-1"
               title={`Last updated ${formatDate(pkg.date_updated)}`}
