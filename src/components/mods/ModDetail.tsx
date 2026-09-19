@@ -10,7 +10,7 @@ import {
   Layers,
   AlertTriangle,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useInstalledMods } from "../../hooks/use-installed-mods";
 import { useModUninstall } from "../../hooks/use-mod-uninstall";
@@ -19,7 +19,7 @@ import { downloadStatusLabel } from "../../lib/downloads";
 import { formatDate, formatDownloads } from "../../lib/format";
 import { packageDetailQueryKey } from "../../lib/query-keys";
 import { getPackageDetails } from "../../lib/tauri";
-import type { ThunderstorePackage } from "../../lib/types";
+import type { PackageSource, ThunderstorePackage } from "../../lib/types";
 import { useDownloadStore } from "../../store/downloadStore";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
@@ -89,12 +89,24 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
   };
 
   const isHexium = pkg.source === "hexium";
-  const sourceLabel = isHexium ? "Hexium" : "Thunderstore";
-  const packageUrl =
-    pkg.package_url ||
-    (isHexium
-      ? `https://valheim.hexium.gg/mods/${pkg.owner}/${pkg.name}`
-      : `https://thunderstore.io/c/valheim/p/${pkg.owner}/${pkg.name}/`);
+
+  // Every store that carries the package, primary first. Deduplicated by
+  // store so a merged listing never shows two buttons for the same place.
+  const storeLinks = useMemo(() => {
+    const fallback = (source: PackageSource) =>
+      source === "hexium"
+        ? `https://valheim.hexium.gg/mods/${pkg.owner}/${pkg.name}`
+        : `https://thunderstore.io/c/valheim/p/${pkg.owner}/${pkg.name}/`;
+
+    const links = new Map<PackageSource, string>();
+    links.set(pkg.source, pkg.package_url || fallback(pkg.source));
+    for (const alternate of [...(pkg.alternates ?? []), ...(detail?.alternates ?? [])]) {
+      if (!links.has(alternate.source)) {
+        links.set(alternate.source, alternate.package_url || fallback(alternate.source));
+      }
+    }
+    return [...links.entries()].map(([source, url]) => ({ source, url }));
+  }, [pkg, detail]);
 
   return (
     <Sheet
@@ -222,6 +234,20 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
                               LATEST
                             </Badge>
                           )}
+                          {/* Disclose where a version came from when the merged
+                              listing mixes stores. */}
+                          {v.source && v.source !== pkg.source && (
+                            <Badge
+                              variant="outline"
+                              className={
+                                v.source === "hexium"
+                                  ? "border-accent-primary/40 text-accent-primary shrink-0 px-1.5 text-[9px]"
+                                  : "shrink-0 px-1.5 text-[9px]"
+                              }
+                            >
+                              {v.source === "hexium" ? "Hexium" : "Thunderstore"}
+                            </Badge>
+                          )}
                         </div>
                         <div className="text-muted-foreground flex items-center gap-3 text-xs">
                           <span>{formatDownloads(v.downloads)}</span>
@@ -321,15 +347,18 @@ export default function ModDetail({ pkg, onClose }: ModDetailProps) {
               )}
             </Button>
           )}
-          <Button
-            variant="outline"
-            size="lg"
-            className="w-full"
-            render={<a href={packageUrl} target="_blank" rel="noopener noreferrer" />}
-          >
-            <ExternalLink />
-            View on {sourceLabel}
-          </Button>
+          {storeLinks.map(({ source, url }) => (
+            <Button
+              key={source}
+              variant="outline"
+              size="lg"
+              className="w-full"
+              render={<a href={url} target="_blank" rel="noopener noreferrer" />}
+            >
+              <ExternalLink />
+              View on {source === "hexium" ? "Hexium" : "Thunderstore"}
+            </Button>
+          ))}
         </SheetFooter>
       </SheetContent>
     </Sheet>

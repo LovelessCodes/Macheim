@@ -9,6 +9,13 @@ pub enum PackageSource {
     Hexium,
 }
 
+/// A listing of the same package on another store.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PackageListingRef {
+    pub source: PackageSource,
+    pub package_url: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThunderstorePackage {
     pub name: String,
@@ -25,6 +32,45 @@ pub struct ThunderstorePackage {
     pub is_pinned: bool,
     #[serde(default)]
     pub source: PackageSource,
+    /// Other stores that carry this package, filled while merging sources.
+    #[serde(default)]
+    pub alternates: Vec<PackageListingRef>,
+}
+
+impl ThunderstorePackage {
+    /// Fold another store's listing of the same package into this one: keep
+    /// every distinct version (tagged with its store) and remember where else
+    /// the package can be found.
+    pub fn absorb(&mut self, other: &ThunderstorePackage) {
+        if other.source != self.source {
+            let listing = PackageListingRef {
+                source: other.source,
+                package_url: other.package_url.clone(),
+            };
+            if !self.alternates.contains(&listing) {
+                self.alternates.push(listing);
+            }
+            for alternate in &other.alternates {
+                if !self.alternates.contains(alternate) {
+                    self.alternates.push(alternate.clone());
+                }
+            }
+        }
+
+        for version in &other.versions {
+            if !self
+                .versions
+                .iter()
+                .any(|existing| existing.version_number == version.version_number)
+            {
+                self.versions.push(version.clone());
+            }
+        }
+        // Versions come newest-first from the APIs; the merged list has to keep
+        // that contract because everything reads `versions[0]` as latest.
+        self.versions
+            .sort_by(|a, b| b.date_created.cmp(&a.date_created));
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -44,6 +90,9 @@ pub struct PackageVersion {
     pub is_active: bool,
     #[serde(default)]
     pub uuid4: Option<String>,
+    /// Store this version was published to; merged listings can mix sources.
+    #[serde(default)]
+    pub source: PackageSource,
 }
 
 /// Lightweight package info for search results / listing
@@ -62,12 +111,15 @@ pub struct PackageListing {
     pub categories: Vec<String>,
     pub date_updated: String,
     pub source: PackageSource,
+    #[serde(default)]
+    pub alternates: Vec<PackageListingRef>,
 }
 
 impl From<&ThunderstorePackage> for PackageListing {
     fn from(pkg: &ThunderstorePackage) -> Self {
         let latest = pkg.versions.first();
         Self {
+            alternates: pkg.alternates.clone(),
             name: pkg.name.clone(),
             full_name: pkg.full_name.clone(),
             owner: pkg.owner.clone(),
@@ -165,6 +217,7 @@ mod tests {
             file_size: 1,
             is_active: true,
             uuid4: None,
+            source: PackageSource::Thunderstore,
         }
     }
 
@@ -181,6 +234,7 @@ mod tests {
             categories: Vec::new(),
             is_pinned: false,
             source: PackageSource::Thunderstore,
+            alternates: Vec::new(),
         }
     }
 

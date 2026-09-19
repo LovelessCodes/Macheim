@@ -703,10 +703,12 @@ mod tests {
                 file_size: 0,
                 is_active: true,
                 uuid4: None,
+                source: PackageSource::Thunderstore,
             }],
             categories: Vec::new(),
             is_pinned: false,
             source: PackageSource::Thunderstore,
+            alternates: Vec::new(),
         }
     }
 
