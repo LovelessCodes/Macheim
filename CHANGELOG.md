@@ -7,6 +7,47 @@ All notable changes to this fork are documented in this file. The format follows
 Upstream releases before this fork are listed on
 [lofcgi/macheim](https://github.com/lofcgi/macheim/releases).
 
+## [1.3.1] - 2026-09-20
+
+Follow-up to the 1.3.0 reliability work: hand-installed mods are recognised and matched to
+their store listings, Browse Mods finally counts every release, and opening a mod no longer
+waits on a cold cache.
+
+### Added
+
+- **Author filter** — Filter Browse Mods and Modpacks by author with a searchable combobox that
+  narrows the list as you type; Clear removes the filter again.
+- **Manual installs are first-class** — Mods you installed by hand are detected by their plugin
+  DLLs, their version is read from the DLL's PE version resource, and they are matched back to
+  their Thunderstore or Hexium listing where possible, so they show the real owner, store icon
+  and detail page. They keep a **Manual** badge and updates stay disabled because their layout
+  differs from a managed install.
+- **Both listings for shared mods** — A mod published on both Thunderstore and Hexium keeps
+  both listings: versions merge newest-first, every release is badged with the store that
+  published it, and the detail sheet links each store that carries the package.
+
+### Changed
+
+- The update control moved from the header to the sidebar, beside the collapse trigger, so the
+  header stays reserved for page context.
+- The "Newest" sort tab is now "Updated", with a tooltip, and mod cards show the last update
+  date — making it obvious what the default sort orders by.
+
+### Fixed
+
+- Browse Mods now ranks and displays downloads cumulatively across all versions, matching what
+  the stores show, instead of only counting the latest release.
+- Opening a mod detail no longer stalls after a restart: details fall back to the on-disk
+  package cache and the in-memory cache is warmed at startup, so the first open resolves
+  immediately.
+- Loose plugin DLLs and leftovers from a manual install are no longer listed as separate
+  unknown mods, and Sync & Clean can list and move those leftover files.
+- The conflict banner no longer reports duplicate DLLs that a tracked mod already provides.
+- Mod cards stay readable in condensed grids: the update date sits next to the author as a
+  compact relative time, and metadata no longer collides with the install button.
+- The config editor refetches when re-entered and on window focus, so changes made in game or
+  outside Macheim show up.
+
 ## [1.3.0] - 2026-09-18
 
 The reliability release: installs survive Valheim running and network drops, worlds and
