@@ -1,30 +1,21 @@
-# Macheim
+# Macheim — Valheim Mod Manager for macOS
 
-### Valheim Mod Manager for macOS
+### Thunderstore and Hexium mods on Apple Silicon and Intel Macs, without the Terminal
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/platform-macOS-blue.svg)
-[![Latest Release](https://img.shields.io/github/v/release/LovelessCodes/macheim)](https://github.com/LovelessCodes/macheim/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/LovelessCodes/macheim/total.svg)](https://github.com/LovelessCodes/macheim/releases)
+[![Latest Release](https://img.shields.io/github/v/release/LovelessCodes/Macheim)](https://github.com/LovelessCodes/Macheim/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/LovelessCodes/Macheim/total.svg)](https://github.com/LovelessCodes/Macheim/releases)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%20v2-orange.svg)](https://tauri.app)
 
-> [r2modman](https://github.com/ebkr/r2modmanPlus) and Thunderstore Mod Manager don't support macOS.
-> **Macheim** fills that gap.
+> **The current Thunderstore mod managers — [Gale](https://github.com/Kesomannen/gale), [r2modman](https://github.com/ebkr/r2modmanPlus) and Thunderstore Mod Manager — have no official macOS build.**
+> Macheim does.
 
-A native macOS mod manager for [Valheim](https://store.steampowered.com/app/892970/Valheim/), built with Tauri v2. Browse, install, and manage mods from [Thunderstore](https://thunderstore.io/c/valheim/) with a single click. No terminal required.
+Macheim is a native macOS mod manager for [Valheim](https://store.steampowered.com/app/892970/Valheim/), built with Tauri v2. It finds your Steam install, sets up BepInEx, browses [Thunderstore](https://thunderstore.io/c/valheim/) and [Hexium](https://hexium.gg/), resolves dependencies, and launches the game modded — with profiles, backups, crash triage and world snapshots included.
 
-## About this fork
+Requirements: **macOS 12+**, **Apple Silicon or Intel**, and Valheim installed via Steam. Free and open source (MIT).
 
-This is a fork of [lofcgi/macheim](https://github.com/lofcgi/macheim), the original project
-by [@lofcgi](https://github.com/lofcgi). All of the core functionality — Valheim detection,
-BepInEx management, Thunderstore browsing and installs, profiles, backups, modpack support,
-and the Mac Compatibility system — comes from upstream and is credited to its author.
-
-This fork keeps that base and layers on a large set of **quality-of-life and visual
-improvements**, focused on making the browsing and mod-management experience faster and
-more pleasant to use. See [What's different in this fork](#whats-different-in-this-fork).
-Bug reports about upstream behaviour are best filed upstream; this fork is maintained
-independently.
+This repository is an independently maintained build of [lofcgi/macheim](https://github.com/lofcgi/macheim) by [@lofcgi](https://github.com/lofcgi). Upstream provides Valheim detection, BepInEx management, Thunderstore browsing, profiles, backups and the Mac Compatibility system; this build layers a large set of quality-of-life, diagnostics and mod-management improvements on top. See [what this build adds](#what-this-build-adds).
 
 ## Screenshots
 
@@ -36,122 +27,227 @@ independently.
 | :------------------------------------------------: | :----------------------------------------------: | :------------------------------------------------------: |
 | ![Installed Mods](screenshots/installed-mods.webp) | ![Config Editor](screenshots/config-editor.webp) | ![Mac Compatibility](screenshots/mac-compatibility.webp) |
 
-All screenshots are 1200×800 captures of the running app; see
-[screenshots/README.md](screenshots/README.md) to refresh them.
+All screenshots are 1200×800 captures of the running app; see [screenshots/README.md](screenshots/README.md) to refresh them.
 
-## Features
+## Install
 
-- **Auto-detect Valheim** - Automatically finds your Valheim installation via Steam library
-- **One-click BepInEx install** - Downloads and configures BepInEx from Thunderstore, handles macOS Gatekeeper automatically
-- **Thunderstore mod browser** - Browse, search, and filter thousands of mods (Popular / Newest / Top Rated / A-Z)
-- **One-click mod install** - Automatic dependency resolution using topological sort
-- **Modpack support** - Install entire modpacks with all dependencies in one click
-- **Profile management** - Create and switch profiles; remember the active profile across restarts and preserve manual mods
-- **Mac Compatibility** - Automatically apply version-pinned visual workarounds for tested item effects, with per-profile and per-rule opt-out
-- **BepInEx config editor** - Edit mod configuration files directly in the app
-- **Backup & restore** - Back up profile metadata and configs (not mod binaries or worlds); restore into a separate profile
-- **Sync & Clean** - Re-download missing enabled mod files; confirm before moving unmanaged folders to recoverable storage
-- **Play Modded** - Launch Valheim with mods, automatically handles Rosetta for Apple Silicon
-- **In-app updates** - Quiet background update checks; a new version is downloaded and installed only when you choose, then applied on restart
-- **Dark viking-themed UI** - Built for the Valheim aesthetic
-- **Lightweight** - 5.7MB DMG, 16MB app (vs Electron-based alternatives at ~1.3GB)
+1. Download the DMG for your Mac from the [Releases](https://github.com/LovelessCodes/Macheim/releases) page:
+   - **Apple Silicon** (M1/M2/M3/M4) — `Macheim_<version>_aarch64.dmg`
+   - **Intel** — `Macheim_<version>_x64.dmg`
+2. Open the DMG and drag **Macheim** to your Applications folder.
+3. **Important:** the app is ad-hoc signed but not Apple-notarized, so macOS will block the first launch. Try **System Settings → Privacy & Security → Open Anyway** first. If macOS instead reports that the app is damaged, open Terminal and run:
+   ```bash
+   xattr -cr /Applications/Macheim.app
+   ```
+4. Open Macheim normally. Only remove the quarantine attribute after confirming you downloaded Macheim from this repository's Releases page.
 
-## What's different in this fork
+Macheim is also a normal macOS app the rest of the time: no background daemon, no kernel extension, nothing installed system-wide. It writes inside your Valheim folder and `~/Library/Application Support/com.macheim`.
+
+## Macheim vs Gale and r2modman on macOS
+
+All three are free Thunderstore mod managers. The difference is the platform.
+
+|                                                     |                Macheim                |         Gale         |         r2modman         | Thunderstore Mod Manager | Manual BepInEx |
+| --------------------------------------------------- | :-----------------------------------: | :------------------: | :----------------------: | :----------------------: | :------------: |
+| macOS build (Apple Silicon + Intel)                 |                  Yes                  |          No          |    No official build     |    No (Windows only)     | Works, by hand |
+| Games supported                                     |             Valheim only              | 150+ on Thunderstore |           150+           |         Multiple         |    Valheim     |
+| Mod sources                                         |         Thunderstore, Hexium          | Thunderstore, Hexium |       Thunderstore       |       Thunderstore       |  Thunderstore  |
+| One-click installs, dependency resolution, profiles |                  Yes                  |         Yes          |           Yes            |           Yes            |       No       |
+| Import r2modman / Thunderstore profiles             |                  No                   |         Yes          |           Yes            |           Yes            |       —        |
+| Publish modpacks to Thunderstore                    |                  No                   |         Yes          |           Yes            |           Yes            |       —        |
+| Mod config editor                                   |                  Yes                  |         Yes          |           Yes            |           Yes            |  Text editor   |
+| Gatekeeper, BepInEx and Rosetta launch handling     |                  Yes                  |         n/a          |           n/a            |           n/a            |     Manual     |
+| Crash triage, Safe Mode, save snapshots             |                  Yes                  |          —           |            —             |            —             |       —        |
+| Footprint                                           | 5.7 MB DMG / 16 MB app (native Tauri) |   ~8 MB installer    | Electron, hundreds of MB |         Electron         |       —        |
+| License                                             |               MIT, free               |    GPL-3.0, free     |        MIT, free         |    Proprietary, free     |      n/a       |
+
+**Gale** is the current pick on Windows and Linux: actively developed, 150+ games, profile import from other managers, and modpack publishing built in. **r2modman** still works and is widely installed, but is no longer the only good choice on Windows. Neither ships a macOS build — and neither does Thunderstore Mod Manager, which is Windows-only via Overwolf. That is the gap Macheim fills.
+
+Macheim trades Gale's breadth for macOS depth. It is Valheim-only, but it owns the parts of the workflow that only exist on a Mac: removing Gatekeeper quarantine from BepInEx libraries, installing and patching the mod loader, forcing the `arch -x86_64` launch path that BepInEx needs on Apple Silicon, and applying the version-pinned [Mac Compatibility](#mac-compatibility) workarounds. It adds crash triage, Safe Mode and world/character snapshots that no other manager here offers.
+
+## What this build adds
+
+Upstream handles the core workflow. This build adds:
 
 ### Browsing
 
-- **Multiple mod sources** - Browse Thunderstore and [Hexium](https://hexium.gg/) in one
-  list, or filter to a single source (Thunderstore / Hexium / All sources)
-- **Multi-select category filters** - Combine several categories instead of one, with
-  selected chips collapsing into a "first +N" summary
-- **Modpacks split out** - Modpacks are excluded from Browse Mods and live in their own tab
-- **Persistent package cache** - Thunderstore package data is cached locally, so repeat
-  visits load instantly
-- **Resilient icons** - Failed CDN icons fall back automatically instead of rendering broken
-- **Polished browsing** - Virtualized lists, scroll fade, scroll-to-top button, staggered
-  loading skeletons, and a richer empty/loading state
+- **Multiple mod sources** — browse Thunderstore and [Hexium](https://hexium.gg/) in one list, or filter to a single source (Thunderstore / Hexium / All sources)
+- **Multi-select category filters** — combine several categories instead of one, with selected chips collapsing into a "first +N" summary
+- **Modpacks split out** — modpacks are excluded from Browse Mods and live in their own tab
+- **Persistent package cache** — Thunderstore package data is cached locally, so repeat visits load instantly
+- **Resilient icons** — failed CDN icons fall back automatically instead of rendering broken
+- **Polished browsing** — virtualized lists, scroll fade, scroll-to-top button, staggered loading skeletons, and a richer empty/loading state
 
 ### Mod management
 
-- **Conflict detection** - The Installed Mods page flags duplicate plugin files and dependency
-  version clashes, refreshed after installs, syncs and toggles
-- **Developer console toggle** - Decide whether "Play Modded" adds Valheim's `-console` flag,
-  from Settings
-- **Install from file** - Drag and drop mod `.zip` archives onto the window, or pick them with
-  "Install from file" on the Installed Mods page; archives are matched back to their
-  Thunderstore listing (so author, icon and update checks are correct) and queue like any
-  other install
-- **Background download queue** - Installs queue instead of failing when Valheim is running
-  or the connection drops, then start automatically once the game closes or the network
-  returns. Track, pause, resume, cancel, retry, uninstall and re-install downloads from the
-  header button, anywhere in the app; the queue survives app restarts
-- **Update detection & "Update All"** - Installed mods are checked against latest versions,
-  with a one-click bulk update for everything that's outdated
-- **Version history & downgrades** - Open a mod's Version History to install or switch to an
-  older release directly from the detail panel
-- **Safer uninstalls** - Uninstalling from the installed list asks for confirmation first
-  (hold Shift to skip)
-- **Clearer installed list** - Outdated versions are badged, row actions use tooltips, and
-  the scroll-to-top button no longer overlaps row controls
+- **Conflict detection** — the Installed Mods page flags duplicate plugin files and dependency version clashes, refreshed after installs, syncs and toggles
+- **Developer console toggle** — decide whether "Play Modded" adds Valheim's `-console` flag, from Settings
+- **Install from file** — drag and drop mod `.zip` archives onto the window, or pick them with "Install from file" on the Installed Mods page; archives are matched back to their Thunderstore listing (so author, icon and update checks are correct) and queue like any other install
+- **Background download queue** — installs queue instead of failing when Valheim is running or the connection drops, then start automatically once the game closes or the network returns. Track, pause, resume, cancel, retry, uninstall and re-install downloads from the header button, anywhere in the app; the queue survives app restarts
+- **Update detection and "Update All"** — installed mods are checked against latest versions, with a one-click bulk update for everything that's outdated
+- **Version history and downgrades** — open a mod's Version History to install or switch to an older release directly from the detail panel
+- **Safer uninstalls** — uninstalling from the installed list asks for confirmation first (hold Shift to skip)
+- **Clearer installed list** — outdated versions are badged, row actions use tooltips, and the scroll-to-top button no longer overlaps row controls
 
-### Diagnostics
+### Diagnostics and recovery
 
-- **Crash triage** - Launches Macheim starts are watched; an early exit produces a crash report
-  with the failure category, likely culprit mods, the exception stack and the log tail
-- **Safe Mode** - Disable every mod and launch from the report or Settings, then restore them
-  from the banner; "Analyze latest log" runs the same analysis any time
-
-### Saves
-
-- **World & character snapshots** - Snapshot your worlds and characters on demand, or
-  automatically before every modded launch (last five kept); restoring replaces the live
-  saves and keeps a safety snapshot of the previous state first
+- **Crash triage** — modded launches are watched; an early exit produces a crash report with the failure category, likely culprit mods, the exception stack and the log tail
+- **Safe Mode** — disable every mod and launch from the report or Settings, then restore them from the banner; "Analyze latest log" runs the same analysis any time
+- **World and character snapshots** — snapshot worlds and characters on demand, or automatically before every modded launch (last five kept); restoring replaces the live saves and keeps a safety snapshot of the previous state first
 
 ### Launching
 
-- **Quiet Steam handling** - A running Steam client is never focused or restarted, and a missing
-  one is started hidden in the background (with the game waiting for it), so the client window
-  stays out of the way; Settings shows whether Steam is running
+- **Quiet Steam handling** — a running Steam client is never focused or restarted, and a missing one is started hidden in the background (with the game waiting for it), so the client window stays out of the way; Settings shows whether Steam is running
 
 ### Under the hood
 
-- **TanStack Query data layer** - Fetching, caching, and mutations were migrated to TanStack
-  Query (with persisted cache), which is the foundation for the offline-friendly cache and
-  consistent loading states above
-- **Bun toolchain** - Package management, scripts, and CI moved from npm/Node to
-  [Bun](https://bun.sh/)
-- **Linting & formatting** - oxlint (type-aware) and oxfmt, wired up through Husky and
-  lint-staged on commit
+- **TanStack Query data layer** — fetching, caching, and mutations run through TanStack Query with a persisted cache, which is the foundation for the offline-friendly cache and consistent loading states above
+- **Bun toolchain** — package management, scripts, and CI run on [Bun](https://bun.sh/)
+- **Linting and formatting** — oxlint (type-aware) and oxfmt, wired up through Husky and lint-staged on commit
 
-Upstream features that this fork does **not** change: BepInEx/Rosetta launch handling,
-Mac Compatibility rules, profile/recovery semantics, and the backup format.
+Upstream behaviour this build does **not** change: BepInEx/Rosetta launch handling, Mac Compatibility rules, profile/recovery semantics, and the backup format.
+
+## Features
+
+Inherited from upstream and still present here:
+
+- **Auto-detect Valheim** — finds your installation via Steam's `libraryfolders.vdf`
+- **One-click BepInEx install** — downloads and configures BepInEx from Thunderstore, handles macOS Gatekeeper automatically
+- **Thunderstore mod browser** — search and filter thousands of mods (Popular / Newest / Top Rated / A-Z)
+- **One-click mod install** — automatic dependency resolution by topological sort
+- **Modpack support** — install entire modpacks with all dependencies in one click
+- **Profile management** — create and switch profiles; the active profile is remembered across restarts and manual mods are preserved
+- **Mac Compatibility** — automatically apply version-pinned visual workarounds for tested item effects, with per-profile and per-rule opt-out
+- **BepInEx config editor** — edit mod configuration files directly in the app
+- **Backup and restore** — back up profile metadata and configs (not mod binaries or worlds); restore into a separate profile
+- **Sync and Clean** — re-download missing enabled mod files; confirm before moving unmanaged folders to recoverable storage
+- **Play Modded** — launch Valheim with mods, using Macheim's Rosetta launch path on Apple Silicon automatically
+- **In-app updates** — quiet background update checks; a new version is downloaded and installed only when you choose, then applied on restart
+- **Dark viking-themed UI** — built for the Valheim aesthetic
+- **Lightweight** — 5.7 MB DMG, 16 MB app (Electron-based alternatives are ~1.3 GB)
+
+## Getting started
+
+1. **Launch Macheim** — the Setup Wizard detects your Valheim installation
+2. **Install BepInEx** — click "Install BepInEx" to set up the mod framework
+3. **Browse Mods** — go to the Mods tab and browse or search Thunderstore and Hexium
+4. **Install** — click any mod to see details, then click "Install" to download it with all dependencies
+5. **Play Modded** — click "Play Modded" to launch Valheim with your mods enabled
+
+## FAQ
+
+### Do Gale or r2modman work on macOS?
+
+No. [Gale](https://github.com/Kesomannen/gale) — currently the most actively developed Thunderstore manager — ships Windows and Linux builds only (MSI, Scoop, WinGet, AUR, .deb, .rpm, Flatpak, AppImage), and macOS is not supported. r2modman has no official macOS build either, and Thunderstore Mod Manager is Windows-only via Overwolf. Macheim is a native macOS alternative that talks to the same Thunderstore and Hexium APIs, so the mods themselves are identical.
+
+### How do I install Valheim mods on macOS?
+
+Use a mod manager. Manually you would install BepInExPack into `valheim.app`, resolve every mod's dependencies by hand, and move `.dll` files into `BepInEx/plugins`. Macheim does all of that in one click, per profile, and also handles the Rosetta launch path that modded Valheim needs on Apple Silicon. See [Getting started](#getting-started).
+
+### Can I run Macheim on Apple Silicon?
+
+Yes. Macheim publishes native builds for Apple Silicon (M1/M2/M3/M4) and Intel — download the `aarch64` DMG on an M-series Mac. Modded Valheim itself still runs under Rosetta, see below.
+
+### Does modded Valheim run natively on Apple Silicon?
+
+No. BepInEx is an x86_64 framework, so the supported modded launch path uses `arch -x86_64` and requires Rosetta. The Macheim app is native; the modded game is not. Experimental native-ARM BepInEx builds are not integrated or supported here.
+
+### Why does macOS say Macheim is damaged or can't be opened?
+
+Macheim is ad-hoc signed but not Apple-notarized, so Gatekeeper blocks the first launch. Use **System Settings → Privacy & Security → Open Anyway**, or run `xattr -cr /Applications/Macheim.app` if macOS reports the app as damaged. Full steps are in [Install](#install) and [Troubleshooting](#macos-says-macheim-is-damaged-or-cannot-be-opened).
+
+### What is the best mod manager for Valheim on macOS?
+
+Macheim is the only native option, so on macOS the short answer is Macheim. On Windows or Linux, Gale is the current pick and r2modman remains a fine alternative — both support more games than Macheim does and can import each other's profiles. If you play Valheim on both a Mac and a PC, Macheim cannot import a Gale or r2modman profile, so keep the two setups separate.
+
+### Can I import an r2modman or Thunderstore profile code?
+
+No. r2modman/Thunderstore profile-code import is not supported — Macheim's metadata import/export is a different format and is not a PC profile importer. Recreate the mod list by installing the same Thunderstore mods; version pins are shown in each mod's Version History.
+
+### Where does Macheim keep its files?
+
+| What                  | Location                                                     |
+| --------------------- | ------------------------------------------------------------ |
+| Saved profiles        | `~/Library/Application Support/com.macheim/profiles`         |
+| Removed profiles      | `~/Library/Application Support/com.macheim/deleted-profiles` |
+| Cleaned mod folders   | `<Valheim>/BepInEx/.macheim-clean-backups`                   |
+| Compatibility backups | `<Valheim>/BepInEx/.macheim-compat-backups`                  |
+
+These are local recovery copies. Keep your own backup of worlds and manual mods.
+
+### Is Macheim free?
+
+Yes. MIT licensed, no account, no telemetry. Logs stay local and are never uploaded.
+
+## Troubleshooting
+
+### macOS says Macheim is damaged or cannot be opened
+
+The app is ad-hoc signed, not notarized. First try **System Settings → Privacy & Security → Open Anyway**. If macOS blocks it anyway, remove the quarantine attribute:
+
+```bash
+xattr -cr /Applications/Macheim.app
+```
+
+After BepInEx installation, macOS may also block individual libraries. Macheim removes quarantine attributes from the dylibs it manages; if something is still blocked, allow it under **System Settings → Privacy & Security**.
+
+### Pink or magenta objects
+
+Some mod-added objects (buildings, creatures, effects) may render pink/magenta or with incorrect transparency. Causes include missing Metal shader variants and incompatible material/shader settings, and a shader reported as supported can still render incorrectly. **The Mac Compatibility workarounds cover only the objects listed under [Mac Compatibility](#mac-compatibility).** Report the mod version, the affected object and a screenshot in [Discussions](https://github.com/LovelessCodes/Macheim/discussions), and don't assume every pink object has the same cause.
+
+### BepInEx requires Rosetta
+
+Macheim's supported modded launch path uses `arch -x86_64` and requires Rosetta on Apple Silicon. If Rosetta is missing:
+
+```bash
+/usr/sbin/softwareupdate --install-rosetta --agree-to-license
+```
+
+The manager app itself is native Apple Silicon; that does not mean the modded game runs natively on ARM.
+
+### Mods don't load, or the game exits early
+
+Open **Settings → Analyze latest log**, or launch once and read the crash report Macheim generates. **Safe Mode** disables every mod so you can confirm the game runs clean, then restore mods from the banner. Common causes are a missing dependency and a mod that hasn't been rebuilt for your Valheim version.
+
+### Multiplayer and other mod managers
+
+Macheim does not translate mods or synchronize a server's mod requirements. Use the same compatible mod versions on every client and server. The Mac Compatibility patch changes visuals only — it does not change item stats or network behaviour — but cross-platform multiplayer has not been end-to-end validated. Future Valheim releases are not guaranteed to be compatible on day one.
+
+### Valheim version compatibility
+
+Mod compatibility moves fast around game updates. Macheim's Mac Compatibility workarounds are pinned to versions that have been tested — currently Valheim **0.221.12**, Unity **6000.0.61f1** — and newer game builds are skipped rather than guessed at. If a mod misbehaves after a Valheim update, check its Thunderstore page for a rebuilt release, then use **Version History** in Macheim to pin a working version or downgrade.
 
 ## Requirements
 
 - **macOS 12+** (Monterey or later)
 - **Apple Silicon** (M1/M2/M3/M4) or **Intel** Mac
 - **Valheim** installed via Steam
+- **Rosetta 2** on Apple Silicon, for the modded game and BepInEx (see [Troubleshooting](#troubleshooting))
 - Internet connection for downloading mods
 
-## Installation
+## Mac Compatibility
 
-### Download
+Open **Mac Compatibility → Check support** to inspect the bundled catalog and the active profile. This is a mod/version check, not a visual scan of every shader. Eligible rules are reconciled after mod changes and before **Play Modded**. Quit Valheim before applying or disabling them.
 
-1. Download `Macheim.dmg` from this fork's [Releases](https://github.com/LovelessCodes/macheim/releases) page
-2. Open the DMG and drag **Macheim** to your Applications folder
-3. **Important:** The app is ad-hoc signed, but not Apple-notarized, so macOS may block it. First try **System Settings → Privacy & Security → Open Anyway**. If macOS instead reports that the app is damaged, open Terminal and run:
-   ```bash
-   xattr -cr /Applications/Macheim.app
-   ```
-4. Now open Macheim normally. Only remove the quarantine attribute after confirming that you downloaded Macheim from this repository's Releases page.
+The catalog covers four tested dropped items: VES F weapon and blessed F weapon scrolls (Valheim Enchantment System 1.9.12), and the Wizardry 1.1.8 Black Forest scroll and Bonemass shard. ShaderHelperForMac **3.3.0** must already be enabled; Macheim does not silently install or reset it. Runtime checks restrict the patch to Valheim **0.221.12**, Unity **6000.0.61f1**, and macOS Metal.
 
-### Build from Source
+- Disable **Automatically apply verified compatibility rules** to unload Macheim's patch on the next launch, or disable an individual rule. Other shader mods remain active.
+- Updates outside the verified mod versions are skipped; a previously managed patch is removed when no rules remain eligible.
+- The plugin clones runtime materials/textures; upstream mod assets are unchanged.
+- No universal repair, all-mod scanner, creature/building/UI fixes, or Windows visual parity is promised.
+- Logs are shown locally, never uploaded. A missing log entry is not a compatibility pass.
+
+## Profile and recovery notes
+
+When upgrading an older installation with multiple profiles and no active-profile record, the live mod files are preserved in a new `Recovered-…` profile. Existing profiles are not overwritten. Switch to your preferred profile after reviewing it. Symlinked mod/profile paths are refused during replacement; back them up and resolve the links first. Do not change profiles while Valheim is running.
+
+## Build from source
 
 Prerequisites: [Bun](https://bun.sh/), current stable [Rust/Cargo](https://rustup.rs/), and Xcode Command Line Tools. The Tauri CLI is a project dependency. If the build says `cargo metadata` cannot be found, install Rust with rustup and restart your terminal.
 
 ```bash
-git clone https://github.com/LovelessCodes/macheim.git
-cd macheim
+git clone https://github.com/LovelessCodes/Macheim.git
+cd Macheim
 bun install
 bun run test
 bun run verify:release
@@ -160,120 +256,9 @@ bun run tauri build
 
 The built DMG will be in `src-tauri/target/release/bundle/dmg/`.
 
-The application embeds only Macheim's own compatibility DLL, alongside its source
-and a SHA-256/source manifest. Building the manager does not require Valheim or
-.NET. To rebuild the plugin itself, install .NET 9 and Valheim/BepInEx locally,
-then run `sh scripts/build-compatibility.sh`. No game or third-party reference DLLs
-are redistributed. See [compatibility details](tools/item-material-compat/README.md).
+The application embeds only Macheim's own compatibility DLL, alongside its source and a SHA-256/source manifest. Building the manager does not require Valheim or .NET. To rebuild the plugin itself, install .NET 9 and Valheim/BepInEx locally, then run `sh scripts/build-compatibility.sh`. No game or third-party reference DLLs are redistributed. See [compatibility details](tools/item-material-compat/README.md).
 
-### Update signing (maintainers)
-
-Updates are signed with a minisign keypair so clients only install builds from this
-repository. The public key lives in `src-tauri/tauri.conf.json`; the private key must
-never be committed. Releases are advertised through the
-`latest.json` asset that `tauri-action` publishes, which the app fetches from
-`releases/latest/download/latest.json`.
-
-Set up a fresh keypair once (skip if `~/.tauri/macheim.key` already exists):
-
-```bash
-bunx tauri signer generate -w ~/.tauri/macheim.key
-```
-
-Then store both values as GitHub Actions secrets:
-
-- `TAURI_SIGNING_PRIVATE_KEY` - contents of `~/.tauri/macheim.key`
-- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` - the password chosen above (empty if none)
-
-Paste the matching `~/.tauri/macheim.key.pub` contents into `plugins.updater.pubkey`
-in `src-tauri/tauri.conf.json`. **Back up the private key**: losing it means existing
-installations can never be updated again. `bun run verify:release` fails if
-`createUpdaterArtifacts` is off, or if the pubkey or endpoints are missing.
-
-Because releases start as drafts, the updater only sees a version after the release
-is published. Users on older builds will then be offered it on their next launch.
-
-### Release notes (maintainers)
-
-Every release is documented in [CHANGELOG.md](CHANGELOG.md). Add a `## [x.y.z]` section
-for the new version before tagging - `verify:release` fails on a tag without one, and the
-Release workflow turns that section into the GitHub release body via
-`bun run notes --tag vx.y.z` (compatibility and installation notes are appended
-automatically). Preview the rendered body locally before releasing:
-
-```bash
-bun run notes --tag v1.2.1
-```
-
-## Mac Compatibility (1.1.0)
-
-Open **Mac Compatibility → Check support** to inspect the bundled catalog and the
-active profile. This is a mod/version check, not a visual scan of every shader.
-Eligible rules are reconciled after mod changes and before **Play Modded**.
-Quit Valheim before applying or disabling them.
-
-The initial catalog covers four tested dropped items: VES F weapon and blessed F
-weapon scrolls (Valheim Enchantment System 1.9.12), and the Wizardry 1.1.8 Black
-Forest scroll and Bonemass shard. ShaderHelperForMac **3.3.0** must already be
-enabled; Macheim does not silently install or reset it. Runtime checks restrict the
-patch to Valheim **0.221.12**, Unity **6000.0.61f1**, and macOS Metal.
-
-- Disable **Automatically apply verified compatibility rules** to unload Macheim's
-  patch on the next launch, or disable an individual rule. Other shader mods remain active.
-- Updates outside the verified mod versions are skipped; a previously managed patch
-  is removed when no rules remain eligible.
-- The plugin clones runtime materials/textures; upstream mod assets are unchanged.
-- No universal repair, all-mod scanner, creature/building/UI fixes, or Windows visual parity is promised.
-- Logs are shown locally, never uploaded. A missing log entry is not a compatibility pass.
-
-### Profile and recovery notes
-
-When upgrading an older installation with multiple profiles and no active-profile
-record, the live mod files are preserved in a new `Recovered-…` profile. Existing
-profiles are not overwritten. Switch to your preferred profile after reviewing it.
-Symlinked mod/profile paths are refused during replacement; back them up and resolve
-the links first. Do not change profiles while Valheim is running.
-
-Saved profiles: `~/Library/Application Support/com.macheim/profiles`.
-Removed profiles: `~/Library/Application Support/com.macheim/deleted-profiles`.
-Cleaned mod folders: `<Valheim>/BepInEx/.macheim-clean-backups`.
-Managed compatibility backups: `<Valheim>/BepInEx/.macheim-compat-backups`.
-These are local recovery copies; keep your own backup of worlds and manual mods.
-
-## Getting Started
-
-1. **Launch Macheim** - The Setup Wizard will automatically detect your Valheim installation
-2. **Install BepInEx** - Click "Install BepInEx" to set up the mod framework
-3. **Browse Mods** - Go to the Mods tab to browse and search Thunderstore
-4. **Install** - Click any mod to see details, then click "Install" to download with all dependencies
-5. **Play Modded** - Click "Play Modded" to launch Valheim with your mods enabled
-
-## Known Issues
-
-### Pink/Magenta Objects
-
-Some mod-added objects (buildings, creatures, effects) may render as pink/magenta or with incorrect transparency. Causes include missing Metal shader variants and incompatible material/shader settings. A shader reported as supported can still render incorrectly.
-
-**The 1.1.0 workarounds cover only the objects listed above.** Visual errors can make items or effects hard to see; other shader helpers can also affect shared materials or UI. Report the mod version, affected object and a screenshot. Do not assume that every pink object has the same cause.
-
-### BepInEx Requires Rosetta
-
-Macheim's supported modded launch path uses `arch -x86_64` and requires Rosetta on Apple Silicon. The manager app itself has a native Apple Silicon build; that does **not** mean the modded game runs natively on ARM. Experimental native-ARM BepInEx builds are not integrated or supported here.
-
-### Multiplayer and other mod managers
-
-Macheim does not translate mods or synchronize a server's mod requirements. Use the
-required compatible mod versions on every client/server. This release's visual patch
-does not change item stats or network behavior, but cross-platform multiplayer was
-not an end-to-end validation of this release. Future Valheim 1.0 compatibility is not
-guaranteed. r2modman/Thunderstore profile-code import is not supported; Macheim's
-metadata import/export backend is a different format and is not a PC profile importer.
-
-### macOS Gatekeeper
-
-After BepInEx installation, macOS may block some libraries. Macheim automatically removes quarantine attributes, but if you encounter issues, go to **System Settings > Privacy & Security** to allow blocked items.
-
-## Tech Stack
+## Tech stack
 
 | Layer     | Technology                              |
 | --------- | --------------------------------------- |
@@ -285,18 +270,47 @@ After BepInEx installation, macOS may block some libraries. Macheim automaticall
 | UI Icons  | Lucide React                            |
 | Tooling   | Bun, oxlint, oxfmt, Husky, lint-staged  |
 
-## How It Works
+## How it works
 
 Macheim uses Tauri v2 to bridge a Rust backend with a React frontend:
 
-- **Game detection**: Parses Steam's `libraryfolders.vdf` to locate Valheim
-- **BepInEx management**: Downloads from Thunderstore, patches config for macOS (`Type = GameObject`), removes Gatekeeper quarantine from dylibs
-- **Mod installation**: Downloads mod ZIPs, extracts to the correct profile directory, resolves dependencies via Kahn's algorithm (topological sort)
-- **Game launch**: Uses `arch -x86_64 env DYLD_INSERT_LIBRARIES=libdoorstop.dylib` to load BepInEx into the game under Rosetta on Apple Silicon; SIP is not disabled
+- **Game detection** — parses Steam's `libraryfolders.vdf` to locate Valheim
+- **BepInEx management** — downloads from Thunderstore, patches the config for macOS (`Type = GameObject`), and removes the Gatekeeper quarantine from dylibs
+- **Mod installation** — downloads mod ZIPs, extracts to the correct profile directory, and resolves dependencies via Kahn's algorithm (topological sort)
+- **Game launch** — uses `arch -x86_64 env DYLD_INSERT_LIBRARIES=libdoorstop.dylib` to load BepInEx into the game under Rosetta on Apple Silicon; SIP is not disabled
+
+## Maintainer notes
+
+### Update signing
+
+Updates are signed with a minisign keypair so clients only install builds from this repository. The public key lives in `src-tauri/tauri.conf.json`; the private key must never be committed. Releases are advertised through the `latest.json` asset that `tauri-action` publishes, which the app fetches from `releases/latest/download/latest.json`.
+
+Set up a fresh keypair once (skip if `~/.tauri/macheim.key` already exists):
+
+```bash
+bunx tauri signer generate -w ~/.tauri/macheim.key
+```
+
+Then store both values as GitHub Actions secrets:
+
+- `TAURI_SIGNING_PRIVATE_KEY` — contents of `~/.tauri/macheim.key`
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — the password chosen above (empty if none)
+
+Paste the matching `~/.tauri/macheim.key.pub` contents into `plugins.updater.pubkey` in `src-tauri/tauri.conf.json`. **Back up the private key**: losing it means existing installations can never be updated again. `bun run verify:release` fails if `createUpdaterArtifacts` is off, or if the pubkey or endpoints are missing.
+
+Because releases start as drafts, the updater only sees a version after the release is published. Users on older builds will then be offered it on their next launch.
+
+### Release notes
+
+Every release is documented in [CHANGELOG.md](CHANGELOG.md). Add a `## [x.y.z]` section for the new version before tagging — `verify:release` fails on a tag without one, and the Release workflow turns that section into the GitHub release body via `bun run notes --tag vx.y.z` (compatibility and installation notes are appended automatically). Preview the rendered body locally before releasing:
+
+```bash
+bun run notes --tag v1.2.1
+```
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome — open a Pull Request, or start a thread in [Discussions](https://github.com/LovelessCodes/Macheim/discussions).
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -304,20 +318,19 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-If your change is a fix or improvement to upstream behaviour rather than a fork
-quality-of-life/visual feature, consider opening it against
-[lofcgi/macheim](https://github.com/lofcgi/macheim) as well, so everyone benefits.
+If your change is a fix or improvement to upstream behaviour rather than a fork quality-of-life/visual feature, consider opening it against [lofcgi/macheim](https://github.com/lofcgi/macheim) as well, so everyone benefits.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
-- [lofcgi](https://github.com/lofcgi) - Author of the original [macheim](https://github.com/lofcgi/macheim) project this fork is based on
-- [Tauri](https://tauri.app/) - Lightweight app framework
-- [BepInEx](https://github.com/BepInEx/BepInEx) - Unity mod loader framework
-- [Thunderstore](https://thunderstore.io/) - Mod repository and API
-- [Hexium](https://hexium.gg/) - Additional mod source
-- [r2modmanPlus](https://github.com/ebkr/r2modmanPlus) - Inspiration for this project
+- [lofcgi](https://github.com/lofcgi) — author of the original [macheim](https://github.com/lofcgi/macheim) project this build is based on. Bug reports about upstream behaviour are best filed upstream.
+- [Tauri](https://tauri.app/) — lightweight app framework
+- [BepInEx](https://github.com/BepInEx/BepInEx) — Unity mod loader framework
+- [Thunderstore](https://thunderstore.io/) — mod repository and API
+- [Hexium](https://hexium.gg/) — additional mod source
+- [Gale](https://github.com/Kesomannen/gale) — modern Thunderstore mod manager for Windows and Linux, and a good reference for what a manager here can do
+- [r2modmanPlus](https://github.com/ebkr/r2modmanPlus) — the manager that started it, and inspiration for this project
 - The Valheim modding community
