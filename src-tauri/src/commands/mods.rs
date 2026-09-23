@@ -401,6 +401,39 @@ pub async fn list_unmanaged_mods(
     Ok(unmanaged)
 }
 
+/// Reveal the active BepInEx plugins folder in Finder.
+#[tauri::command]
+pub async fn open_plugins_folder(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Mutex<AppState>>,
+) -> AppResult<()> {
+    use tauri_plugin_opener::OpenerExt;
+
+    info!("Command: open_plugins_folder");
+    let game_path = {
+        let s = state
+            .lock()
+            .map_err(|e| AppError::Mod(format!("Lock: {}", e)))?;
+        s.game_path
+            .clone()
+            .ok_or_else(|| AppError::Mod("Game not set".into()))?
+    };
+
+    let plugins_dir = game_detector::get_valheim_root(&game_path).join("BepInEx/plugins");
+    if !plugins_dir.is_dir() {
+        return Err(AppError::BepInEx(format!(
+            "No plugins folder at {}. Install BepInEx first.",
+            plugins_dir.display()
+        )));
+    }
+
+    app.opener()
+        .open_path(plugins_dir.to_string_lossy().to_string(), None::<String>)
+        .map_err(|e| AppError::Mod(format!("Could not open the plugins folder: {}", e)))?;
+
+    Ok(())
+}
+
 fn emit_progress(
     app: &tauri::AppHandle,
     stage: &str,

@@ -4,6 +4,7 @@ import {
   ArrowUpCircle,
   Clock,
   FileArchive,
+  FolderOpen,
   Package,
   Trash2,
   Power,
@@ -24,7 +25,7 @@ import { useUpdateMods } from "../../hooks/use-package-install";
 import { usePackages } from "../../hooks/use-packages";
 import { useSyncMods } from "../../hooks/use-sync-mods";
 import { groupPackagesByName, matchManualMod } from "../../lib/packages";
-import { listUnmanagedMods } from "../../lib/tauri";
+import { listUnmanagedMods, openPluginsFolder } from "../../lib/tauri";
 import type { InstalledMod } from "../../lib/types";
 import { isDownloadActive, isDownloadPending } from "../../lib/types";
 import { useDownloadStore } from "../../store/downloadStore";
@@ -154,6 +155,14 @@ export default function InstalledModList() {
     }
   };
 
+  const handleOpenPluginsFolder = async () => {
+    try {
+      await openPluginsFolder();
+    } catch (err) {
+      toast.add({ type: "error", title: String(err) });
+    }
+  };
+
   const q = search.trim().toLowerCase();
   const filtered = installedMods.filter((m) => {
     if (filter === "enabled" && !m.enabled) return false;
@@ -230,6 +239,10 @@ export default function InstalledModList() {
           <Button variant="amber" size="sm" onClick={handleSync} disabled={syncing || updatingAll}>
             {syncing ? <Loader2 className="animate-spin" /> : <RefreshCw />}
             Sync & Clean
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => void handleOpenPluginsFolder()}>
+            <FolderOpen />
+            Plugins folder
           </Button>
         </div>
       </div>

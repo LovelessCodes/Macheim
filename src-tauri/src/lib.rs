@@ -172,6 +172,7 @@ pub fn run() {
             commands::mods::get_installed_mods,
             commands::mods::sync_mods,
             commands::mods::list_unmanaged_mods,
+            commands::mods::open_plugins_folder,
             commands::conflicts::detect_mod_conflicts,
             // Diagnostics
             commands::diagnostics::get_last_crash_report,
