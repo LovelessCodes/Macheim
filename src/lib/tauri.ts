@@ -65,6 +65,10 @@ export async function getInstalledMods(): Promise<InstalledMod[]> {
   return invoke<InstalledMod[]>("get_installed_mods");
 }
 
+export async function openPluginsFolder(): Promise<void> {
+  return invoke("open_plugins_folder");
+}
+
 // ── Download Queue ──────────────────────────────────────────────
 
 export async function getDownloadQueue(): Promise<DownloadQueueSnapshot> {

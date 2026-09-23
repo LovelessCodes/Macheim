@@ -8,6 +8,7 @@ void mock.module("../../lib/tauri", () => ({
   fetchPackages: mock(() => Promise.resolve([])),
   getInstalledMods: mock(() => Promise.resolve([])),
   listUnmanagedMods: mock(() => Promise.resolve([])),
+  openPluginsFolder: mock(() => Promise.resolve()),
   syncMods: mock(() => Promise.resolve({ cleaned: [], failed: [], reinstalled: [] })),
   toggleMod: mock(() => Promise.resolve()),
   uninstallMod: mock(() => Promise.resolve()),
@@ -19,13 +20,20 @@ void mock.module("@tauri-apps/plugin-dialog", () => ({
 
 import { confirm } from "@tauri-apps/plugin-dialog";
 
-import { fetchPackages, getInstalledMods, listUnmanagedMods, syncMods } from "../../lib/tauri";
+import {
+  fetchPackages,
+  getInstalledMods,
+  listUnmanagedMods,
+  openPluginsFolder,
+  syncMods,
+} from "../../lib/tauri";
 import InstalledModList from "./InstalledModList";
 
 const fetchPackagesMock = fetchPackages as Mock<typeof fetchPackages>;
 const getInstalledModsMock = getInstalledMods as Mock<typeof getInstalledMods>;
 const listUnmanagedModsMock = listUnmanagedMods as Mock<typeof listUnmanagedMods>;
 const syncModsMock = syncMods as Mock<typeof syncMods>;
+const openPluginsFolderMock = openPluginsFolder as Mock<typeof openPluginsFolder>;
 const confirmMock = confirm as Mock<typeof confirm>;
 
 const mod = {
@@ -86,4 +94,10 @@ test("awaits confirmation before sending approved names", async () => {
   expect(syncMods).not.toHaveBeenCalled();
   answer(true);
   await waitFor(() => expect(syncMods).toHaveBeenCalledWith(true, ["Manual-Mod"]));
+});
+test("opens the plugins folder from the action bar", async () => {
+  renderWithClient(<InstalledModList />);
+  await screen.findByText("Wizardry");
+  fireEvent.click(screen.getByText("Plugins folder"));
+  await waitFor(() => expect(openPluginsFolderMock).toHaveBeenCalled());
 });
