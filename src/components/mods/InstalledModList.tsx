@@ -30,6 +30,7 @@ import { useModUninstall, useUninstallMods } from "../../hooks/use-mod-uninstall
 import { useUpdateMods } from "../../hooks/use-package-install";
 import { usePackages } from "../../hooks/use-packages";
 import { useSyncMods } from "../../hooks/use-sync-mods";
+import { bulkUninstallWarning, singleUninstallWarning } from "../../lib/dependents";
 import { groupPackagesByName, matchManualMod } from "../../lib/packages";
 import { listUnmanagedMods, openPluginsFolder } from "../../lib/tauri";
 import type { InstalledMod } from "../../lib/types";
@@ -132,10 +133,14 @@ export default function InstalledModList() {
 
   const handleUninstall = async (mod: InstalledMod, skipConfirm: boolean) => {
     if (!skipConfirm) {
-      const confirmed = await confirm(`Uninstall "${mod.name}"? This removes its files.`, {
-        title: "Uninstall mod",
-        kind: "warning",
-      });
+      const warning = singleUninstallWarning(installedMods, mod.full_name);
+      const confirmed = await confirm(
+        `Uninstall "${mod.name}"? This removes its files.${warning ? `\n\n${warning}` : ""}`,
+        {
+          title: "Uninstall mod",
+          kind: "warning",
+        },
+      );
       if (!confirmed) return;
     }
     uninstall(mod.full_name, mod.name);
@@ -168,8 +173,11 @@ export default function InstalledModList() {
 
   const handleBulkUninstall = async () => {
     if (selectedCount === 0) return;
+    const warning = bulkUninstallWarning(installedMods, [...selected]);
     const confirmed = await confirm(
-      `Uninstall ${selectedCount} mod${selectedCount === 1 ? "" : "s"}? This removes their files.`,
+      `Uninstall ${selectedCount} mod${selectedCount === 1 ? "" : "s"}? This removes their files.${
+        warning ? `\n\n${warning}` : ""
+      }`,
       { title: "Uninstall mods", kind: "warning" },
     );
     if (!confirmed) return;

@@ -32,6 +32,11 @@ known-good version.
   versions through Version History while pinned moves the hold. Conflict detection now says
   when a dependency mismatch is caused by a pin — still a warning, never a blocked launch.
   Manual mods have no pin control; they already never auto-update.
+- **Dependency-aware uninstall warnings** — uninstalling a mod names the installed mods that
+  depend on it, with disabled dependents labelled (removing the dependency breaks them when
+  re-enabled). A bulk uninstall names any selected mod that an unselected mod requires, and
+  mods inside the selection are never listed as each other's dependents. Warnings only — the
+  confirmation still proceeds exactly as before.
 
 ## [1.3.2] - 2026-09-24
 

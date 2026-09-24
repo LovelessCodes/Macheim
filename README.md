@@ -91,7 +91,7 @@ Upstream handles the core workflow. This build adds:
 - **Update detection and "Update All"** — installed mods are checked against latest versions, with a one-click bulk update for everything that's outdated
 - **Version pinning** — hold a mod at its installed version: Update All and the per-mod update skip it, the row is badged as pinned, and conflict detection explains when a pin no longer satisfies another mod's requirement. Manual mods have no pin control because they never auto-update
 - **Version history and downgrades** — open a mod's Version History to install or switch to an older release directly from the detail panel
-- **Safer uninstalls** — uninstalling from the installed list asks for confirmation first (hold Shift to skip)
+- **Safer uninstalls** — uninstalling from the installed list asks for confirmation first (hold Shift to skip), and names the installed mods that depend on what you are removing — disabled dependents included, since removal breaks them on re-enable
 - **Clearer installed list** — outdated versions are badged, row actions use tooltips, and the scroll-to-top button sits bottom-center, clear of the row controls
 
 ### Diagnostics and recovery
