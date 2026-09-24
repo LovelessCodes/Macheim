@@ -7,12 +7,13 @@ All notable changes to this fork are documented in this file. The format follows
 Upstream releases before this fork are listed on
 [lofcgi/macheim](https://github.com/lofcgi/macheim/releases).
 
-## [Unreleased]
+## [1.3.2] - 2026-09-24
 
 Profiles can now travel: export one as a file the whole Thunderstore family of managers
-understands, import someone else's mod list by file or profile code, and clone a profile
-locally. Notifications are quieter too: repeatable actions update one toast instead of
-stacking duplicates.
+understands, import someone else's mod list by file or code, and recover deleted profiles from
+an archive list — with Undo on the toast. The Downloads panel absorbs the old status card,
+installing a few mods no longer bogs it down, notifications stop stacking duplicates, and
+Installed Mods gains bulk enable/disable/uninstall.
 
 ### Added
 
