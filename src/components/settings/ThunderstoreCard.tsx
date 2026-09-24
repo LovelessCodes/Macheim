@@ -15,7 +15,7 @@ import { Input } from "../ui/input";
 const TOKEN_PAGE = "https://thunderstore.io/settings/account/";
 
 /**
- * Sign-in for publishing: a service-account token kept in the macOS Keychain.
+ * Sign-in for publishing: a service-account token kept in a user-only file.
  */
 export default function ThunderstoreCard() {
   const { data: auth, isPending, error, refetch } = useThunderstoreAuth();
@@ -37,8 +37,8 @@ export default function ThunderstoreCard() {
           Thunderstore
         </CardTitle>
         <CardDescription>
-          Publish modpacks under your team. Uses a service-account token kept in the macOS Keychain;
-          the token is never shown again after sign-in.
+          Publish modpacks under your team. Uses a service-account token kept in a user-only file on
+          this Mac; the token is never shown again after sign-in.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">

@@ -51,8 +51,8 @@ known-good version.
   skipped, and configs stay in the `.r2z` export. Name, version and description are validated
   against Thunderstore's upload rules, and a non-256×256 icon warns without blocking.
 - **Publish modpacks to Thunderstore** — sign in with a service-account token from Settings
-  (stored in the macOS Keychain, never logged or shown again; a rejected token is cleared
-  automatically), then publish from the modpack export sheet: choose a team, tag extra
+  (stored in a user-only file on your Mac, never logged or shown again; a rejected token is
+  cleared automatically), then publish from the modpack export sheet: choose a team, tag extra
   categories alongside the mandatory Modpacks one, set the NSFW flag, and watch upload
   progress. Success links to the published package page. Versions are never auto-bumped — a
   duplicate version surfaces Thunderstore's own error — and publishing is modpacks only
@@ -69,9 +69,10 @@ known-good version.
   installed one when it matches, the newest published version otherwise. Previously the manifest
   could pin Doorstop's version (for example `4.4.0`, read from `.doorstop_version`), which
   Thunderstore rejects with "No matching package found".
-- The Thunderstore token is now stored in the real macOS Keychain. The `keyring` dependency was
-  compiled without a platform backend, so it silently used an in-memory mock store that lost
-  the token on every restart; the `apple-native` feature fixes it.
+- The Thunderstore token is stored in a user-only (0600) file in app data instead of the macOS
+  Keychain. Macheim is ad-hoc signed, so every rebuild and release changes the code signature
+  and macOS re-prompted for Keychain access on each launch; the file is readable only by your
+  user and the `keyring` dependency is gone.
 - Thunderstore sign-in no longer silently forgets the token: only a 401 clears it, while a 403
   or an edge block keeps it and reports the reason, and the Settings card shows sign-in errors
   with a Retry instead of quietly rendering as signed out.

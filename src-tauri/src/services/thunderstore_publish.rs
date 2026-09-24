@@ -8,41 +8,82 @@ use crate::error::{AppError, AppResult};
 pub const API_BASE: &str = "https://thunderstore.io/api/experimental";
 const COMMUNITY: &str = "valheim";
 const MODPACK_CATEGORY: &str = "modpacks";
-const KEYRING_SERVICE: &str = "com.macheim";
-const KEYRING_ACCOUNT: &str = "thunderstore-token";
 
-// ── Token storage (macOS Keychain) ──────────────────────────────
+// ── Token storage ───────────────────────────────────────────────
+//
+// The token lives in a user-only file (0600) in app data. The macOS Keychain
+// was rejected: Macheim is ad-hoc signed, so every rebuild and release changes
+// the code signature and macOS re-prompts for access. Stronghold was rejected
+// too: its vault needs a passphrase to derive the key, which trades the prompt
+// for a worse one. See docs/adr/0001-thunderstore-publishing.md.
+
+/// Where the token is kept. `stored_token` etc. use this path.
+pub fn token_path() -> std::path::PathBuf {
+    crate::services::thunderstore_client::get_app_data_dir().join("thunderstore-token")
+}
 
 /// The saved service-account token, or `None` when the user has not signed in.
 pub fn stored_token() -> AppResult<Option<String>> {
-    let entry = keyring::Entry::new(KEYRING_SERVICE, KEYRING_ACCOUNT)
-        .map_err(|e| AppError::Thunderstore(format!("Could not open the Keychain: {}", e)))?;
-    match entry.get_password() {
-        Ok(token) => Ok(Some(token)),
-        Err(keyring::Error::NoEntry) => Ok(None),
-        Err(e) => Err(AppError::Thunderstore(format!(
+    stored_token_at(&token_path())
+}
+
+pub fn store_token(token: &str) -> AppResult<()> {
+    store_token_at(&token_path(), token)
+}
+
+pub fn clear_token() -> AppResult<()> {
+    clear_token_at(&token_path())
+}
+
+fn stored_token_at(path: &std::path::Path) -> AppResult<Option<String>> {
+    match std::fs::read_to_string(path) {
+        Ok(raw) => {
+            let token = raw.trim();
+            if token.is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(token.to_string()))
+            }
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(AppError::Thunderstore(format!(
             "Could not read the saved token: {}",
-            e
+            error
         ))),
     }
 }
 
-pub fn store_token(token: &str) -> AppResult<()> {
-    let entry = keyring::Entry::new(KEYRING_SERVICE, KEYRING_ACCOUNT)
-        .map_err(|e| AppError::Thunderstore(format!("Could not open the Keychain: {}", e)))?;
-    entry
-        .set_password(token)
-        .map_err(|e| AppError::Thunderstore(format!("Could not save the token: {}", e)))
+fn store_token_at(path: &std::path::Path, token: &str) -> AppResult<()> {
+    use std::io::Write;
+    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(path)
+        .map_err(|error| AppError::Thunderstore(format!("Could not save the token: {}", error)))?;
+    file.write_all(token.trim().as_bytes())
+        .map_err(|error| AppError::Thunderstore(format!("Could not save the token: {}", error)))?;
+
+    // An existing file keeps its old mode, so enforce 0600 explicitly.
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600)).map_err(|error| {
+        AppError::Thunderstore(format!("Could not protect the token file: {}", error))
+    })
 }
 
-pub fn clear_token() -> AppResult<()> {
-    let entry = keyring::Entry::new(KEYRING_SERVICE, KEYRING_ACCOUNT)
-        .map_err(|e| AppError::Thunderstore(format!("Could not open the Keychain: {}", e)))?;
-    match entry.delete_credential() {
-        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-        Err(e) => Err(AppError::Thunderstore(format!(
+fn clear_token_at(path: &std::path::Path) -> AppResult<()> {
+    match std::fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(AppError::Thunderstore(format!(
             "Could not remove the saved token: {}",
-            e
+            error
         ))),
     }
 }
@@ -729,5 +770,41 @@ mod tests {
         assert_eq!(categories.len(), 2);
         assert_eq!(categories[0].slug, "modpacks");
         assert_eq!(categories[1].name, "Client-side");
+    }
+
+    #[test]
+    fn token_file_round_trips_with_user_only_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("thunderstore-token");
+
+        assert_eq!(stored_token_at(&path).unwrap(), None);
+
+        store_token_at(&path, "  tss_test  ").unwrap();
+        assert_eq!(stored_token_at(&path).unwrap().as_deref(), Some("tss_test"));
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600);
+
+        clear_token_at(&path).unwrap();
+        assert_eq!(stored_token_at(&path).unwrap(), None);
+        // Clearing twice is fine.
+        clear_token_at(&path).unwrap();
+    }
+
+    #[test]
+    fn an_existing_token_file_is_tightened_to_0600() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("thunderstore-token");
+        std::fs::write(&path, "old").unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+
+        store_token_at(&path, "tss_new").unwrap();
+
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600);
+        assert_eq!(stored_token_at(&path).unwrap().as_deref(), Some("tss_new"));
     }
 }
