@@ -5,6 +5,7 @@ import type {
   ThunderstorePackage,
   PackageDetail,
   InstalledMod,
+  BulkModResult,
   Profile,
   ConfigFile,
   ConfigFileSummary,
@@ -59,6 +60,14 @@ export async function uninstallMod(fullName: string): Promise<void> {
 
 export async function toggleMod(fullName: string, enable: boolean): Promise<void> {
   return invoke("toggle_mod", { fullName, enable });
+}
+
+export async function setModsEnabled(fullNames: string[], enable: boolean): Promise<BulkModResult> {
+  return invoke<BulkModResult>("set_mods_enabled", { fullNames, enable });
+}
+
+export async function uninstallMods(fullNames: string[]): Promise<BulkModResult> {
+  return invoke<BulkModResult>("uninstall_mods", { fullNames });
 }
 
 export async function getInstalledMods(): Promise<InstalledMod[]> {

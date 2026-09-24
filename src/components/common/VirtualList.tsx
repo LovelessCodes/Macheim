@@ -13,6 +13,7 @@ interface VirtualListProps<T> {
   renderItem: (item: T) => ReactNode;
   estimateRowHeight?: number;
   empty?: ReactNode;
+  scrollButtonAlign?: "right" | "center";
 }
 
 export default function VirtualList<T>({
@@ -21,6 +22,7 @@ export default function VirtualList<T>({
   renderItem,
   estimateRowHeight = DEFAULT_ROW_HEIGHT,
   empty,
+  scrollButtonAlign = "right",
 }: VirtualListProps<T>) {
   const viewportRef = useRef<HTMLDivElement>(null);
   // oxlint-disable-next-line react/incompatible-library
@@ -55,7 +57,7 @@ export default function VirtualList<T>({
           ))}
         </div>
       )}
-      <ScrollToTopButton viewportRef={viewportRef} />
+      <ScrollToTopButton viewportRef={viewportRef} align={scrollButtonAlign} />
     </ScrollArea>
   );
 }

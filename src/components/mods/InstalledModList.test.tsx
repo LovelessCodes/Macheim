@@ -11,7 +11,13 @@ void mock.module("../../lib/tauri", () => ({
   openPluginsFolder: mock(() => Promise.resolve()),
   syncMods: mock(() => Promise.resolve({ cleaned: [], failed: [], reinstalled: [] })),
   toggleMod: mock(() => Promise.resolve()),
+  setModsEnabled: mock((_fullNames: string[], _enable: boolean) =>
+    Promise.resolve({ changed: _fullNames, failed: [] }),
+  ),
   uninstallMod: mock(() => Promise.resolve()),
+  uninstallMods: mock((_fullNames: string[]) =>
+    Promise.resolve({ changed: _fullNames, failed: [] }),
+  ),
   enqueueInstall: mock(() => Promise.resolve({})),
 }));
 void mock.module("@tauri-apps/plugin-dialog", () => ({
@@ -25,7 +31,9 @@ import {
   getInstalledMods,
   listUnmanagedMods,
   openPluginsFolder,
+  setModsEnabled,
   syncMods,
+  uninstallMods,
 } from "../../lib/tauri";
 import InstalledModList from "./InstalledModList";
 
@@ -34,6 +42,8 @@ const getInstalledModsMock = getInstalledMods as Mock<typeof getInstalledMods>;
 const listUnmanagedModsMock = listUnmanagedMods as Mock<typeof listUnmanagedMods>;
 const syncModsMock = syncMods as Mock<typeof syncMods>;
 const openPluginsFolderMock = openPluginsFolder as Mock<typeof openPluginsFolder>;
+const setModsEnabledMock = setModsEnabled as Mock<typeof setModsEnabled>;
+const uninstallModsMock = uninstallMods as Mock<typeof uninstallMods>;
 const confirmMock = confirm as Mock<typeof confirm>;
 
 const mod = {
@@ -100,4 +110,37 @@ test("opens the plugins folder from the action bar", async () => {
   await screen.findByText("Wizardry");
   fireEvent.click(screen.getByText("Plugins folder"));
   await waitFor(() => expect(openPluginsFolderMock).toHaveBeenCalled());
+});
+
+test("selection mode bulk-disables the selected mods", async () => {
+  renderWithClient(<InstalledModList />);
+  await screen.findByText("Wizardry");
+
+  fireEvent.click(screen.getByText("Select"));
+  fireEvent.click(screen.getByText("Wizardry"));
+  expect(screen.getByText("1 selected")).toBeTruthy();
+
+  fireEvent.click(screen.getByText("Disable"));
+  await waitFor(() => expect(setModsEnabledMock).toHaveBeenCalledWith(["Therzie-Wizardry"], false));
+});
+
+test("bulk uninstall confirms once for the whole selection", async () => {
+  getInstalledModsMock.mockResolvedValue([
+    mod,
+    { ...mod, full_name: "Therzie-Armory", name: "Armory" },
+  ]);
+  confirmMock.mockResolvedValue(true);
+
+  renderWithClient(<InstalledModList />);
+  await screen.findByText("Wizardry");
+
+  fireEvent.click(screen.getByText("Select"));
+  fireEvent.click(screen.getByText("Select all"));
+  expect(screen.getByText("2 selected")).toBeTruthy();
+
+  fireEvent.click(screen.getByText("Uninstall"));
+  await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+  await waitFor(() =>
+    expect(uninstallModsMock).toHaveBeenCalledWith(["Therzie-Wizardry", "Therzie-Armory"]),
+  );
 });

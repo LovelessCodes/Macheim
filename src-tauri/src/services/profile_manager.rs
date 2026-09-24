@@ -394,6 +394,32 @@ pub fn remove_mod_from_profile(name: &str, full_name: &str) -> AppResult<()> {
     p.touch();
     save_profile(&p)
 }
+
+/// Mark several mods enabled or disabled in one profile write.
+pub fn set_mods_enabled(name: &str, full_names: &[String], enabled: bool) -> AppResult<()> {
+    if full_names.is_empty() {
+        return Ok(());
+    }
+    let mut profile = load_profile(name)?;
+    for full_name in full_names {
+        if let Some(entry) = profile.mods.iter_mut().find(|m| &m.full_name == full_name) {
+            entry.enabled = enabled;
+        }
+    }
+    profile.touch();
+    save_profile(&profile)
+}
+
+/// Remove several mods from the profile in one write.
+pub fn remove_mods_from_profile(name: &str, full_names: &[String]) -> AppResult<()> {
+    if full_names.is_empty() {
+        return Ok(());
+    }
+    let mut profile = load_profile(name)?;
+    profile.mods.retain(|m| !full_names.contains(&m.full_name));
+    profile.touch();
+    save_profile(&profile)
+}
 pub fn update_mod_enabled(name: &str, full_name: &str, enabled: bool) -> AppResult<()> {
     let mut p = load_profile(name)?;
     if let Some(m) = p.mods.iter_mut().find(|m| m.full_name == full_name) {

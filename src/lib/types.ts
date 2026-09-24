@@ -66,6 +66,12 @@ export interface InstalledMod {
   manual?: boolean;
 }
 
+/** Outcome of a bulk mod action: what changed, and what could not. */
+export interface BulkModResult {
+  changed: string[];
+  failed: string[];
+}
+
 export interface Profile {
   name: string;
   description: string;

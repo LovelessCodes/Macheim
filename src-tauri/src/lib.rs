@@ -169,6 +169,8 @@ pub fn run() {
             commands::thunderstore::get_package_details,
             // Mod management
             commands::mods::uninstall_mod,
+            commands::mods::uninstall_mods,
+            commands::mods::set_mods_enabled,
             commands::mods::toggle_mod,
             commands::mods::get_installed_mods,
             commands::mods::sync_mods,
