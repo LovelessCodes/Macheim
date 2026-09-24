@@ -9,7 +9,7 @@ use tracing::warn;
 
 use crate::error::{AppError, AppResult};
 use crate::models::thunderstore::ThunderstorePackage;
-use crate::models::{InstalledMod, Profile};
+use crate::models::{InstalledAs, InstalledMod, Profile};
 use crate::services::compatibility::CONFIG as COMPAT_CONFIG;
 use crate::services::profile_manager::is_manual_placeholder;
 
@@ -409,6 +409,7 @@ pub fn to_installed_mod(parsed: &ParsedMod, packages: &[ThunderstorePackage]) ->
         icon: metadata.map(|v| v.icon.clone()).unwrap_or_default(),
         manual: false,
         pinned: false,
+        installed_as: InstalledAs::Explicit,
     }
 }
 
@@ -545,6 +546,7 @@ mod tests {
             icon: String::new(),
             manual,
             pinned: false,
+            installed_as: InstalledAs::Explicit,
         }
     }
 

@@ -377,6 +377,7 @@ async fn sync_mods_inner(
                             &ver.description,
                             &ver.icon,
                             &ver.dependencies,
+                            m.installed_as,
                             &zip,
                             &game_root,
                         ) {

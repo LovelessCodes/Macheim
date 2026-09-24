@@ -66,6 +66,8 @@ export interface InstalledMod {
   manual?: boolean;
   /** Held at the installed version; excluded from updates. */
   pinned?: boolean;
+  /** Whether the user asked for this mod or the installer pulled it in. */
+  installed_as?: "explicit" | "dependency";
 }
 
 /** Outcome of a bulk mod action: what changed, and what could not. */

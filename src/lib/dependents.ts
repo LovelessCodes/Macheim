@@ -84,3 +84,48 @@ export function bulkUninstallWarning(mods: InstalledMod[], targets: string[]): s
   );
   return `Required by mods outside the selection:\n${lines.join("\n")}`;
 }
+
+function dependsOn(mod: InstalledMod, fullName: string): boolean {
+  return mod.dependencies.some((dependency) => dependencyFullName(dependency) === fullName);
+}
+
+/**
+ * Dependency-installed mods that nothing needs any more, as a transitive
+ * closure: when B depends on C and B itself is unused, both qualify. Dependents
+ * count whether they are enabled or disabled. Pinned, manually installed and
+ * explicitly installed mods are never swept, and they block their own
+ * dependencies from being swept too.
+ */
+export function orphanedDependencies(mods: InstalledMod[]): InstalledMod[] {
+  const candidates = new Set(
+    mods
+      .filter((mod) => mod.installed_as === "dependency" && !mod.pinned && !mod.manual)
+      .map((mod) => mod.full_name),
+  );
+
+  const removable = new Set<string>();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const mod of mods) {
+      if (!candidates.has(mod.full_name) || removable.has(mod.full_name)) continue;
+      const dependents = mods.filter(
+        (other) => other.full_name !== mod.full_name && dependsOn(other, mod.full_name),
+      );
+      if (dependents.every((dependent) => removable.has(dependent.full_name))) {
+        removable.add(mod.full_name);
+        changed = true;
+      }
+    }
+  }
+
+  return mods.filter((mod) => removable.has(mod.full_name));
+}
+
+/** Names for the removal confirmation, capped. */
+export function formatRemovalNames(mods: InstalledMod[], cap = 5): string {
+  const shown = mods.slice(0, cap).map((mod) => mod.full_name);
+  const hidden = mods.length - shown.length;
+  const list = shown.join(", ");
+  return hidden > 0 ? `${list}, and ${hidden} more` : list;
+}

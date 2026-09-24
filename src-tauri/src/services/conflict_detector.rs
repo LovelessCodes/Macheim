@@ -232,7 +232,7 @@ fn detect_dependency_issues(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{InstalledMod, PackageVersion, ThunderstorePackage};
+    use crate::models::{InstalledAs, InstalledMod, PackageVersion, ThunderstorePackage};
 
     fn installed(full_name: &str, version: &str) -> InstalledMod {
         let (author, name) = full_name.split_once('-').unwrap_or((full_name, full_name));
@@ -248,6 +248,7 @@ mod tests {
             icon: String::new(),
             manual: false,
             pinned: false,
+            installed_as: InstalledAs::Explicit,
         }
     }
 

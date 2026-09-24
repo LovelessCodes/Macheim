@@ -5,6 +5,8 @@ import {
   dependencyFullName,
   findDependents,
   formatDependentNames,
+  formatRemovalNames,
+  orphanedDependencies,
   singleUninstallWarning,
 } from "./dependents";
 import type { InstalledMod } from "./types";
@@ -98,4 +100,57 @@ test("bulk uninstall warnings name each affected selected mod", () => {
       "- Other-Lib: required by Owner-ModC",
   );
   expect(bulkUninstallWarning(mods, ["Owner-ModA"])).toBeNull();
+});
+
+test("orphans include the transitive closure of unused dependencies", () => {
+  const mods = [
+    mod({ full_name: "Owner-ModB", installed_as: "dependency", dependencies: ["Dev-LibC-1.0.0"] }),
+    mod({ full_name: "Dev-LibC", installed_as: "dependency", dependencies: [] }),
+  ];
+
+  expect(orphanedDependencies(mods).map((m) => m.full_name)).toEqual(["Owner-ModB", "Dev-LibC"]);
+});
+
+test("an installed dependent keeps its dependency out of the sweep", () => {
+  const mods = [
+    mod({ full_name: "Owner-ModB", installed_as: "dependency", dependencies: ["Dev-LibC-1.0.0"] }),
+    mod({ full_name: "Dev-LibC", installed_as: "dependency", dependencies: [] }),
+    mod({ full_name: "Owner-ModA", installed_as: "explicit", dependencies: ["Owner-ModB-1.0.0"] }),
+  ];
+
+  expect(orphanedDependencies(mods)).toEqual([]);
+});
+
+test("disabled dependents still block the sweep", () => {
+  const mods = [
+    mod({ full_name: "Dev-LibC", installed_as: "dependency", dependencies: [] }),
+    mod({
+      full_name: "Owner-ModB",
+      installed_as: "explicit",
+      enabled: false,
+      dependencies: ["Dev-LibC-1.0.0"],
+    }),
+  ];
+
+  expect(orphanedDependencies(mods)).toEqual([]);
+});
+
+test("pinned, manual and explicit mods are never swept", () => {
+  const mods = [
+    mod({ full_name: "Pinned-Dep", installed_as: "dependency", pinned: true }),
+    mod({ full_name: "Manual-Dep", installed_as: "dependency", manual: true }),
+    mod({ full_name: "Explicit-Mod", installed_as: "explicit" }),
+    mod({ full_name: "Old-Record" }),
+  ];
+
+  expect(orphanedDependencies(mods)).toEqual([]);
+});
+
+test("removal names are capped", () => {
+  const mods = Array.from({ length: 7 }, (_, index) => mod({ full_name: `Author-Mod${index}` }));
+
+  expect(formatRemovalNames(mods.slice(0, 2))).toBe("Author-Mod0, Author-Mod1");
+  expect(formatRemovalNames(mods)).toBe(
+    "Author-Mod0, Author-Mod1, Author-Mod2, Author-Mod3, Author-Mod4, and 2 more",
+  );
 });

@@ -37,6 +37,12 @@ known-good version.
   re-enabled). A bulk uninstall names any selected mod that an unselected mod requires, and
   mods inside the selection are never listed as each other's dependents. Warnings only — the
   confirmation still proceeds exactly as before.
+- **Unused dependency cleanup** — installs now record whether a mod was requested by the user
+  or pulled in as a dependency; records from older profiles count as requested, so nothing is
+  swept retroactively. Installed Mods gains "Remove unused", which lists dependency-installed
+  mods that nothing depends on any more — including the transitive closure — and removes them
+  through the normal bulk uninstall after one confirmation. Pinned, manually installed and
+  explicitly installed mods are never listed, and disabled mods still count as dependents.
 
 ## [1.3.2] - 2026-09-24
 

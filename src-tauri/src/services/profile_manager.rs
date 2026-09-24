@@ -3,7 +3,7 @@ use super::{
     plugin_version, thunderstore_client,
 };
 use crate::error::{AppError, AppResult};
-use crate::models::{InstalledMod, Profile};
+use crate::models::{InstalledAs, InstalledMod, Profile};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use tracing::warn;
@@ -521,6 +521,7 @@ fn register_manual_mods(profile: &mut Profile, bepinex: &Path) -> AppResult<Vec<
                 icon: String::new(),
                 manual: true,
                 pinned: false,
+                installed_as: InstalledAs::Explicit,
             });
             tracked.insert(name.clone());
             added.push(name);
@@ -730,6 +731,7 @@ mod tests {
             icon: String::new(),
             manual: false,
             pinned: false,
+            installed_as: InstalledAs::Explicit,
         }
     }
 
@@ -757,6 +759,15 @@ mod tests {
         value["mods"][0].as_object_mut().unwrap().remove("pinned");
         let old: Profile = serde_json::from_value(value).unwrap();
         assert!(!old.mods[0].pinned);
+
+        // The same applies to install reasons: older records are explicit.
+        let mut value = serde_json::to_value(&p).unwrap();
+        value["mods"][0]
+            .as_object_mut()
+            .unwrap()
+            .remove("installed_as");
+        let old: Profile = serde_json::from_value(value).unwrap();
+        assert_eq!(old.mods[0].installed_as, InstalledAs::Explicit);
     }
 
     #[test]

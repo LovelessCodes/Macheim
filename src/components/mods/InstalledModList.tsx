@@ -7,6 +7,7 @@ import {
   FolderOpen,
   ListChecks,
   Package,
+  PackageMinus,
   Pin,
   PinOff,
   Trash2,
@@ -30,7 +31,12 @@ import { useModUninstall, useUninstallMods } from "../../hooks/use-mod-uninstall
 import { useUpdateMods } from "../../hooks/use-package-install";
 import { usePackages } from "../../hooks/use-packages";
 import { useSyncMods } from "../../hooks/use-sync-mods";
-import { bulkUninstallWarning, singleUninstallWarning } from "../../lib/dependents";
+import {
+  bulkUninstallWarning,
+  formatRemovalNames,
+  orphanedDependencies,
+  singleUninstallWarning,
+} from "../../lib/dependents";
 import { groupPackagesByName, matchManualMod } from "../../lib/packages";
 import { listUnmanagedMods, openPluginsFolder } from "../../lib/tauri";
 import type { InstalledMod } from "../../lib/types";
@@ -113,6 +119,20 @@ export default function InstalledModList() {
 
   const handleUpdateAll = () => {
     updateModsMutation.mutate(updatable);
+  };
+
+  // Dependency-installed mods nothing depends on any more, closure included.
+  const orphans = useMemo(() => orphanedDependencies(installedMods), [installedMods]);
+
+  const handleRemoveOrphans = async () => {
+    if (orphans.length === 0) return;
+    const confirmed = await confirm(
+      `Remove ${orphans.length} unused dependenc${orphans.length === 1 ? "y" : "ies"}? ` +
+        `Nothing depends on them any more.\n\n${formatRemovalNames(orphans)}`,
+      { title: "Remove unused dependencies", kind: "warning" },
+    );
+    if (!confirmed) return;
+    bulkUninstallMutation.mutate(orphans.map((mod) => mod.full_name));
   };
 
   const openDetail = (mod: InstalledMod) => {
@@ -284,6 +304,20 @@ export default function InstalledModList() {
               Update All ({updatable.length})
             </Button>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleRemoveOrphans()}
+            disabled={orphans.length === 0 || selectionPending || updatingAll}
+            title={
+              orphans.length === 0
+                ? "Nothing to remove — no unused dependencies"
+                : `Remove ${orphans.length} dependenc${orphans.length === 1 ? "y" : "ies"} nothing depends on`
+            }
+          >
+            <PackageMinus />
+            Remove unused ({orphans.length})
+          </Button>
           <Button
             variant={selecting ? "accent-primary" : "outline"}
             size="sm"
