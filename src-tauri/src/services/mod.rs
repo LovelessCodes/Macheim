@@ -15,6 +15,7 @@ pub mod launch_monitor;
 pub mod launcher;
 pub mod log_reader;
 pub mod mod_installer;
+pub mod modpack_export;
 pub mod package_cache;
 pub mod package_sources;
 pub mod plugin_version;
@@ -23,6 +24,7 @@ pub mod profile_transfer;
 pub mod safe_mode;
 pub mod save_manager;
 pub mod thunderstore_client;
+pub mod thunderstore_publish;
 
 pub use backup_manager::*;
 pub use bepinex_installer::*;

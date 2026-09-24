@@ -360,6 +360,53 @@ export function isDownloadActive(status: DownloadStatus): boolean {
   return status === "downloading" || status === "installing";
 }
 
+/** Metadata for a Thunderstore modpack export. */
+export interface ModpackMetadata {
+  name: string;
+  version: string;
+  description: string;
+  website_url: string;
+}
+
+/** What an exported modpack contains, for reporting back to the user. */
+export interface ModpackExportResult {
+  dependencies: string[];
+  skipped_disabled: string[];
+  skipped_manual: string[];
+  bepinex_version: string | null;
+  icon_warning: string | null;
+}
+
+/** The saved Thunderstore sign-in, validated against the API. */
+export interface ThunderstoreAuthStatus {
+  signed_in: boolean;
+  username: string | null;
+  teams: string[];
+}
+
+/** A Valheim community category a modpack can be published under. */
+export interface ThunderstoreCategory {
+  name: string;
+  slug: string;
+}
+
+/** A published modpack. */
+export interface ModpackPublishResult {
+  full_name: string;
+  version_number: string;
+  package_url: string;
+}
+
+/** Live progress for a publish, emitted while it uploads. */
+export interface PublishProgressEvent {
+  stage: string;
+  current: number;
+  total: number;
+  bytes_uploaded: number;
+  bytes_total: number;
+  message: string;
+}
+
 /** The latest Valheim log, resolved like crash triage resolves it. */
 export interface LogFile {
   /** Resolved log path, or null when no log exists yet. */

@@ -18,7 +18,12 @@ import type {
   CrashReport,
   LogChunk,
   LogFile,
+  ModpackExportResult,
+  ModpackMetadata,
+  ModpackPublishResult,
   SteamStatus,
+  ThunderstoreAuthStatus,
+  ThunderstoreCategory,
   SaveOverview,
   DownloadItem,
   DownloadKind,
@@ -53,6 +58,35 @@ export async function fetchPackages(): Promise<ThunderstorePackage[]> {
 
 export async function getPackageDetails(fullName: string): Promise<PackageDetail> {
   return invoke<PackageDetail>("get_package_details", { fullName });
+}
+
+// ── Thunderstore publishing ─────────────────────────────────────
+
+export async function thunderstoreAuthStatus(): Promise<ThunderstoreAuthStatus> {
+  return invoke<ThunderstoreAuthStatus>("thunderstore_auth_status");
+}
+
+export async function thunderstoreSignIn(token: string): Promise<ThunderstoreAuthStatus> {
+  return invoke<ThunderstoreAuthStatus>("thunderstore_sign_in", { token });
+}
+
+export async function thunderstoreSignOut(): Promise<void> {
+  return invoke("thunderstore_sign_out");
+}
+
+export async function valheimCategories(): Promise<ThunderstoreCategory[]> {
+  return invoke<ThunderstoreCategory[]>("valheim_categories");
+}
+
+export async function publishModpack(input: {
+  profileName: string;
+  metadata: ModpackMetadata;
+  iconPath: string | null;
+  team: string;
+  categories: string[];
+  hasNsfwContent: boolean;
+}): Promise<ModpackPublishResult> {
+  return invoke<ModpackPublishResult>("publish_modpack", input);
 }
 
 // ── Mod Management ──────────────────────────────────────────────
@@ -224,6 +258,20 @@ export async function cloneProfile(sourceName: string, newName: string): Promise
 
 export async function exportProfileFile(name: string, path: string): Promise<void> {
   return invoke("export_profile_file", { name, path });
+}
+
+export async function exportProfileModpack(
+  name: string,
+  metadata: ModpackMetadata,
+  iconPath: string | null,
+  path: string,
+): Promise<ModpackExportResult> {
+  return invoke<ModpackExportResult>("export_profile_modpack", {
+    name,
+    metadata,
+    iconPath,
+    path,
+  });
 }
 
 export async function exportProfileCode(name: string): Promise<string> {

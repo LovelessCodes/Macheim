@@ -43,6 +43,40 @@ known-good version.
   mods that nothing depends on any more — including the transitive closure — and removes them
   through the normal bulk uninstall after one confirmation. Pinned, manually installed and
   explicitly installed mods are never listed, and disabled mods still count as dependents.
+- **Export as Thunderstore modpack** — the Profiles export menu turns any profile into a
+  Thunderstore modpack zip: `manifest.json` with every mod at its exact installed version,
+  a generated README, and an icon (chosen PNG or the bundled Macheim icon). `BepInExPack_Valheim`
+  is included at the installed loader version, or omitted with a warning when it cannot be
+  detected. Only enabled store mods are exported; manual and disabled mods are reported as
+  skipped, and configs stay in the `.r2z` export. Name, version and description are validated
+  against Thunderstore's upload rules, and any icon is cropped and scaled to the required
+  256×256 PNG automatically.
+- **Publish modpacks to Thunderstore** — sign in with a service-account token from Settings
+  (stored in a user-only file on your Mac, never logged or shown again; a rejected token is
+  cleared automatically), then publish from the modpack export sheet: choose a team, tag extra
+  categories alongside the mandatory Modpacks one, set the NSFW flag, and watch upload
+  progress. Success links to the published package page. Versions are never auto-bumped — a
+  duplicate version surfaces Thunderstore's own error — and publishing is modpacks only
+  (Valheim, category Modpacks), not mods.
+
+### Fixed
+
+- Modpacks no longer list `BepInExPack_Valheim` twice. Profiles that track the loader as an
+  installed mod (the usual case) produced two dependency entries at different versions, which
+  Thunderstore rejects with "Cannot depend on multiple versions of the same package"; the
+  profile's record is now folded into the single published dependency and its version is
+  preferred for the pin.
+- Modpack exports and publishes now depend on a **published** `BepInExPack_Valheim` version — the
+  installed one when it matches, the newest published version otherwise. Previously the manifest
+  could pin Doorstop's version (for example `4.4.0`, read from `.doorstop_version`), which
+  Thunderstore rejects with "No matching package found".
+- The Thunderstore token is stored in a user-only (0600) file in app data instead of the macOS
+  Keychain. Macheim is ad-hoc signed, so every rebuild and release changes the code signature
+  and macOS re-prompted for Keychain access on each launch; the file is readable only by your
+  user and the `keyring` dependency is gone.
+- Thunderstore sign-in no longer silently forgets the token: only a 401 clears it, while a 403
+  or an edge block keeps it and reports the reason, and the Settings card shows sign-in errors
+  with a Retry instead of quietly rendering as signed out.
 
 ## [1.3.2] - 2026-09-24
 

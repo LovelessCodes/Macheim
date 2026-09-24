@@ -16,6 +16,7 @@ import {
   deleteProfile,
   exportProfileCode,
   exportProfileFile,
+  exportProfileModpack,
   getActiveProfile,
   getGameStatus,
   importProfileCode,
@@ -27,7 +28,7 @@ import {
   restoreDeletedProfile,
   switchProfile,
 } from "../lib/tauri";
-import type { Profile } from "../lib/types";
+import type { ModpackMetadata, Profile } from "../lib/types";
 import { useEnqueueInstall } from "./use-download-queue";
 
 export function useProfiles() {
@@ -220,6 +221,59 @@ export function useExportProfile() {
     },
     onError: (err) => {
       notify("profile-export", { type: "error", title: `Failed to export profile: ${err}` });
+    },
+  });
+}
+
+/** Export a profile as a Thunderstore modpack zip, ready to upload. */
+export function useExportModpack() {
+  return useMutation({
+    mutationFn: async (input: {
+      profileName: string;
+      metadata: ModpackMetadata;
+      iconPath: string | null;
+    }) => {
+      const chosen = await save({
+        defaultPath: `${input.metadata.name}-${input.metadata.version}.zip`,
+        filters: [{ name: "Thunderstore modpack", extensions: ["zip"] }],
+      });
+      if (!chosen) return null;
+
+      const path = chosen.toLowerCase().endsWith(".zip") ? chosen : `${chosen}.zip`;
+      const result = await exportProfileModpack(
+        input.profileName,
+        input.metadata,
+        input.iconPath,
+        path,
+      );
+      return { path, result };
+    },
+    onSuccess: (outcome) => {
+      if (!outcome) return;
+      const { result } = outcome;
+      const notes: string[] = [];
+      if (!result.bepinex_version) {
+        notes.push("BepInEx was not included because its version could not be detected.");
+      }
+      if (result.icon_warning) notes.push(result.icon_warning);
+      if (result.skipped_manual.length > 0) {
+        notes.push(`${result.skipped_manual.length} manual mod(s) skipped.`);
+      }
+      if (result.skipped_disabled.length > 0) {
+        notes.push(`${result.skipped_disabled.length} disabled mod(s) skipped.`);
+      }
+      notify("modpack-export", {
+        type: notes.length > 0 ? "warning" : "success",
+        title: "Modpack exported",
+        description: notes.join(" ") || `${result.dependencies.length} dependencies included.`,
+        timeout: 10000,
+      });
+    },
+    onError: (err) => {
+      notify("modpack-export", {
+        type: "error",
+        title: `Could not export the modpack: ${err}`,
+      });
     },
   });
 }

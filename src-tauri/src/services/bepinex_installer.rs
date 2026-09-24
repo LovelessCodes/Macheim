@@ -267,48 +267,17 @@ fn set_executable(path: &Path) -> AppResult<()> {
     Ok(())
 }
 
-/// Read BepInEx version from core directory.
+/// Read the installed BepInEx version from its core DLLs' PE version resource.
+/// The `.doorstop_version` file next to the game belongs to Doorstop, not
+/// BepInEx, so it is not a version source.
 fn read_bepinex_version(core_dir: &Path) -> Option<String> {
-    // Try to find BepInEx.dll or similar and extract version
-    // Or read from a version file
-    let version_file = core_dir.parent()?.join("config").join("BepInEx.cfg");
-    if version_file.exists() {
-        if let Ok(content) = std::fs::read_to_string(&version_file) {
-            // Look for a version line
-            for line in content.lines() {
-                if line.contains("Version") && line.contains("=") {
-                    let parts: Vec<&str> = line.splitn(2, '=').collect();
-                    if parts.len() == 2 {
-                        return Some(parts[1].trim().to_string());
-                    }
-                }
-            }
+    for name in ["BepInEx.Preloader.dll", "BepInEx.dll"] {
+        if let Some(version) =
+            crate::services::plugin_version::read_plugin_version(&core_dir.join(name))
+        {
+            return Some(version);
         }
     }
-
-    // Try to read from the .doorstop_version file
-    let doorstop_version = core_dir
-        .parent()
-        .and_then(|p| p.parent())
-        .map(|root| root.join(".doorstop_version"));
-
-    if let Some(dv) = doorstop_version {
-        if dv.exists() {
-            if let Ok(v) = std::fs::read_to_string(&dv) {
-                return Some(v.trim().to_string());
-            }
-        }
-    }
-
-    // Fallback: check for BepInEx.dll
-    for entry in std::fs::read_dir(core_dir).ok()? {
-        let entry = entry.ok()?;
-        let name = entry.file_name().to_string_lossy().to_string();
-        if name.starts_with("BepInEx") && name.ends_with(".dll") {
-            return Some("5.x".to_string());
-        }
-    }
-
     None
 }
 
