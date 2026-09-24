@@ -184,6 +184,7 @@ pub fn run() {
             commands::diagnostics::restore_safe_mode_mods,
             commands::diagnostics::get_safe_mode,
             commands::diagnostics::read_latest_log,
+            commands::diagnostics::read_log_since,
             commands::diagnostics::open_log_folder,
             // Save snapshots
             commands::saves::get_save_overview,

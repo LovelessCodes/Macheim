@@ -361,4 +361,17 @@ export interface LogFile {
   text: string;
   /** True when the file exceeded the viewer's cap and only the tail is shown. */
   truncated: boolean;
+  /** Byte offset where `text` ends, for continuing with follow mode. */
+  offset: number;
+}
+
+/** Log content appended since an earlier read. */
+export interface LogChunk {
+  path: string | null;
+  /** Appended text, or the full (capped) contents when `reset` is true. */
+  text: string;
+  offset: number;
+  /** True when the viewer must replace its buffer instead of appending. */
+  reset: boolean;
+  truncated: boolean;
 }

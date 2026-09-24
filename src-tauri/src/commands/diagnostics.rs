@@ -5,7 +5,7 @@ use tracing::info;
 
 use crate::error::{AppError, AppResult};
 use crate::services::crash_analyzer::{self, CrashReport};
-use crate::services::log_reader::{self, LogFile};
+use crate::services::log_reader::{self, LogChunk, LogFile};
 use crate::services::safe_mode::{self, SafeModeState};
 use crate::services::{
     compatibility, game_detector, launch_monitor, launcher, mod_installer, profile_manager,
@@ -178,6 +178,29 @@ pub async fn read_latest_log(state: State<'_, Mutex<AppState>>) -> AppResult<Log
 
     let game_root = game_detector::get_valheim_root(&game_path);
     log_reader::read_latest_log(&game_root)
+}
+
+/// Read what was appended to the log since an earlier read, for follow mode.
+#[tauri::command]
+pub async fn read_log_since(
+    offset: u64,
+    path: Option<String>,
+    state: State<'_, Mutex<AppState>>,
+) -> AppResult<LogChunk> {
+    info!("Command: read_log_since");
+
+    let game_path = {
+        let state = state
+            .lock()
+            .map_err(|e| AppError::Mod(format!("Failed to lock state: {}", e)))?;
+        state
+            .game_path
+            .clone()
+            .ok_or_else(|| AppError::Mod("Game path not set".to_string()))?
+    };
+
+    let game_root = game_detector::get_valheim_root(&game_path);
+    log_reader::read_log_since(&game_root, path.as_deref(), offset)
 }
 
 /// Reveal the BepInEx folder that holds the log in Finder.

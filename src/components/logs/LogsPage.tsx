@@ -1,9 +1,17 @@
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { Copy, ExternalLink, Loader2, RefreshCw, ScrollText, TriangleAlert } from "lucide-react";
+import {
+  Activity,
+  Copy,
+  ExternalLink,
+  Loader2,
+  RefreshCw,
+  ScrollText,
+  TriangleAlert,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { useGameStatus } from "../../hooks/use-game-status";
-import { useLatestLog } from "../../hooks/use-logs";
+import { useLatestLog, useLogFollower } from "../../hooks/use-logs";
 import {
   filterLog,
   highlightSegments,
@@ -12,6 +20,7 @@ import {
   type LogLevel,
   type LogLevelFilter,
 } from "../../lib/log";
+import { type LogSnapshot } from "../../lib/log-follow";
 import { openLogFolder } from "../../lib/tauri";
 import VirtualList from "../common/VirtualList";
 import { Badge } from "../ui/badge";
@@ -108,8 +117,18 @@ export default function LogsPage() {
   const [level, setLevel] = useState<LogLevelFilter>("all");
   const [query, setQuery] = useState("");
   const [isOpening, setIsOpening] = useState(false);
+  const [following, setFollowing] = useState(false);
+  const [stuck, setStuck] = useState(true);
 
-  const entries = useMemo(() => parseLog(log?.text ?? ""), [log?.text]);
+  const seed = useMemo<LogSnapshot | null>(
+    () =>
+      log ? { text: log.text, path: log.path, offset: log.offset, truncated: log.truncated } : null,
+    [log],
+  );
+  const snapshot = useLogFollower(seed, following);
+  const view = snapshot ?? seed;
+
+  const entries = useMemo(() => parseLog(view?.text ?? ""), [view?.text]);
   const filtered = useMemo(() => filterLog(entries, level, query), [entries, level, query]);
 
   const handleCopyFiltered = async () => {
@@ -166,7 +185,7 @@ export default function LogsPage() {
             Valheim Log
           </CardTitle>
           <CardDescription className="truncate">
-            {log?.path ?? "The latest BepInEx log, or Unity's Player.log when BepInEx is absent."}
+            {view?.path ?? "The latest BepInEx log, or Unity's Player.log when BepInEx is absent."}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
@@ -198,6 +217,22 @@ export default function LogsPage() {
                 {filtered.length} of {entries.length} lines
                 {query.trim() ? ` · ${filtered.length} matching` : ""}
               </span>
+              <Button
+                variant={following ? "amber" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setStuck(true);
+                  setFollowing((value) => !value);
+                }}
+                title={
+                  following
+                    ? "Stop following new lines"
+                    : "Follow the log as the game writes new lines"
+                }
+              >
+                <Activity />
+                {following ? "Following" : "Follow"}
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -231,12 +266,24 @@ export default function LogsPage() {
             </div>
           </div>
 
-          {log?.truncated && (
+          {view?.truncated && (
             <div className="flex items-center gap-2 rounded-md border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 px-3 py-2 text-xs">
               <TriangleAlert className="size-3.5 shrink-0 text-[var(--color-warning)]" />
               <span className="text-muted-foreground">
                 This log is very large; only its most recent part is shown.
               </span>
+            </div>
+          )}
+
+          {following && !stuck && (
+            <div className="flex items-center gap-2 rounded-md border border-[var(--color-accent-amber)]/30 bg-[var(--color-accent-amber)]/10 px-3 py-2 text-xs">
+              <Activity className="size-3.5 shrink-0 text-[var(--color-accent-amber)]" />
+              <span className="text-muted-foreground">
+                Follow paused — you scrolled up. New lines are still collected.
+              </span>
+              <Button variant="outline" size="xs" onClick={() => setStuck(true)}>
+                Resume follow
+              </Button>
             </div>
           )}
         </CardContent>
@@ -254,6 +301,8 @@ export default function LogsPage() {
           keyOf={(_entry, index) => `${index}`}
           estimateRowHeight={24}
           empty={renderEmpty()}
+          stickToBottom={following && stuck}
+          onStickChange={setStuck}
           renderItem={(entry) => <LogRow entry={entry} query={query} />}
         />
       )}
