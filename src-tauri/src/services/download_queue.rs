@@ -18,6 +18,14 @@ const MAX_HISTORY: usize = 50;
 const GAME_POLL_INTERVAL: Duration = Duration::from_secs(3);
 /// Retry delays for transient network failures, indexed by attempt.
 const RETRY_BACKOFF_SECS: [u64; 5] = [5, 10, 20, 30, 60];
+/// Minimum gap between byte-progress events for one queue item.
+const PROGRESS_EMIT_INTERVAL: Duration = Duration::from_millis(100);
+
+/// Throttle rule for byte-progress events. Stage changes always emit; byte-only
+/// updates wait out the interval.
+fn progress_event_due(elapsed: Duration, status_changed: bool) -> bool {
+    status_changed || elapsed >= PROGRESS_EMIT_INTERVAL
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -879,9 +887,25 @@ async fn process_item(app: &AppHandle, queue: &Arc<DownloadQueue>, id: u64) {
     let reporter: install_pipeline::ProgressReporter = {
         let app = app.clone();
         let queue = Arc::clone(queue);
+        // Byte progress arrives once per network chunk — thousands of events for
+        // one download. Emit at most every `PROGRESS_EMIT_INTERVAL` unless the
+        // stage changed, so the webview renders at display rate instead of per
+        // chunk.
+        let last_emit = Arc::new(Mutex::new(
+            std::time::Instant::now() - PROGRESS_EMIT_INTERVAL,
+        ));
         Arc::new(move |progress: InstallProgress| {
             let status_changed = queue.apply_progress(id, &progress);
-            emit_mod_progress(&app, id, &progress);
+            let due = last_emit
+                .lock()
+                .map(|last| progress_event_due(last.elapsed(), status_changed))
+                .unwrap_or(true);
+            if due {
+                emit_mod_progress(&app, id, &progress);
+                if let Ok(mut last) = last_emit.lock() {
+                    *last = std::time::Instant::now();
+                }
+            }
             if status_changed {
                 emit_snapshot(&app, &queue);
             }
@@ -989,6 +1013,18 @@ mod tests {
             bytes_total: Some(20),
             message: "working".to_string(),
         }
+    }
+
+    #[test]
+    fn progress_events_are_throttled_except_for_stage_changes() {
+        assert!(progress_event_due(Duration::ZERO, true));
+        assert!(!progress_event_due(Duration::ZERO, false));
+        assert!(!progress_event_due(
+            PROGRESS_EMIT_INTERVAL - Duration::from_millis(1),
+            false
+        ));
+        assert!(progress_event_due(PROGRESS_EMIT_INTERVAL, false));
+        assert!(progress_event_due(Duration::from_secs(5), false));
     }
 
     #[test]

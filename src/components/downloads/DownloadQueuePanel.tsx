@@ -14,10 +14,11 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 import { useInstalledMods } from "../../hooks/use-installed-mods";
 import { useModUninstall } from "../../hooks/use-mod-uninstall";
-import { downloadStatusLabel } from "../../lib/downloads";
+import { downloadProgress, downloadStatusLabel, eventProgress } from "../../lib/downloads";
 import { formatBytes } from "../../lib/format";
 import type { DownloadItem } from "../../lib/types";
 import { isDownloadActive, isDownloadPending } from "../../lib/types";
@@ -36,16 +37,6 @@ import {
 } from "../ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import DownloadStatusIcon from "./DownloadStatusIcon";
-
-function progressValue(item: DownloadItem): number | null {
-  if (item.status === "downloading" && item.bytes_total) {
-    return Math.round((item.bytes_downloaded / item.bytes_total) * 100);
-  }
-  if (isDownloadActive(item.status) && item.total > 0) {
-    return Math.round((item.current / item.total) * 100);
-  }
-  return null;
-}
 
 function IconAction({
   label,
@@ -79,22 +70,28 @@ function IconAction({
 }
 
 function DownloadRow({
-  item,
-  installedVersion,
-  isUninstalling,
+  id,
+  installedVersions,
+  uninstallingFullName,
   onUninstall,
   onReinstall,
 }: {
-  item: DownloadItem;
-  /** Version on disk for this mod in the active profile, if any. */
-  installedVersion: string | null;
-  isUninstalling: boolean;
-  onUninstall: () => void;
+  id: number;
+  /** Version on disk per mod in the active profile. */
+  installedVersions: Map<string, string>;
+  uninstallingFullName: string | null;
+  onUninstall: (item: DownloadItem) => void;
   onReinstall: () => void;
 }) {
+  // Subscribe per row: a byte update for one item must not re-render the list.
+  const item = useDownloadStore((state) => state.items.find((candidate) => candidate.id === id));
+  if (!item) return null;
+
   const pending = isDownloadPending(item.status);
-  const pct = progressValue(item);
+  const pct = downloadProgress(item);
   const { pause, resume, cancel, retry, remove } = useDownloadStore.getState();
+  const installedVersion = installedVersions.get(item.full_name) ?? null;
+  const isUninstalling = uninstallingFullName === item.full_name;
   const isInstalled = installedVersion === item.version;
 
   const canPause = isDownloadActive(item.status) || item.status === "queued";
@@ -182,7 +179,7 @@ function DownloadRow({
                 (isInstalled ? (
                   <IconAction
                     label="Uninstall mod"
-                    onClick={onUninstall}
+                    onClick={() => onUninstall(item)}
                     className="hover:text-destructive"
                   >
                     {isUninstalling ? <Loader2 className="animate-spin" /> : <PackageMinus />}
@@ -224,9 +221,24 @@ function DownloadRow({
 export default function DownloadQueuePanel() {
   const open = useDownloadStore((state) => state.panelOpen);
   const setOpen = useDownloadStore((state) => state.setPanelOpen);
-  const items = useDownloadStore((state) => state.items);
   const paused = useDownloadStore((state) => state.paused);
+  const standalone = useDownloadStore((state) => state.standaloneProgress);
   const reinstall = useDownloadStore((state) => state.reinstall);
+  // Only the id lists drive the panel's own renders; byte progress lives in the
+  // rows, which subscribe individually.
+  const pendingIds = useDownloadStore(
+    useShallow((state) =>
+      state.items.filter((item) => isDownloadPending(item.status)).map((item) => item.id),
+    ),
+  );
+  const finishedIds = useDownloadStore(
+    useShallow((state) =>
+      state.items
+        .filter((item) => !isDownloadPending(item.status))
+        .reverse()
+        .map((item) => item.id),
+    ),
+  );
 
   const { data: installedMods = [] } = useInstalledMods();
   const installedVersions = useMemo(
@@ -235,11 +247,7 @@ export default function DownloadQueuePanel() {
   );
   const { uninstall, uninstallingFullName } = useModUninstall();
 
-  const pending = useMemo(() => items.filter((item) => isDownloadPending(item.status)), [items]);
-  const finished = useMemo(
-    () => items.filter((item) => !isDownloadPending(item.status)).reverse(),
-    [items],
-  );
+  const standalonePct = standalone ? eventProgress(standalone) : null;
 
   const { pauseAll, resumeAll, cancelAll, clearFinished } = useDownloadStore.getState();
 
@@ -251,16 +259,16 @@ export default function DownloadQueuePanel() {
     if (confirmed) uninstall(item.full_name, item.name);
   };
 
-  const renderRow = (item: DownloadItem) => (
+  const renderRow = (id: number) => (
     <DownloadRow
-      key={item.id}
-      item={item}
+      key={id}
+      id={id}
       // The row whose version is on disk can be uninstalled; older rows offer
       // a re-install of their own version.
-      installedVersion={installedVersions.get(item.full_name) ?? null}
-      isUninstalling={uninstallingFullName === item.full_name}
-      onUninstall={() => void handleUninstall(item)}
-      onReinstall={() => void reinstall(item.id)}
+      installedVersions={installedVersions}
+      uninstallingFullName={uninstallingFullName}
+      onUninstall={(item) => void handleUninstall(item)}
+      onReinstall={() => void reinstall(id)}
     />
   );
 
@@ -270,13 +278,13 @@ export default function DownloadQueuePanel() {
         <SheetHeader className="border-b">
           <SheetTitle>Downloads</SheetTitle>
           <SheetDescription>
-            {pending.length > 0
-              ? `${pending.length} item${pending.length === 1 ? "" : "s"} in queue${paused ? " — paused" : ""}`
+            {pendingIds.length > 0
+              ? `${pendingIds.length} item${pendingIds.length === 1 ? "" : "s"} in queue${paused ? " — paused" : ""}`
               : "Installs are queued and continue in the background."}
           </SheetDescription>
         </SheetHeader>
 
-        {pending.length > 0 && (
+        {pendingIds.length > 0 && (
           <div className="flex items-center gap-2 border-b px-4 py-2.5">
             <Button
               variant="outline"
@@ -293,8 +301,36 @@ export default function DownloadQueuePanel() {
           </div>
         )}
 
+        {standalone && (
+          <div className="border-b px-4 py-3">
+            <div className="flex items-start gap-3">
+              <Loader2 className="text-accent-primary mt-0.5 size-4 shrink-0 animate-spin" />
+              <div className="min-w-0 flex-1">
+                <p className="text-foreground truncate text-sm font-medium">
+                  {standalone.message || "Working..."}
+                </p>
+                {standalone.mod_name && (
+                  <p className="text-muted-foreground truncate text-xs">{standalone.mod_name}</p>
+                )}
+                {standalonePct !== null && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <Progress
+                      value={standalonePct}
+                      className="[&_[data-slot=progress-indicator]]:bg-accent-amber flex-1 [&_[data-slot=progress-track]]:h-1"
+                    />
+                    <span className="text-muted-foreground shrink-0 text-[10px] tabular-nums">
+                      {formatBytes(standalone.bytes_downloaded)}
+                      {standalone.bytes_total ? ` / ${formatBytes(standalone.bytes_total)}` : ""}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         <ScrollArea scrollFade className="min-h-0 flex-1">
-          {pending.length === 0 && finished.length === 0 ? (
+          {pendingIds.length === 0 && finishedIds.length === 0 && !standalone ? (
             <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
               <Download className="text-muted-foreground mb-4" size={40} />
               <h3 className="text-foreground mb-1 text-base font-semibold">No downloads</h3>
@@ -304,19 +340,19 @@ export default function DownloadQueuePanel() {
             </div>
           ) : (
             <div className="divide-y">
-              {pending.map((item) => renderRow(item))}
+              {pendingIds.map((id) => renderRow(id))}
 
-              {finished.length > 0 && (
+              {finishedIds.length > 0 && (
                 <div className="text-muted-foreground bg-muted/40 px-4 py-1.5 text-[10px] font-semibold tracking-wider uppercase">
                   History
                 </div>
               )}
-              {finished.map((item) => renderRow(item))}
+              {finishedIds.map((id) => renderRow(id))}
             </div>
           )}
         </ScrollArea>
 
-        {finished.length > 0 && (
+        {finishedIds.length > 0 && (
           <SheetFooter className="border-t">
             <Button
               variant="ghost"

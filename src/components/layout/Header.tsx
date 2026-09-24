@@ -4,11 +4,13 @@ import { useAppStore } from "../../store/appStore";
 import { useDiagnosticsStore } from "../../store/diagnosticsStore";
 import {
   useDownloadIndicator,
+  useDownloadProgress,
   usePendingDownloadCount,
   useDownloadStore,
 } from "../../store/downloadStore";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { Progress } from "../ui/progress";
 
 const pageTitles: Record<string, string> = {
   browse: "Browse Mods",
@@ -31,6 +33,7 @@ export default function Header({ onRefresh, isRefreshing }: HeaderProps) {
   const currentPage = useAppStore((s) => s.currentPage);
 
   const activeDownload = useDownloadIndicator();
+  const downloadProgress = useDownloadProgress();
   const pendingDownloads = usePendingDownloadCount();
   const openDownloads = useDownloadStore((s) => s.setPanelOpen);
   const crashReport = useDiagnosticsStore((s) => s.report);
@@ -68,6 +71,15 @@ export default function Header({ onRefresh, isRefreshing }: HeaderProps) {
           <TriangleAlert className="text-[var(--color-warning)]" />
           Crash report
         </Button>
+      )}
+
+      {activeDownload !== "idle" && downloadProgress !== null && (
+        <Progress
+          value={downloadProgress}
+          aria-label={`Download progress: ${downloadProgress}%`}
+          title={`Download progress: ${downloadProgress}%`}
+          className="[&_[data-slot=progress-indicator]]:bg-accent-primary mr-1 w-24 [&_[data-slot=progress-track]]:h-1.5"
+        />
       )}
 
       <Button

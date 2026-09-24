@@ -39,11 +39,20 @@ stacking duplicates.
 
 ### Changed
 
+- The bottom-center download status card is gone. Everything it showed lives in the Downloads
+  panel now — the panel also surfaces Sync & Clean progress, which is not a queue item — and a
+  slim progress bar next to the header's Downloads button shows the active download at a
+  glance. Dismissing the card is no longer a concept: the panel opens only when asked for.
 - Creating a profile that already exists now reports a clear message instead of a filesystem
   error.
 
 ### Fixed
 
+- The Downloads panel no longer bogs down while mods install: progress arrived once per
+  network chunk, and every event re-rendered the whole panel — every row, tooltip and progress
+  bar. Byte progress is now coalesced into one update per frame in the webview, the backend
+  emits at most one progress event per item every 100 ms, and each panel row subscribes only to
+  its own item, so a progressing download re-renders one row instead of the list.
 - Activating an imported profile now downloads its mods without a manual Sync & Clean: the
   install pipeline judged "already installed" from the profile's mod list alone, so entries
   that existed only as metadata (as in a freshly imported profile) made every queued install a

@@ -4,28 +4,29 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 
-import type { DownloadItem, DownloadQueueSnapshot } from "../lib/types";
+import type { DownloadItem, DownloadQueueSnapshot, ModProgressEvent } from "../lib/types";
 
-type QueueHandler = (event: { payload: DownloadQueueSnapshot }) => void;
-const handlers = new Map<string, QueueHandler>();
+type EventHandler = (event: { payload: unknown }) => void;
+const handlers = new Map<string, EventHandler>();
 
 let initialSnapshot: DownloadQueueSnapshot = { paused: false, items: [] };
 
 interface ToastOptions {
-  id?: string;
   title?: string;
   description?: string;
 }
-const toastAdd = mock((_options: ToastOptions) => "toast-id");
+/** Stands in for `notify(key, options)` from `components/ui/toast`. */
+const toastAdd = mock((_key: string, _options?: ToastOptions) => "toast-id");
 const toastClose = mock((_id?: string) => {});
 
 void mock.module("@tauri-apps/api/event", () => ({
-  listen: mock((event: string, handler: QueueHandler) => {
+  listen: mock((event: string, handler: EventHandler) => {
     handlers.set(event, handler);
     return Promise.resolve(() => handlers.delete(event));
   }),
 }));
 void mock.module("../components/ui/toast", () => ({
+  notify: toastAdd,
   toast: { add: toastAdd, close: toastClose },
 }));
 void mock.module("../lib/tauri", () => ({
@@ -68,6 +69,27 @@ function emit(snapshot: DownloadQueueSnapshot) {
   handlers.get("download-queue-changed")?.({ payload: snapshot });
 }
 
+function emitProgress(progress: ModProgressEvent) {
+  handlers.get("mod-progress")?.({ payload: progress });
+}
+
+function progressEvent(bytesDownloaded: number): ModProgressEvent {
+  return {
+    item_id: 1,
+    stage: "downloading",
+    mod_name: "Mod",
+    current: 1,
+    total: 2,
+    bytes_downloaded: bytesDownloaded,
+    bytes_total: 400,
+    message: "Downloading...",
+  };
+}
+
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
+
 beforeEach(() => {
   handlers.clear();
   initialSnapshot = { paused: false, items: [] };
@@ -77,7 +99,6 @@ beforeEach(() => {
     paused: false,
     items: [],
     panelOpen: false,
-    overlayDismissed: false,
     standaloneProgress: null,
   });
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -134,8 +155,8 @@ test("batch completions update one toast and invalidate once", async () => {
   });
 
   await waitFor(() => expect(toastAdd).toHaveBeenCalledTimes(1));
-  const toast = toastAdd.mock.calls[0]?.[0];
-  expect(toast?.id).toBe("download-outcome");
+  const [key, toast] = toastAdd.mock.calls[0] ?? [];
+  expect(key).toBe("download-outcome");
   expect(toast?.title).toBe("Installed 2 mods");
   expect(invalidate).toHaveBeenCalledWith({ queryKey: installedModsQueryKey });
 });
@@ -163,10 +184,10 @@ test("waiting for Valheim reports one toast per episode", async () => {
   });
 
   expect(toastAdd).toHaveBeenCalledTimes(1);
-  const toast = toastAdd.mock.calls[0]?.[0];
-  expect(toast?.id).toBe("download-waiting");
-  expect(toast?.title).toBe("Waiting for Valheim to close");
-  expect(toast?.description).toBe("3 installs queued");
+  const [waitingKey, waitingToast] = toastAdd.mock.calls[0] ?? [];
+  expect(waitingKey).toBe("download-waiting");
+  expect(waitingToast?.title).toBe("Waiting for Valheim to close");
+  expect(waitingToast?.description).toBe("3 installs queued");
 
   emit({
     paused: false,
@@ -198,10 +219,10 @@ test("network waits are aggregated across items", async () => {
   });
 
   expect(toastAdd).toHaveBeenCalledTimes(1);
-  const toast = toastAdd.mock.calls[0]?.[0];
-  expect(toast?.id).toBe("download-waiting");
-  expect(toast?.title).toBe("No connection — retrying automatically");
-  expect(toast?.description).toBe("2 installs waiting");
+  const [offlineKey, offlineToast] = toastAdd.mock.calls[0] ?? [];
+  expect(offlineKey).toBe("download-waiting");
+  expect(offlineToast?.title).toBe("No connection — retrying automatically");
+  expect(offlineToast?.description).toBe("2 installs waiting");
 });
 
 test("retry cycles do not repeat the offline toast, recovery closes it", async () => {
@@ -231,4 +252,28 @@ test("retry cycles do not repeat the offline toast, recovery closes it", async (
     items: [item({ id: 1, status: "completed", retry_count: 2, installed_count: 1 })],
   });
   expect(toastClose).toHaveBeenCalledWith("download-waiting");
+});
+
+test("progress events are coalesced into one store update per frame", async () => {
+  initialSnapshot = { paused: false, items: [item({ id: 1 })] };
+
+  renderHook(() => useDownloadQueueSync(), { wrapper });
+  await waitFor(() => expect(useDownloadStore.getState().items).toHaveLength(1));
+
+  let storeUpdates = 0;
+  const unsubscribe = useDownloadStore.subscribe(() => {
+    storeUpdates += 1;
+  });
+
+  // A burst of chunk-level events must not touch the store until the frame.
+  for (let bytes = 0; bytes < 50; bytes += 1) {
+    emitProgress(progressEvent(bytes));
+  }
+  expect(storeUpdates).toBe(0);
+
+  await nextFrame();
+
+  expect(storeUpdates).toBe(1);
+  expect(useDownloadStore.getState().items[0]?.bytes_downloaded).toBe(49);
+  unsubscribe();
 });

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import { notify } from "../components/ui/toast";
+import { downloadProgress, eventProgress } from "../lib/downloads";
 import * as tauri from "../lib/tauri";
 import type {
   DownloadItem,
@@ -8,21 +9,18 @@ import type {
   DownloadStatus,
   ModProgressEvent,
 } from "../lib/types";
-import { isDownloadPending } from "../lib/types";
+import { isDownloadActive, isDownloadPending } from "../lib/types";
 
 interface DownloadStore {
   paused: boolean;
   items: DownloadItem[];
   panelOpen: boolean;
-  /** User hid the bottom status card for the current queue. */
-  overlayDismissed: boolean;
   /** Byte progress for downloads started outside the queue (Sync & Clean). */
   standaloneProgress: ModProgressEvent | null;
 
   setSnapshot: (snapshot: DownloadQueueSnapshot) => void;
   applyProgress: (progress: ModProgressEvent) => void;
   setPanelOpen: (open: boolean) => void;
-  dismissOverlay: () => void;
 
   pause: (id: number) => Promise<void>;
   resume: (id: number) => Promise<void>;
@@ -49,26 +47,17 @@ export const useDownloadStore = create<DownloadStore>((set) => ({
   paused: false,
   items: [],
   panelOpen: false,
-  overlayDismissed: false,
   standaloneProgress: null,
 
   setSnapshot: (snapshot) =>
-    set((state) => {
-      const hadPending = state.items.some((item) => isDownloadPending(item.status));
-      const hasPending = snapshot.items.some((item) => isDownloadPending(item.status));
-      return {
-        paused: snapshot.paused,
-        items: snapshot.items,
-        // A new batch of downloads re-surfaces the status card.
-        overlayDismissed: hasPending && !hadPending ? false : state.overlayDismissed,
-        // Queue activity takes over the overlay; standalone progress is stale then.
-        standaloneProgress: snapshot.items.some(
-          (item) => item.status === "downloading" || item.status === "installing",
-        )
-          ? null
-          : state.standaloneProgress,
-      };
-    }),
+    set((state) => ({
+      paused: snapshot.paused,
+      items: snapshot.items,
+      // Queue activity takes over the panel; standalone progress is stale then.
+      standaloneProgress: snapshot.items.some((item) => isDownloadActive(item.status))
+        ? null
+        : state.standaloneProgress,
+    })),
 
   applyProgress: (progress) =>
     set((state) => {
@@ -100,7 +89,6 @@ export const useDownloadStore = create<DownloadStore>((set) => ({
     }),
 
   setPanelOpen: (panelOpen) => set({ panelOpen }),
-  dismissOverlay: () => set({ overlayDismissed: true }),
 
   pause: (id) => run(() => tauri.pauseDownload(id), "Could not pause download"),
   resume: (id) => run(() => tauri.resumeDownload(id), "Could not resume download"),
@@ -115,20 +103,23 @@ export const useDownloadStore = create<DownloadStore>((set) => ({
 }));
 
 /**
- * The item the bottom status card should describe: whatever is running, or
- * failing that, the next thing the queue will do. Keeps the card mounted for
- * the whole batch instead of flashing between items.
+ * Completion percentage for the download in flight, or null when there is
+ * nothing measurable to show (no active download, or a stage without totals —
+ * callers render that as indeterminate). Quantized to whole percent so live
+ * byte updates only re-render chrome when the number actually changes.
  */
-export function selectOverlayItem(items: DownloadItem[]): DownloadItem | null {
-  return (
-    items.find((item) => item.status === "downloading" || item.status === "installing") ??
-    items.find(
-      (item) => item.status === "waiting_for_game" || item.status === "waiting_for_network",
-    ) ??
-    items.find((item) => item.status === "paused") ??
-    items.find((item) => item.status === "queued") ??
-    null
-  );
+export function selectDownloadProgress(state: {
+  items: DownloadItem[];
+  standaloneProgress: ModProgressEvent | null;
+}): number | null {
+  const active = state.items.find((item) => isDownloadActive(item.status));
+  if (active) return downloadProgress(active);
+  if (state.standaloneProgress) return eventProgress(state.standaloneProgress);
+  return null;
+}
+
+export function useDownloadProgress(): number | null {
+  return useDownloadStore(selectDownloadProgress);
 }
 
 /** Number of items that still need work. */
