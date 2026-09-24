@@ -37,6 +37,14 @@ locally.
 - Creating a profile that already exists now reports a clear message instead of a filesystem
   error.
 
+### Fixed
+
+- Activating an imported profile now downloads its mods without a manual Sync & Clean: the
+  install pipeline judged "already installed" from the profile's mod list alone, so entries
+  that existed only as metadata (as in a freshly imported profile) made every queued install a
+  no-op. Installs now also require the mod's files to exist on disk, and dependencies follow
+  the same rule.
+
 ## [1.3.1] - 2026-09-20
 
 Follow-up to the 1.3.0 reliability work: hand-installed mods are recognised and matched to
