@@ -60,6 +60,10 @@ known-good version.
 
 ### Fixed
 
+- Modpack exports and publishes now depend on a **published** `BepInExPack_Valheim` version — the
+  installed one when it matches, the newest published version otherwise. Previously the manifest
+  could pin Doorstop's version (for example `4.4.0`, read from `.doorstop_version`), which
+  Thunderstore rejects with "No matching package found".
 - The Thunderstore token is now stored in the real macOS Keychain. The `keyring` dependency was
   compiled without a platform backend, so it silently used an in-memory mock store that lost
   the token on every restart; the `apple-native` feature fixes it.

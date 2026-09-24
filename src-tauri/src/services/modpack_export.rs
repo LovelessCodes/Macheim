@@ -243,6 +243,56 @@ pub fn detect_bepinex_version(game_path: &Path) -> Option<String> {
     crate::services::bepinex_installer::check_bepinex_status(&game_root).version
 }
 
+/// The BepInExPack version to depend on in a modpack.
+///
+/// Thunderstore only accepts published versions, so the locally installed
+/// version is used when it matches one and the newest published version
+/// otherwise. Local file versions (Doorstop's, or the loader's own assembly
+/// version) do not match the package numbering.
+pub fn resolve_bepinex_version(
+    detected: Option<&str>,
+    packages: &[crate::models::ThunderstorePackage],
+) -> Option<String> {
+    let package = packages
+        .iter()
+        .find(|package| package.full_name == BEPINEX_PACKAGE)?;
+
+    if let Some(detected) = detected {
+        if package
+            .versions
+            .iter()
+            .any(|version| version.version_number == detected)
+        {
+            return Some(detected.to_string());
+        }
+    }
+
+    // Versions arrive newest-first.
+    package
+        .versions
+        .first()
+        .map(|version| version.version_number.clone())
+}
+
+/// Resolve the BepInEx dependency for an export or publish: the installed
+/// version when it is published, the newest published version otherwise.
+pub async fn resolve_installed_bepinex(game_path: Option<&Path>) -> Option<String> {
+    let detected = game_path.and_then(detect_bepinex_version);
+
+    let packages = match crate::services::package_sources::fetch_all_packages(false).await {
+        Ok(packages) => packages,
+        Err(error) => {
+            tracing::warn!(
+                "Could not refresh packages for the BepInEx version ({}); using the cache",
+                error
+            );
+            crate::services::package_sources::cached_packages_any_age()
+        }
+    };
+
+    resolve_bepinex_version(detected.as_deref(), &packages)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -283,6 +333,42 @@ mod tests {
         bytes.extend_from_slice(&height.to_be_bytes());
         bytes.extend_from_slice(&[8, 6, 0, 0, 0]);
         bytes
+    }
+
+    fn bepinex_package(versions: &[&str]) -> crate::models::ThunderstorePackage {
+        use crate::models::{PackageSource, PackageVersion, ThunderstorePackage};
+
+        ThunderstorePackage {
+            name: "BepInExPack_Valheim".to_string(),
+            full_name: BEPINEX_PACKAGE.to_string(),
+            owner: "denikson".to_string(),
+            package_url: String::new(),
+            date_updated: String::new(),
+            is_deprecated: false,
+            rating_score: 0,
+            versions: versions
+                .iter()
+                .map(|version| PackageVersion {
+                    name: "BepInExPack_Valheim".to_string(),
+                    full_name: format!("{}-{}", BEPINEX_PACKAGE, version),
+                    version_number: version.to_string(),
+                    dependencies: Vec::new(),
+                    download_url: String::new(),
+                    downloads: 0,
+                    description: String::new(),
+                    icon: String::new(),
+                    date_created: String::new(),
+                    file_size: 0,
+                    is_active: true,
+                    uuid4: None,
+                    sources: Vec::new(),
+                })
+                .collect(),
+            categories: Vec::new(),
+            is_pinned: false,
+            source: PackageSource::Thunderstore,
+            alternates: Vec::new(),
+        }
     }
 
     fn manifest_from(zip_bytes: &[u8]) -> ModpackManifest {
@@ -398,6 +484,41 @@ mod tests {
         assert!(validate(&long_description).is_err());
 
         assert!(validate(&metadata()).is_ok());
+    }
+
+    #[test]
+    fn bepinex_uses_the_installed_version_when_it_is_published() {
+        let packages = vec![bepinex_package(&["5.4.2350", "5.4.2100"])];
+
+        assert_eq!(
+            resolve_bepinex_version(Some("5.4.2100"), &packages).as_deref(),
+            Some("5.4.2100")
+        );
+    }
+
+    #[test]
+    fn bepinex_falls_back_to_the_newest_published_version() {
+        let packages = vec![bepinex_package(&["5.4.2350", "5.4.2100"])];
+
+        // A local file version (Doorstop's, or the loader's assembly version)
+        // never matches the package numbering.
+        assert_eq!(
+            resolve_bepinex_version(Some("4.4.0"), &packages).as_deref(),
+            Some("5.4.2350")
+        );
+        assert_eq!(
+            resolve_bepinex_version(None, &packages).as_deref(),
+            Some("5.4.2350")
+        );
+    }
+
+    #[test]
+    fn bepinex_is_omitted_without_a_published_package() {
+        assert_eq!(resolve_bepinex_version(Some("5.4.2350"), &[]), None);
+        assert_eq!(
+            resolve_bepinex_version(Some("5.4.2350"), &[bepinex_package(&[])]),
+            None
+        );
     }
 
     #[test]
