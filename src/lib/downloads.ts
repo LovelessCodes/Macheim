@@ -1,4 +1,5 @@
-import type { DownloadStatus } from "./types";
+import type { DownloadItem, DownloadStatus, ModProgressEvent } from "./types";
+import { isDownloadActive } from "./types";
 
 /** True when a dragged or picked path is a ZIP archive. */
 export function isZipPath(path: string): boolean {
@@ -13,6 +14,28 @@ export function isProfilePath(path: string): boolean {
 /** Last path segment, for labels. */
 export function fileName(path: string): string {
   return path.split(/[/\\]/).pop() || path;
+}
+
+/** Percentage complete for a queue item, or null when it cannot be measured. */
+export function downloadProgress(item: DownloadItem): number | null {
+  if (item.bytes_total && item.bytes_total > 0) {
+    return Math.round((item.bytes_downloaded / item.bytes_total) * 100);
+  }
+  if (isDownloadActive(item.status) && item.total > 0) {
+    return Math.round((item.current / item.total) * 100);
+  }
+  return null;
+}
+
+/** Percentage complete for progress outside the queue (Sync & Clean). */
+export function eventProgress(progress: ModProgressEvent): number | null {
+  if (progress.bytes_total && progress.bytes_total > 0) {
+    return Math.round((progress.bytes_downloaded / progress.bytes_total) * 100);
+  }
+  if (progress.total > 0) {
+    return Math.round((progress.current / progress.total) * 100);
+  }
+  return null;
 }
 
 /** Short label for a queue item status, for buttons and rows. */

@@ -1,7 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
 
-import ProgressOverlay from "./components/common/ProgressOverlay";
 import CrashReportSheet from "./components/diagnostics/CrashReportSheet";
 import DownloadQueuePanel from "./components/downloads/DownloadQueuePanel";
 import InstallDropZone from "./components/downloads/InstallDropZone";
@@ -47,7 +46,6 @@ export default function App() {
     <>
       {booting ? null : needsSetup ? <SetupWizard /> : <MainLayout />}
       <Toaster />
-      <ProgressOverlay />
       <DownloadQueuePanel />
       <CrashReportSheet />
       <InstallDropZone />

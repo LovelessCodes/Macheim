@@ -174,12 +174,28 @@ export function useDownloadQueueSync() {
     const unlistenQueue = listen<DownloadQueueSnapshot>("download-queue-changed", (event) =>
       apply(event.payload),
     );
+    // Byte progress arrives per network chunk — thousands of events for one
+    // download. Keep only the latest event per item and flush once per frame,
+    // so the UI renders at display rate instead of per chunk.
+    const buffered = new Map<number, ModProgressEvent>();
+    let frame: number | null = null;
+    const flushProgress = () => {
+      frame = null;
+      const events = [...buffered.values()];
+      buffered.clear();
+      for (const progress of events) {
+        useDownloadStore.getState().applyProgress(progress);
+      }
+    };
     const unlistenProgress = listen<ModProgressEvent>("mod-progress", (event) => {
-      useDownloadStore.getState().applyProgress(event.payload);
+      buffered.set(event.payload.item_id ?? -1, event.payload);
+      frame ??= requestAnimationFrame(flushProgress);
     });
 
     return () => {
       disposed = true;
+      if (frame !== null) cancelAnimationFrame(frame);
+      buffered.clear();
       void unlistenQueue.then((unlisten) => unlisten());
       void unlistenProgress.then((unlisten) => unlisten());
     };

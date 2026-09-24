@@ -1,7 +1,7 @@
 import { beforeEach, expect, test } from "bun:test";
 
 import type { DownloadItem, ModProgressEvent } from "../lib/types";
-import { selectOverlayItem, useDownloadStore } from "./downloadStore";
+import { selectDownloadProgress, useDownloadStore } from "./downloadStore";
 
 function item(overrides: Partial<DownloadItem> = {}): DownloadItem {
   return {
@@ -104,36 +104,50 @@ test("snapshot replaces paused and items state", () => {
   expect(useDownloadStore.getState().items).toEqual([completed]);
 });
 
-test("a dismissed overlay stays hidden until a new batch starts", () => {
-  const downloading = item({ id: 1, status: "downloading" });
-  useDownloadStore.getState().setSnapshot({ paused: false, items: [downloading] });
-  useDownloadStore.getState().dismissOverlay();
-  expect(useDownloadStore.getState().overlayDismissed).toBe(true);
+test("the progress selector prefers the active item, then standalone progress", () => {
+  expect(selectDownloadProgress({ items: [], standaloneProgress: null })).toBeNull();
 
-  // Same batch, more status updates: still hidden.
-  useDownloadStore.getState().setSnapshot({ paused: false, items: [downloading] });
-  expect(useDownloadStore.getState().overlayDismissed).toBe(true);
-
-  // Queue drains, then a new install starts: visible again.
-  useDownloadStore
-    .getState()
-    .setSnapshot({ paused: false, items: [item({ id: 1, status: "completed" })] });
-  useDownloadStore.getState().setSnapshot({
-    paused: false,
-    items: [item({ id: 1, status: "completed" }), item({ id: 2, status: "queued" })],
+  const downloading = item({
+    id: 1,
+    status: "downloading",
+    bytes_downloaded: 150,
+    bytes_total: 300,
   });
-  expect(useDownloadStore.getState().overlayDismissed).toBe(false);
-});
+  expect(selectDownloadProgress({ items: [downloading], standaloneProgress: null })).toBe(50);
 
-test("the overlay item prefers running work, then waiting, paused and queued", () => {
-  const queued = item({ id: 1, status: "queued" });
-  const paused = item({ id: 2, status: "paused" });
-  const waiting = item({ id: 3, status: "waiting_for_network" });
-  const active = item({ id: 4, status: "installing" });
+  // No byte totals yet: the installing stage falls back to file counts.
+  const installing = item({
+    id: 2,
+    status: "installing",
+    current: 1,
+    total: 4,
+    bytes_total: null,
+  });
+  expect(selectDownloadProgress({ items: [installing], standaloneProgress: null })).toBe(25);
 
-  expect(selectOverlayItem([queued])?.id).toBe(1);
-  expect(selectOverlayItem([queued, paused])?.id).toBe(2);
-  expect(selectOverlayItem([queued, paused, waiting])?.id).toBe(3);
-  expect(selectOverlayItem([queued, paused, waiting, active])?.id).toBe(4);
-  expect(selectOverlayItem([item({ id: 9, status: "completed" })])).toBeNull();
+  // Nothing measurable reports nothing, so the caller can hide or hold the bar.
+  const resolving = item({
+    id: 3,
+    status: "downloading",
+    current: 0,
+    total: 0,
+    bytes_total: null,
+  });
+  expect(selectDownloadProgress({ items: [resolving], standaloneProgress: null })).toBeNull();
+
+  // Queue activity wins over standalone progress (Sync & Clean).
+  expect(
+    selectDownloadProgress({
+      items: [downloading],
+      standaloneProgress: progress({ item_id: null, bytes_downloaded: 100, bytes_total: 400 }),
+    }),
+  ).toBe(50);
+
+  // With the queue idle, standalone progress drives the bar.
+  expect(
+    selectDownloadProgress({
+      items: [],
+      standaloneProgress: progress({ item_id: null, bytes_downloaded: 100, bytes_total: 400 }),
+    }),
+  ).toBe(25);
 });

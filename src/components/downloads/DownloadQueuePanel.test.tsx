@@ -86,7 +86,6 @@ beforeEach(() => {
     paused: false,
     items: [],
     panelOpen: true,
-    overlayDismissed: false,
     standaloneProgress: null,
   });
 });
@@ -163,6 +162,27 @@ test("renders an empty state with no items", () => {
   renderWithClient(<DownloadQueuePanel />);
 
   expect(screen.getByText("No downloads")).toBeTruthy();
+});
+
+test("shows Sync & Clean progress, which is not a queue item", () => {
+  useDownloadStore.setState({
+    standaloneProgress: {
+      item_id: null,
+      stage: "downloading",
+      mod_name: "Sync-Mod",
+      current: 1,
+      total: 2,
+      bytes_downloaded: 100,
+      bytes_total: 400,
+      message: "Reinstalling Sync-Mod (1/2)",
+    },
+  });
+
+  renderWithClient(<DownloadQueuePanel />);
+
+  expect(screen.getByText("Reinstalling Sync-Mod (1/2)")).toBeTruthy();
+  expect(screen.getByText("Sync-Mod")).toBeTruthy();
+  expect(screen.queryByText("No downloads")).toBeNull();
 });
 
 test("marks installs that come from a local archive", async () => {
