@@ -288,6 +288,7 @@ export type Page =
   | "profiles"
   | "compatibility"
   | "saves"
+  | "logs"
   | "settings";
 
 export type SortOption = "downloads" | "rating" | "updated" | "name";
@@ -351,4 +352,13 @@ export function isDownloadPending(status: DownloadStatus): boolean {
 
 export function isDownloadActive(status: DownloadStatus): boolean {
   return status === "downloading" || status === "installing";
+}
+
+/** The latest Valheim log, resolved like crash triage resolves it. */
+export interface LogFile {
+  /** Resolved log path, or null when no log exists yet. */
+  path: string | null;
+  text: string;
+  /** True when the file exceeded the viewer's cap and only the tail is shown. */
+  truncated: boolean;
 }

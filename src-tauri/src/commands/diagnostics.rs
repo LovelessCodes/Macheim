@@ -5,6 +5,7 @@ use tracing::info;
 
 use crate::error::{AppError, AppResult};
 use crate::services::crash_analyzer::{self, CrashReport};
+use crate::services::log_reader::{self, LogFile};
 use crate::services::safe_mode::{self, SafeModeState};
 use crate::services::{
     compatibility, game_detector, launch_monitor, launcher, mod_installer, profile_manager,
@@ -158,4 +159,55 @@ pub async fn restore_safe_mode_mods(state: State<'_, Mutex<AppState>>) -> AppRes
 #[tauri::command]
 pub async fn get_safe_mode() -> AppResult<Vec<String>> {
     Ok(safe_mode::load().disabled)
+}
+
+/// The latest Valheim log for the log viewer, resolved like crash triage does.
+#[tauri::command]
+pub async fn read_latest_log(state: State<'_, Mutex<AppState>>) -> AppResult<LogFile> {
+    info!("Command: read_latest_log");
+
+    let game_path = {
+        let state = state
+            .lock()
+            .map_err(|e| AppError::Mod(format!("Failed to lock state: {}", e)))?;
+        state
+            .game_path
+            .clone()
+            .ok_or_else(|| AppError::Mod("Game path not set".to_string()))?
+    };
+
+    let game_root = game_detector::get_valheim_root(&game_path);
+    log_reader::read_latest_log(&game_root)
+}
+
+/// Reveal the BepInEx folder that holds the log in Finder.
+#[tauri::command]
+pub async fn open_log_folder(app: AppHandle, state: State<'_, Mutex<AppState>>) -> AppResult<()> {
+    use tauri_plugin_opener::OpenerExt;
+
+    info!("Command: open_log_folder");
+
+    let game_path = {
+        let state = state
+            .lock()
+            .map_err(|e| AppError::Mod(format!("Failed to lock state: {}", e)))?;
+        state
+            .game_path
+            .clone()
+            .ok_or_else(|| AppError::Mod("Game path not set".to_string()))?
+    };
+
+    let folder = log_reader::log_folder(&game_detector::get_valheim_root(&game_path));
+    if !folder.is_dir() {
+        return Err(AppError::BepInEx(format!(
+            "No BepInEx folder at {}. Install BepInEx first.",
+            folder.display()
+        )));
+    }
+
+    app.opener()
+        .open_path(folder.to_string_lossy().to_string(), None::<String>)
+        .map_err(|e| AppError::Mod(format!("Could not open the log folder: {}", e)))?;
+
+    Ok(())
 }

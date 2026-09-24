@@ -9,7 +9,7 @@ const DEFAULT_ROW_HEIGHT = 64;
 
 interface VirtualListProps<T> {
   items: T[];
-  keyOf: (item: T) => string;
+  keyOf: (item: T, index: number) => string;
   renderItem: (item: T) => ReactNode;
   estimateRowHeight?: number;
   empty?: ReactNode;
@@ -46,7 +46,7 @@ export default function VirtualList<T>({
         >
           {rowVirtualizer.getVirtualItems().map((virtualRow) => (
             <div
-              key={keyOf(items[virtualRow.index])}
+              key={keyOf(items[virtualRow.index], virtualRow.index)}
               data-index={virtualRow.index}
               ref={rowVirtualizer.measureElement}
               className="absolute inset-x-0 top-0"

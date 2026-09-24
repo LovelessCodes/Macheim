@@ -1,5 +1,6 @@
 # Logs
 logs
+!src/components/logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -25,6 +26,9 @@ src-tauri/target
 
 # Docs (draft posts, internal notes)
 docs/
+
+# Local issue tracker (never committed)
+.scratch/
 
 # Editor directories and files
 .vscode/*

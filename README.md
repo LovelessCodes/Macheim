@@ -95,6 +95,7 @@ Upstream handles the core workflow. This build adds:
 
 ### Diagnostics and recovery
 
+- **BepInEx log viewer** — read the latest Valheim log in the app: filter by level, search with match highlighting, copy lines, and open the log folder in Finder — so a mod that silently fails to load is visible without leaving Macheim
 - **Crash triage** — modded launches are watched; an early exit produces a crash report with the failure category, likely culprit mods, the exception stack and the log tail
 - **Safe Mode** — disable every mod and launch from the report or Settings, then restore them from the banner; "Analyze latest log" runs the same analysis any time
 - **World and character snapshots** — snapshot worlds and characters on demand, or automatically before every modded launch (last five kept); restoring replaces the live saves and keeps a safety snapshot of the previous state first
@@ -211,7 +212,7 @@ The manager app itself is native Apple Silicon; that does not mean the modded ga
 
 ### Mods don't load, or the game exits early
 
-Open **Settings → Analyze latest log**, or launch once and read the crash report Macheim generates. **Safe Mode** disables every mod so you can confirm the game runs clean, then restore mods from the banner. Common causes are a missing dependency and a mod that hasn't been rebuilt for your Valheim version.
+Open **Settings → Analyze latest log**, or read the **Logs** page, or launch once and read the crash report Macheim generates. **Safe Mode** disables every mod so you can confirm the game runs clean, then restore mods from the banner. Common causes are a missing dependency and a mod that hasn't been rebuilt for your Valheim version.
 
 ### Multiplayer and other mod managers
 
