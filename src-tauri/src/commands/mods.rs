@@ -57,6 +57,116 @@ pub async fn uninstall_mod(
     Ok(())
 }
 
+/// Outcome of a bulk mod action: mods that changed, and ones that could not.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct BulkModResult {
+    pub changed: Vec<String>,
+    pub failed: Vec<String>,
+}
+
+/// Enable or disable several mods in one pass. A mod that fails to move stays
+/// untouched and is reported, so the rest of the batch still applies.
+#[tauri::command]
+pub async fn set_mods_enabled(
+    full_names: Vec<String>,
+    enable: bool,
+    state: tauri::State<'_, Mutex<AppState>>,
+) -> AppResult<BulkModResult> {
+    info!(
+        "Command: set_mods_enabled({} mods, enable={})",
+        full_names.len(),
+        enable
+    );
+    let _operation = crate::lock_operation(&state)?;
+    crate::services::launcher::ensure_game_stopped()?;
+
+    let (game_path, active_profile) = {
+        let state = state
+            .lock()
+            .map_err(|e| AppError::Mod(format!("Failed to lock state: {}", e)))?;
+        let game_path = state
+            .game_path
+            .clone()
+            .ok_or_else(|| AppError::Mod("Game path not set".to_string()))?;
+        let active_profile = state.active_profile.clone();
+        (game_path, active_profile)
+    };
+
+    let game_root = game_detector::get_valheim_root(&game_path);
+    let mut changed = Vec::new();
+    let mut failed = Vec::new();
+    for full_name in full_names {
+        if profile_manager::validate_name(&full_name).is_err() {
+            failed.push(full_name);
+            continue;
+        }
+        match mod_installer::toggle_mod(&full_name, enable, &game_root) {
+            Ok(_) => changed.push(full_name),
+            Err(error) => {
+                info!("Bulk toggle skipped {}: {}", full_name, error);
+                failed.push(full_name);
+            }
+        }
+    }
+
+    profile_manager::set_mods_enabled(&active_profile, &changed, enable)?;
+    crate::services::compatibility::reconcile(
+        &profile_manager::load_profile(&active_profile)?,
+        &game_root,
+    )?;
+
+    Ok(BulkModResult { changed, failed })
+}
+
+/// Uninstall several mods in one pass, reporting the ones that could not be
+/// removed instead of aborting the batch.
+#[tauri::command]
+pub async fn uninstall_mods(
+    full_names: Vec<String>,
+    state: tauri::State<'_, Mutex<AppState>>,
+) -> AppResult<BulkModResult> {
+    info!("Command: uninstall_mods({} mods)", full_names.len());
+    let _operation = crate::lock_operation(&state)?;
+    crate::services::launcher::ensure_game_stopped()?;
+
+    let (game_path, active_profile) = {
+        let state = state
+            .lock()
+            .map_err(|e| AppError::Mod(format!("Failed to lock state: {}", e)))?;
+        let game_path = state
+            .game_path
+            .clone()
+            .ok_or_else(|| AppError::Mod("Game path not set".to_string()))?;
+        let active_profile = state.active_profile.clone();
+        (game_path, active_profile)
+    };
+
+    let game_root = game_detector::get_valheim_root(&game_path);
+    let mut changed = Vec::new();
+    let mut failed = Vec::new();
+    for full_name in full_names {
+        if profile_manager::validate_name(&full_name).is_err() {
+            failed.push(full_name);
+            continue;
+        }
+        match mod_installer::uninstall_mod(&full_name, &game_root) {
+            Ok(()) => changed.push(full_name),
+            Err(error) => {
+                info!("Bulk uninstall skipped {}: {}", full_name, error);
+                failed.push(full_name);
+            }
+        }
+    }
+
+    profile_manager::remove_mods_from_profile(&active_profile, &changed)?;
+    crate::services::compatibility::reconcile(
+        &profile_manager::load_profile(&active_profile)?,
+        &game_root,
+    )?;
+
+    Ok(BulkModResult { changed, failed })
+}
+
 /// Enable or disable a mod.
 #[tauri::command]
 pub async fn toggle_mod(

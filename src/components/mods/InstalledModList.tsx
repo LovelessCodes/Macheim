@@ -5,11 +5,14 @@ import {
   Clock,
   FileArchive,
   FolderOpen,
+  ListChecks,
   Package,
   Trash2,
   Power,
   PowerOff,
   RefreshCw,
+  Square,
+  SquareCheckBig,
   Loader2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -19,8 +22,8 @@ import { useEnqueueInstall } from "../../hooks/use-download-queue";
 import { useInstallFromFile } from "../../hooks/use-install-from-file";
 import { useInstalledMods } from "../../hooks/use-installed-mods";
 import { useModConflicts } from "../../hooks/use-mod-conflicts";
-import { useModToggle } from "../../hooks/use-mod-toggle";
-import { useModUninstall } from "../../hooks/use-mod-uninstall";
+import { useModToggle, useModsToggle } from "../../hooks/use-mod-toggle";
+import { useModUninstall, useUninstallMods } from "../../hooks/use-mod-uninstall";
 import { useUpdateMods } from "../../hooks/use-package-install";
 import { usePackages } from "../../hooks/use-packages";
 import { useSyncMods } from "../../hooks/use-sync-mods";
@@ -54,6 +57,8 @@ export default function InstalledModList() {
   const { pickFiles } = useInstallFromFile();
   const updateModsMutation = useUpdateMods();
   const toggleModMutation = useModToggle();
+  const bulkToggleMutation = useModsToggle();
+  const bulkUninstallMutation = useUninstallMods();
   const syncModsMutation = useSyncMods();
   const setSelectedPackage = useModStore((s) => s.setSelectedPackage);
   const queuedNames = useDownloadStore(
@@ -69,6 +74,8 @@ export default function InstalledModList() {
   const openDownloads = useDownloadStore((s) => s.setPanelOpen);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<ModFilter>("all");
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const togglingMod = toggleModMutation.isPending
     ? (toggleModMutation.variables?.fullName ?? null)
@@ -130,6 +137,41 @@ export default function InstalledModList() {
       if (!confirmed) return;
     }
     uninstall(mod.full_name, mod.name);
+  };
+
+  const selectedCount = selected.size;
+  const selectionPending = bulkToggleMutation.isPending || bulkUninstallMutation.isPending;
+
+  const exitSelection = () => {
+    setSelecting(false);
+    setSelected(new Set());
+  };
+
+  const toggleSelected = (fullName: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(fullName)) next.delete(fullName);
+      else next.add(fullName);
+      return next;
+    });
+  };
+
+  const handleBulkToggle = (enable: boolean) => {
+    if (selectedCount === 0) return;
+    bulkToggleMutation.mutate(
+      { fullNames: [...selected], enable },
+      { onSuccess: () => setSelected(new Set()) },
+    );
+  };
+
+  const handleBulkUninstall = async () => {
+    if (selectedCount === 0) return;
+    const confirmed = await confirm(
+      `Uninstall ${selectedCount} mod${selectedCount === 1 ? "" : "s"}? This removes their files.`,
+      { title: "Uninstall mods", kind: "warning" },
+    );
+    if (!confirmed) return;
+    bulkUninstallMutation.mutate([...selected], { onSuccess: () => setSelected(new Set()) });
   };
 
   const handleSync = async () => {
@@ -232,6 +274,15 @@ export default function InstalledModList() {
               Update All ({updatable.length})
             </Button>
           )}
+          <Button
+            variant={selecting ? "accent-primary" : "outline"}
+            size="sm"
+            onClick={() => (selecting ? exitSelection() : setSelecting(true))}
+            disabled={installedMods.length === 0}
+          >
+            <ListChecks />
+            {selecting ? "Done" : "Select"}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => void pickFiles()} disabled={syncing}>
             <FileArchive />
             Install from file
@@ -246,6 +297,62 @@ export default function InstalledModList() {
           </Button>
         </div>
       </div>
+
+      {selecting && (
+        <div className="bg-card mb-3 flex shrink-0 flex-wrap items-center gap-2 border px-3 py-2">
+          <span className="text-foreground text-sm font-medium tabular-nums">
+            {selectedCount} selected
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              setSelected((prev) => new Set([...prev, ...filtered.map((mod) => mod.full_name)]))
+            }
+            disabled={filtered.length === 0}
+          >
+            Select all
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelected(new Set())}
+            disabled={selectedCount === 0}
+          >
+            Clear
+          </Button>
+
+          <div className="flex-1" />
+
+          <Button
+            variant="outline-success"
+            size="sm"
+            onClick={() => handleBulkToggle(true)}
+            disabled={selectedCount === 0 || selectionPending}
+          >
+            <Power />
+            Enable
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleBulkToggle(false)}
+            disabled={selectedCount === 0 || selectionPending}
+          >
+            <PowerOff />
+            Disable
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => void handleBulkUninstall()}
+            disabled={selectedCount === 0 || selectionPending}
+          >
+            {bulkUninstallMutation.isPending ? <Loader2 className="animate-spin" /> : <Trash2 />}
+            Uninstall
+          </Button>
+        </div>
+      )}
 
       <ModConflictsPanel report={conflicts ?? null} />
 
@@ -265,14 +372,39 @@ export default function InstalledModList() {
             const update = directPkg && directPkg.version_number !== mod.version ? directPkg : null;
             const isQueued = queuedNames.includes(mod.full_name);
             const isUpdating = activeNames.includes(mod.full_name);
+            const isSelected = selected.has(mod.full_name);
             return (
               <div
-                onClick={() => openDetail(mod)}
+                onClick={() => (selecting ? toggleSelected(mod.full_name) : openDetail(mod))}
+                role={selecting ? "checkbox" : undefined}
+                aria-checked={selecting ? isSelected : undefined}
+                tabIndex={selecting ? 0 : undefined}
+                onKeyDown={(event) => {
+                  if (!selecting || (event.key !== "Enter" && event.key !== " ")) return;
+                  event.preventDefault();
+                  toggleSelected(mod.full_name);
+                }}
                 className={cn(
                   "flex cursor-pointer items-center gap-4 border bg-card p-3 transition-colors hover:bg-muted/40",
-                  !mod.enabled && "opacity-50",
+                  !mod.enabled && !isSelected && "opacity-50",
+                  isSelected && "border-accent-primary/40 bg-accent-primary/5",
                 )}
               >
+                {selecting && (
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "shrink-0",
+                      isSelected ? "text-accent-primary" : "text-muted-foreground",
+                    )}
+                  >
+                    {isSelected ? (
+                      <SquareCheckBig className="size-4" />
+                    ) : (
+                      <Square className="size-4" />
+                    )}
+                  </span>
+                )}
                 <ModIcon
                   src={pkg?.icon || mod.icon}
                   alt={mod.name}
@@ -302,7 +434,7 @@ export default function InstalledModList() {
                   </p>
                 </div>
 
-                {update && (
+                {!selecting && update && (
                   <Tooltip>
                     <TooltipTrigger
                       render={
@@ -346,42 +478,47 @@ export default function InstalledModList() {
                   </Tooltip>
                 )}
 
-                <Switch
-                  checked={mod.enabled}
-                  disabled={togglingMod === mod.full_name}
-                  onCheckedChange={() => handleToggle(mod.full_name, mod.enabled)}
-                  onClick={(e) => e.stopPropagation()}
-                  aria-label={`${mod.enabled ? "Disable" : "Enable"} ${mod.name}`}
-                  className="data-checked:bg-[var(--color-success)]"
-                />
+                {!selecting && (
+                  <Switch
+                    checked={mod.enabled}
+                    disabled={togglingMod === mod.full_name}
+                    onCheckedChange={() => handleToggle(mod.full_name, mod.enabled)}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`${mod.enabled ? "Disable" : "Enable"} ${mod.name}`}
+                    className="data-checked:bg-[var(--color-success)]"
+                  />
+                )}
 
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void handleUninstall(mod, e.shiftKey);
-                        }}
-                        disabled={uninstallingFullName === mod.full_name}
-                        aria-label={`Uninstall ${mod.name}`}
-                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                      />
-                    }
-                  >
-                    {uninstallingFullName === mod.full_name ? (
-                      <Loader2 className="animate-spin" />
-                    ) : (
-                      <Trash2 />
-                    )}
-                  </TooltipTrigger>
-                  <TooltipContent>Uninstall (hold Shift to skip confirmation)</TooltipContent>
-                </Tooltip>
+                {!selecting && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleUninstall(mod, e.shiftKey);
+                          }}
+                          disabled={uninstallingFullName === mod.full_name}
+                          aria-label={`Uninstall ${mod.name}`}
+                          className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        />
+                      }
+                    >
+                      {uninstallingFullName === mod.full_name ? (
+                        <Loader2 className="animate-spin" />
+                      ) : (
+                        <Trash2 />
+                      )}
+                    </TooltipTrigger>
+                    <TooltipContent>Uninstall (hold Shift to skip confirmation)</TooltipContent>
+                  </Tooltip>
+                )}
               </div>
             );
           }}
+          scrollButtonAlign="center"
           empty={
             installedMods.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">

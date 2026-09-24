@@ -16,6 +16,10 @@ stacking duplicates.
 
 ### Added
 
+- **Bulk mod actions** — The Installed Mods page has a Select mode: pick several mods, or Select
+  all within the current search and filter, and enable, disable or uninstall them together. A
+  batch runs as one backend command — files move once, the profile is written once — and a bulk
+  uninstall asks a single confirmation.
 - **Quieter notifications** — Repeatable actions upsert their toast: another launch, sync,
   save, profile change, update check or queue confirmation updates the existing toast in
   place and refreshes its timer instead of stacking a duplicate, with a short highlight
@@ -43,6 +47,8 @@ stacking duplicates.
   panel now — the panel also surfaces Sync & Clean progress, which is not a queue item — and a
   slim progress bar next to the header's Downloads button shows the active download at a
   glance. Dismissing the card is no longer a concept: the panel opens only when asked for.
+- The scroll-to-top button on Installed Mods sits at the bottom center, clear of the row
+  actions; the Browse and Modpacks grids keep it on the right.
 - Creating a profile that already exists now reports a clear message instead of a filesystem
   error.
 

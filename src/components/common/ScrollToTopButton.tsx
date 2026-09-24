@@ -1,3 +1,4 @@
+import { cn } from "cn";
 import { ArrowUp } from "lucide-react";
 import { useEffect, useState, type RefObject } from "react";
 
@@ -7,9 +8,14 @@ const SHOW_THRESHOLD = 400;
 
 interface ScrollToTopButtonProps {
   viewportRef: RefObject<HTMLElement | null>;
+  /** Horizontal placement. `center` keeps it clear of right-aligned row actions. */
+  align?: "right" | "center";
 }
 
-export default function ScrollToTopButton({ viewportRef }: ScrollToTopButtonProps) {
+export default function ScrollToTopButton({
+  viewportRef,
+  align = "right",
+}: ScrollToTopButtonProps) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -42,7 +48,10 @@ export default function ScrollToTopButton({ viewportRef }: ScrollToTopButtonProp
       aria-label="Scroll to top"
       title="Scroll to top"
       onClick={scrollToTop}
-      className="animate-in fade-in slide-in-from-bottom-2 absolute right-2 bottom-2 z-10 border shadow-lg duration-150"
+      className={cn(
+        "animate-in fade-in slide-in-from-bottom-2 absolute bottom-2 z-10 border shadow-lg duration-150",
+        align === "center" ? "left-1/2 -translate-x-1/2" : "right-2",
+      )}
     >
       <ArrowUp />
     </Button>
