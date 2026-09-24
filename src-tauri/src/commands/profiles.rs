@@ -168,6 +168,18 @@ pub async fn export_profile_file(
     Ok(())
 }
 
+/// Share a profile as a short-lived Thunderstore profile code. Codes expire
+/// after about an hour; file exports are the durable option.
+#[tauri::command]
+pub async fn export_profile_code(
+    name: String,
+    _state: tauri::State<'_, Mutex<AppState>>,
+) -> AppResult<String> {
+    info!("Command: export_profile_code({})", name);
+    let profile = profile_manager::load_profile(&name)?;
+    profile_transfer::create_profile_code(&profile, &profile_manager::get_profile_dir(&name)).await
+}
+
 /// Import a shared profile from an `.r2z` file or a Macheim profile JSON.
 #[tauri::command]
 pub async fn import_profile_file(

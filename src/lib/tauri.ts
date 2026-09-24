@@ -191,6 +191,10 @@ export async function exportProfileFile(name: string, path: string): Promise<voi
   return invoke("export_profile_file", { name, path });
 }
 
+export async function exportProfileCode(name: string): Promise<string> {
+  return invoke<string>("export_profile_code", { name });
+}
+
 export async function importProfileFile(path: string, newName?: string): Promise<Profile> {
   return invoke<Profile>("import_profile_file", { path, newName: newName ?? null });
 }

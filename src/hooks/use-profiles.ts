@@ -13,6 +13,7 @@ import {
   cloneProfile,
   createProfile,
   deleteProfile,
+  exportProfileCode,
   exportProfileFile,
   getActiveProfile,
   getGameStatus,
@@ -128,6 +129,23 @@ export function useExportProfile() {
     },
     onError: (err) => {
       toast.add({ type: "error", title: `Failed to export profile: ${err}` });
+    },
+  });
+}
+
+/**
+ * Share a profile as a short-lived Thunderstore code. The code is returned so
+ * the caller can show and copy it; no toast on success.
+ */
+export function useExportProfileCode() {
+  return useMutation({
+    mutationFn: exportProfileCode,
+    onError: (err) => {
+      toast.add({
+        type: "error",
+        title: `Could not create a profile code: ${err}`,
+        timeout: 8000,
+      });
     },
   });
 }

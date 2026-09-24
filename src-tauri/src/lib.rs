@@ -116,6 +116,7 @@ pub fn run() {
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init());
 
@@ -207,6 +208,7 @@ pub fn run() {
             commands::profiles::clone_profile,
             commands::profiles::export_profile,
             commands::profiles::export_profile_file,
+            commands::profiles::export_profile_code,
             commands::profiles::import_profile,
             commands::profiles::import_profile_file,
             commands::profiles::import_profile_code,

@@ -80,7 +80,7 @@ Upstream handles the core workflow. This build adds:
 
 ### Mod management
 
-- **Profile sharing and migration** — export any profile as an `.r2z` file that Macheim, r2modman, Gale and Thunderstore Mod Manager can all import, and import a shared profile from an `.r2z` file, a Thunderstore profile code, or by dropping the file onto the window. Imported profiles keep every mod pinned to the version they were exported with; after importing you can activate the profile and queue all its downloads in one step
+- **Profile sharing and migration** — export any profile as an `.r2z` file that Macheim, r2modman, Gale and Thunderstore Mod Manager can all import, or share it as a short-lived profile code; import a shared profile from an `.r2z` file, a Thunderstore profile code, or by dropping the file onto the window. Imported profiles keep every mod pinned to the version they were exported with; after importing you can activate the profile and queue all its downloads in one step
 - **Profile clone and export** — clone a profile (with its configs) as a starting point, or export one to share
 - **Conflict detection** — the Installed Mods page flags duplicate plugin files and dependency version clashes, refreshed after installs, syncs and toggles
 - **Developer console toggle** — decide whether "Play Modded" adds Valheim's `-console` flag, from Settings
@@ -164,7 +164,7 @@ Macheim is the only native option, so on macOS the short answer is Macheim. On W
 
 ### Can I import an r2modman or Thunderstore profile code?
 
-Yes. On the Profiles page, choose **Import** and paste a Thunderstore profile code, or pick an `.r2z` file exported by r2modman, Gale or Thunderstore Mod Manager — you can also drag the `.r2z` file straight onto the window. Codes expire after about an hour, so ask for a fresh one or use a file export. Macheim also imports its own `.r2z` and JSON exports. Every mod keeps the version it was exported with, and after importing you can activate the profile and queue its downloads in one step. Manual mods have no store listing, so they are not part of an export.
+Yes. On the Profiles page, choose **Import** and paste a Thunderstore profile code, or pick an `.r2z` file exported by r2modman, Gale or Thunderstore Mod Manager — you can also drag the `.r2z` file straight onto the window. Codes expire after about an hour, so ask for a fresh one or use a file export; Macheim creates codes too (the export menu on any profile has **Share as code**). Macheim also imports its own `.r2z` and JSON exports. Every mod keeps the version it was exported with, and after importing you can activate the profile and queue its downloads in one step. Manual mods have no store listing, so they are not part of an export.
 
 ### Where does Macheim keep its files?
 

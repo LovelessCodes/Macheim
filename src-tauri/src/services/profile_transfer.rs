@@ -27,6 +27,15 @@ const PROFILE_CODE_HOSTS: [&str; 2] = [
     "https://thunderstore.io/api/experimental/legacyprofile/get",
     "https://hexium.gg/api/experimental/legacyprofile/get",
 ];
+/// Anonymous upload endpoint for profile codes. Codes are content-addressed and
+/// expire after roughly an hour.
+const PROFILE_CODE_CREATE_URL: &str =
+    "https://thunderstore.io/api/experimental/legacyprofile/create/";
+
+#[derive(Debug, Deserialize)]
+struct ProfileCodeResponse {
+    key: String,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -157,6 +166,70 @@ pub async fn fetch_profile_code(code: &str) -> AppResult<Vec<u8>> {
 
 fn is_valid_profile_code(code: &str) -> bool {
     (8..=64).contains(&code.len()) && code.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+}
+
+/// Upload a profile and return a short-lived sharing code. The payload is the
+/// same archive a file export writes, so any Thunderstore manager can import
+/// the code.
+pub async fn create_profile_code(profile: &Profile, profile_dir: &Path) -> AppResult<String> {
+    let zip = build_share_payload(profile, profile_dir)?;
+    if zip.len() > MAX_SHARE_BYTES {
+        return Err(AppError::Profile(
+            "This profile is larger than 20 MB, so it cannot be shared as a code. Export it as a file instead."
+                .into(),
+        ));
+    }
+
+    let client = reqwest::Client::builder()
+        .user_agent("Macheim/1.0.1")
+        .connect_timeout(std::time::Duration::from_secs(15))
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .map_err(|e| AppError::Network(format!("Failed to create HTTP client: {}", e)))?;
+
+    let response = client
+        .post(PROFILE_CODE_CREATE_URL)
+        .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
+        .body(profile_code_payload(&zip))
+        .send()
+        .await
+        .map_err(|e| {
+            AppError::NetworkTransient(format!("Could not reach the profile service: {}", e))
+        })?;
+
+    match response.status() {
+        status if status.is_success() => {
+            let body: ProfileCodeResponse = response.json().await.map_err(|e| {
+                AppError::Network(format!(
+                    "The profile service returned an unexpected response: {}",
+                    e
+                ))
+            })?;
+            if !is_valid_profile_code(&body.key) {
+                return Err(AppError::Network(
+                    "The profile service returned an unexpected code.".into(),
+                ));
+            }
+            Ok(body.key)
+        }
+        reqwest::StatusCode::PAYLOAD_TOO_LARGE => Err(AppError::Profile(
+            "The profile is too large for the profile service. Export it as a file instead.".into(),
+        )),
+        reqwest::StatusCode::TOO_MANY_REQUESTS => Err(AppError::Profile(
+            "Thunderstore is rate-limiting profile codes right now. Try again shortly, or export the profile as a file."
+                .into(),
+        )),
+        status => Err(AppError::Network(format!(
+            "Sharing the profile failed (status {}).",
+            status
+        ))),
+    }
+}
+
+/// The text a profile code resolves to: the `#r2modman` marker plus the base64
+/// archive.
+fn profile_code_payload(zip: &[u8]) -> String {
+    format!("{}\n{}", SHARE_PREFIX, BASE64.encode(zip))
 }
 
 /// Parse a `.r2z` archive or the text a profile code resolves to.
@@ -515,6 +588,21 @@ mod tests {
         let parsed = parse_share_payload(encoded.as_bytes()).unwrap();
 
         assert_eq!(parsed.mods.len(), 1);
+    }
+
+    #[test]
+    fn profile_code_payload_round_trips_through_the_parser() {
+        let yaml =
+            manifest_yaml("  - name: Author-Mod\n    version: \"1.0.0\"\n    enabled: true\n");
+        let zip = zip_with(&[("export.r2x", yaml.as_bytes())]);
+
+        let payload = profile_code_payload(&zip);
+        let parsed = parse_share_payload(payload.as_bytes()).unwrap();
+
+        assert!(payload.starts_with(SHARE_PREFIX));
+        assert_eq!(parsed.name, "Shared");
+        assert_eq!(parsed.mods.len(), 1);
+        assert_eq!(parsed.mods[0].full_name, "Author-Mod");
     }
 
     #[test]

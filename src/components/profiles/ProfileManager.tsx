@@ -1,3 +1,4 @@
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { confirm, open } from "@tauri-apps/plugin-dialog";
 import { cn } from "cn";
 import {
@@ -13,6 +14,7 @@ import {
   Download,
   Upload,
   FolderOpen,
+  Link2,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -21,6 +23,7 @@ import {
   useCreateProfile,
   useDeleteProfile,
   useExportProfile,
+  useExportProfileCode,
   useImportSharedProfile,
   useProfiles,
   useSwitchProfile,
@@ -29,6 +32,12 @@ import { formatDate } from "../../lib/format";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent } from "../ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import { Input } from "../ui/input";
 import { toast } from "../ui/toast";
 
@@ -39,6 +48,7 @@ export default function ProfileManager() {
   const deleteProfileMutation = useDeleteProfile();
   const cloneProfileMutation = useCloneProfile();
   const exportProfileMutation = useExportProfile();
+  const exportCodeMutation = useExportProfileCode();
   const { importShared, isImporting: isImportPending } = useImportSharedProfile();
   const profiles = data?.profiles ?? [];
   const activeProfile = data?.activeProfile ?? "Default";
@@ -50,9 +60,35 @@ export default function ProfileManager() {
   const [isImporting, setIsImporting] = useState(false);
   const [importCode, setImportCode] = useState("");
   const [importName, setImportName] = useState("");
+  const [sharedCode, setSharedCode] = useState<{ name: string; code: string } | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
   const deletingProfile = deleteProfileMutation.isPending
     ? (deleteProfileMutation.variables ?? null)
     : null;
+
+  const isExporting = (name: string) =>
+    (exportProfileMutation.isPending && exportProfileMutation.variables === name) ||
+    (exportCodeMutation.isPending && exportCodeMutation.variables === name);
+
+  const handleShareCode = (name: string) => {
+    setCodeCopied(false);
+    exportCodeMutation.mutate(name, {
+      onSuccess: (code) => setSharedCode({ name, code }),
+    });
+  };
+
+  const handleCopyCode = async () => {
+    if (!sharedCode) return;
+    try {
+      await writeText(sharedCode.code);
+      setCodeCopied(true);
+    } catch (err) {
+      toast.add({
+        type: "error",
+        title: `Could not copy the code: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+  };
 
   const handleCreate = () => {
     const name = newName.trim();
@@ -300,6 +336,43 @@ export default function ProfileManager() {
         </Card>
       )}
 
+      {/* Profile code */}
+      {sharedCode && (
+        <Card className="ring-accent-primary/30 py-3">
+          <CardContent className="grid gap-2">
+            <p className="text-muted-foreground text-sm">
+              Profile code for "{sharedCode.name}" — paste it into Macheim, r2modman, Gale or
+              Thunderstore Mod Manager. It expires after about an hour; use a file export to share
+              for longer.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                readOnly
+                value={sharedCode.code}
+                onFocus={(e) => e.currentTarget.select()}
+                aria-label="Profile code"
+                className="min-w-60 flex-1 font-mono"
+              />
+              <Button variant="accent-primary" onClick={handleCopyCode}>
+                {codeCopied ? <Check /> : <Copy />}
+                {codeCopied ? "Copied" : "Copy"}
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => {
+                  setSharedCode(null);
+                  setCodeCopied(false);
+                }}
+                aria-label="Dismiss profile code"
+              >
+                <X />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Profile list */}
       {profiles.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -369,22 +442,36 @@ export default function ProfileManager() {
                   <Copy />
                 </Button>
 
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => exportProfileMutation.mutate(profile.name)}
-                  disabled={exportProfileMutation.isPending}
-                  title="Export profile (.r2z)"
-                  aria-label={`Export profile ${profile.name}`}
-                  className="text-muted-foreground"
-                >
-                  {exportProfileMutation.isPending &&
-                  exportProfileMutation.variables === profile.name ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Download />
-                  )}
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        disabled={exportProfileMutation.isPending || exportCodeMutation.isPending}
+                        title="Export profile"
+                        aria-label={`Export profile ${profile.name}`}
+                        className="text-muted-foreground"
+                      />
+                    }
+                  >
+                    {isExporting(profile.name) ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Download />
+                    )}
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => exportProfileMutation.mutate(profile.name)}>
+                      <FolderOpen />
+                      Export as file…
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleShareCode(profile.name)}>
+                      <Link2 />
+                      Share as code
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
                 {!isActive && (
                   <Button variant="outline" size="sm" onClick={() => handleSwitch(profile.name)}>

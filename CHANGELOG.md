@@ -18,6 +18,9 @@ locally.
 - **Profile sharing** — Export any profile as an `.r2z` file that Macheim, r2modman, Gale
   and Thunderstore Mod Manager can import. Config files travel with it, and every mod keeps
   the version it was exported with.
+- **Share a profile as a code** — Any profile can be uploaded as a short-lived Thunderstore
+  code (about an hour), shown with a copy button. Codes are the quick way to hand a mod list
+  to someone; file exports remain for durable sharing, and overly large profiles suggest one.
 - **Drop a profile onto the window** — Dragging an `.r2z` file onto Macheim imports it the
   same way the Profiles page does, including the prompt to activate the profile and queue its
   downloads. The drop overlay now says whether a `.zip` will install or a `.r2z` will import.
