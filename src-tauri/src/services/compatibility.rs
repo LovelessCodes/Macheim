@@ -313,7 +313,7 @@ pub fn validate_settings(settings: &CompatibilitySettings) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::InstalledMod;
+    use crate::models::{InstalledAs, InstalledMod};
 
     fn fixture() -> (tempfile::TempDir, Profile) {
         let root = tempfile::tempdir().unwrap();
@@ -336,6 +336,8 @@ mod tests {
                 installed_at: "".into(),
                 icon: "".into(),
                 manual: false,
+                pinned: false,
+                installed_as: InstalledAs::Explicit,
             });
         }
         std::fs::create_dir_all(root.path().join("BepInEx/core")).unwrap();

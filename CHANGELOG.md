@@ -9,8 +9,8 @@ Upstream releases before this fork are listed on
 
 ## [Unreleased]
 
-The log viewer: read the latest Valheim log in the app instead of hunting for it in Finder,
-with level filters, search and a follow mode that tails the log while the game runs.
+The log viewer and per-mod version pinning: read the log in-app, and hold a mod at a
+known-good version.
 
 ### Added
 
@@ -25,6 +25,24 @@ with level filters, search and a follow mode that tails the log while the game r
   Resume control re-engages; polling pauses while the window is hidden and stops when the page
   is left. A recreated or rotated log — a new launch, or the fallback switching to the BepInEx
   log — resets the view instead of mixing contents.
+- **Version pinning** — pin any store-managed mod from the Installed Mods list to hold it at
+  the version currently installed. Pinned mods are excluded from Update All and their count,
+  badged in the list, and their per-mod update control explains the pin instead of updating.
+  The pin lives in the profile, so it survives restarts and profile switches, and switching
+  versions through Version History while pinned moves the hold. Conflict detection now says
+  when a dependency mismatch is caused by a pin — still a warning, never a blocked launch.
+  Manual mods have no pin control; they already never auto-update.
+- **Dependency-aware uninstall warnings** — uninstalling a mod names the installed mods that
+  depend on it, with disabled dependents labelled (removing the dependency breaks them when
+  re-enabled). A bulk uninstall names any selected mod that an unselected mod requires, and
+  mods inside the selection are never listed as each other's dependents. Warnings only — the
+  confirmation still proceeds exactly as before.
+- **Unused dependency cleanup** — installs now record whether a mod was requested by the user
+  or pulled in as a dependency; records from older profiles count as requested, so nothing is
+  swept retroactively. Installed Mods gains "Remove unused", which lists dependency-installed
+  mods that nothing depends on any more — including the transitive closure — and removes them
+  through the normal bulk uninstall after one confirmation. Pinned, manually installed and
+  explicitly installed mods are never listed, and disabled mods still count as dependents.
 
 ## [1.3.2] - 2026-09-24
 

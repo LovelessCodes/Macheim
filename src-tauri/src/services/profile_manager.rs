@@ -3,7 +3,7 @@ use super::{
     plugin_version, thunderstore_client,
 };
 use crate::error::{AppError, AppResult};
-use crate::models::{InstalledMod, Profile};
+use crate::models::{InstalledAs, InstalledMod, Profile};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use tracing::warn;
@@ -520,6 +520,8 @@ fn register_manual_mods(profile: &mut Profile, bepinex: &Path) -> AppResult<Vec<
                 installed_at: chrono::Utc::now().to_rfc3339(),
                 icon: String::new(),
                 manual: true,
+                pinned: false,
+                installed_as: InstalledAs::Explicit,
             });
             tracked.insert(name.clone());
             added.push(name);
@@ -595,6 +597,25 @@ pub fn update_mod_enabled(name: &str, full_name: &str, enabled: bool) -> AppResu
     }
     p.touch();
     save_profile(&p)
+}
+
+/// Hold a mod at its installed version, or release it.
+pub fn set_mod_pinned(name: &str, full_name: &str, pinned: bool) -> AppResult<()> {
+    let mut p = load_profile(name)?;
+    set_pinned_in_profile(&mut p, full_name, pinned);
+    p.touch();
+    save_profile(&p)
+}
+
+/// Returns true when the mod was found and its pin updated.
+fn set_pinned_in_profile(profile: &mut Profile, full_name: &str, pinned: bool) -> bool {
+    match profile.mods.iter_mut().find(|m| m.full_name == full_name) {
+        Some(module) => {
+            module.pinned = pinned;
+            true
+        }
+        None => false,
+    }
 }
 pub fn export_profile(name: &str) -> AppResult<String> {
     Ok(serde_json::to_string_pretty(&load_profile(name)?)?)
@@ -709,6 +730,8 @@ mod tests {
             installed_at: "2026-01-01T00:00:00Z".into(),
             icon: String::new(),
             manual: false,
+            pinned: false,
+            installed_as: InstalledAs::Explicit,
         }
     }
 
@@ -718,6 +741,33 @@ mod tests {
         m.version = "0.0.0".into();
         m.manual = true;
         m
+    }
+
+    #[test]
+    fn pin_flag_updates_and_older_profiles_default_to_unpinned() {
+        let mut p = Profile::new("Test".into(), "".into());
+        p.mods.push(installed_mod("Author-Mod", ""));
+
+        assert!(set_pinned_in_profile(&mut p, "Author-Mod", true));
+        assert!(p.mods[0].pinned);
+        assert!(set_pinned_in_profile(&mut p, "Author-Mod", false));
+        assert!(!p.mods[0].pinned);
+        assert!(!set_pinned_in_profile(&mut p, "Missing-Mod", true));
+
+        // A profile written before pinning existed deserializes as unpinned.
+        let mut value = serde_json::to_value(&p).unwrap();
+        value["mods"][0].as_object_mut().unwrap().remove("pinned");
+        let old: Profile = serde_json::from_value(value).unwrap();
+        assert!(!old.mods[0].pinned);
+
+        // The same applies to install reasons: older records are explicit.
+        let mut value = serde_json::to_value(&p).unwrap();
+        value["mods"][0]
+            .as_object_mut()
+            .unwrap()
+            .remove("installed_as");
+        let old: Profile = serde_json::from_value(value).unwrap();
+        assert_eq!(old.mods[0].installed_as, InstalledAs::Explicit);
     }
 
     #[test]

@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use tracing::{info, warn};
 
 use crate::error::{AppError, AppResult};
-use crate::models::{InstalledMod, ThunderstorePackage};
+use crate::models::{InstalledAs, InstalledMod, ThunderstorePackage};
 use crate::services::download_queue::{InstallControl, LocalArchiveMeta};
 use crate::services::{
     dependency_resolver, game_detector, launcher, mod_installer, package_sources, profile_manager,
@@ -322,6 +322,7 @@ pub async fn install_package(
                 &dep.description,
                 &dep.icon,
                 &dep_dependencies,
+                InstalledAs::Dependency,
                 &dep_zip,
                 &game_root,
             )?;
@@ -391,6 +392,7 @@ pub async fn install_package(
                 &target.description,
                 &target.icon,
                 &target.dependencies,
+                InstalledAs::Explicit,
                 &target_zip,
                 &game_root,
             )?;

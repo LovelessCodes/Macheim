@@ -7,6 +7,9 @@ import {
   FolderOpen,
   ListChecks,
   Package,
+  PackageMinus,
+  Pin,
+  PinOff,
   Trash2,
   Power,
   PowerOff,
@@ -22,15 +25,23 @@ import { useEnqueueInstall } from "../../hooks/use-download-queue";
 import { useInstallFromFile } from "../../hooks/use-install-from-file";
 import { useInstalledMods } from "../../hooks/use-installed-mods";
 import { useModConflicts } from "../../hooks/use-mod-conflicts";
+import { useModPin } from "../../hooks/use-mod-pin";
 import { useModToggle, useModsToggle } from "../../hooks/use-mod-toggle";
 import { useModUninstall, useUninstallMods } from "../../hooks/use-mod-uninstall";
 import { useUpdateMods } from "../../hooks/use-package-install";
 import { usePackages } from "../../hooks/use-packages";
 import { useSyncMods } from "../../hooks/use-sync-mods";
+import {
+  bulkUninstallWarning,
+  formatRemovalNames,
+  orphanedDependencies,
+  singleUninstallWarning,
+} from "../../lib/dependents";
 import { groupPackagesByName, matchManualMod } from "../../lib/packages";
 import { listUnmanagedMods, openPluginsFolder } from "../../lib/tauri";
 import type { InstalledMod } from "../../lib/types";
 import { isDownloadActive, isDownloadPending } from "../../lib/types";
+import { updatableMods } from "../../lib/updates";
 import { useDownloadStore } from "../../store/downloadStore";
 import { useModStore } from "../../store/modStore";
 import { ListSkeleton } from "../common/LoadingSkeleton";
@@ -59,6 +70,7 @@ export default function InstalledModList() {
   const toggleModMutation = useModToggle();
   const bulkToggleMutation = useModsToggle();
   const bulkUninstallMutation = useUninstallMods();
+  const pinModMutation = useModPin();
   const syncModsMutation = useSyncMods();
   const setSelectedPackage = useModStore((s) => s.setSelectedPackage);
   const queuedNames = useDownloadStore(
@@ -80,6 +92,7 @@ export default function InstalledModList() {
   const togglingMod = toggleModMutation.isPending
     ? (toggleModMutation.variables?.fullName ?? null)
     : null;
+  const pinningMod = pinModMutation.isPending ? (pinModMutation.variables?.fullName ?? null) : null;
   const syncing = syncModsMutation.isPending;
   const updatingAll = updateModsMutation.isPending;
 
@@ -97,19 +110,29 @@ export default function InstalledModList() {
 
   const isManual = (mod: InstalledMod) => mod.manual === true;
 
+  // Pinned and manual mods never take part in Update All; the per-row control
+  // explains the pin instead.
   const updatable = useMemo(
-    () =>
-      installedMods.flatMap((mod) => {
-        const pkg = packageByFullName.get(mod.full_name);
-        return pkg && pkg.version_number !== mod.version
-          ? [{ fullName: mod.full_name, name: mod.name, version: pkg.version_number }]
-          : [];
-      }),
-    [installedMods, packageByFullName],
+    () => updatableMods(installedMods, packages),
+    [installedMods, packages],
   );
 
   const handleUpdateAll = () => {
     updateModsMutation.mutate(updatable);
+  };
+
+  // Dependency-installed mods nothing depends on any more, closure included.
+  const orphans = useMemo(() => orphanedDependencies(installedMods), [installedMods]);
+
+  const handleRemoveOrphans = async () => {
+    if (orphans.length === 0) return;
+    const confirmed = await confirm(
+      `Remove ${orphans.length} unused dependenc${orphans.length === 1 ? "y" : "ies"}? ` +
+        `Nothing depends on them any more.\n\n${formatRemovalNames(orphans)}`,
+      { title: "Remove unused dependencies", kind: "warning" },
+    );
+    if (!confirmed) return;
+    bulkUninstallMutation.mutate(orphans.map((mod) => mod.full_name));
   };
 
   const openDetail = (mod: InstalledMod) => {
@@ -130,10 +153,14 @@ export default function InstalledModList() {
 
   const handleUninstall = async (mod: InstalledMod, skipConfirm: boolean) => {
     if (!skipConfirm) {
-      const confirmed = await confirm(`Uninstall "${mod.name}"? This removes its files.`, {
-        title: "Uninstall mod",
-        kind: "warning",
-      });
+      const warning = singleUninstallWarning(installedMods, mod.full_name);
+      const confirmed = await confirm(
+        `Uninstall "${mod.name}"? This removes its files.${warning ? `\n\n${warning}` : ""}`,
+        {
+          title: "Uninstall mod",
+          kind: "warning",
+        },
+      );
       if (!confirmed) return;
     }
     uninstall(mod.full_name, mod.name);
@@ -166,8 +193,11 @@ export default function InstalledModList() {
 
   const handleBulkUninstall = async () => {
     if (selectedCount === 0) return;
+    const warning = bulkUninstallWarning(installedMods, [...selected]);
     const confirmed = await confirm(
-      `Uninstall ${selectedCount} mod${selectedCount === 1 ? "" : "s"}? This removes their files.`,
+      `Uninstall ${selectedCount} mod${selectedCount === 1 ? "" : "s"}? This removes their files.${
+        warning ? `\n\n${warning}` : ""
+      }`,
       { title: "Uninstall mods", kind: "warning" },
     );
     if (!confirmed) return;
@@ -274,6 +304,20 @@ export default function InstalledModList() {
               Update All ({updatable.length})
             </Button>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleRemoveOrphans()}
+            disabled={orphans.length === 0 || selectionPending || updatingAll}
+            title={
+              orphans.length === 0
+                ? "Nothing to remove — no unused dependencies"
+                : `Remove ${orphans.length} dependenc${orphans.length === 1 ? "y" : "ies"} nothing depends on`
+            }
+          >
+            <PackageMinus />
+            Remove unused ({orphans.length})
+          </Button>
           <Button
             variant={selecting ? "accent-primary" : "outline"}
             size="sm"
@@ -423,6 +467,11 @@ export default function InstalledModList() {
                         v{mod.version}
                       </Badge>
                     )}
+                    {mod.pinned && (
+                      <Badge variant="secondary" className="shrink-0">
+                        Pinned
+                      </Badge>
+                    )}
                     {!mod.enabled && (
                       <Badge variant="secondary" className="shrink-0">
                         Disabled
@@ -434,7 +483,7 @@ export default function InstalledModList() {
                   </p>
                 </div>
 
-                {!selecting && update && (
+                {!selecting && update && !mod.pinned && (
                   <Tooltip>
                     <TooltipTrigger
                       render={
@@ -474,6 +523,63 @@ export default function InstalledModList() {
                       {isQueued
                         ? "Update queued — open downloads"
                         : `Update to v${update.version_number}`}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
+                {!selecting && update && mod.pinned && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant="outline-accent-primary"
+                          size="icon-sm"
+                          disabled
+                          aria-label={`${mod.name} is pinned at v${mod.version}`}
+                        />
+                      }
+                    >
+                      <ArrowUpCircle />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Pinned at v{mod.version} — unpin to update to v{update.version_number}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
+                {!selecting && !isManual(mod) && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          disabled={pinningMod === mod.full_name}
+                          aria-label={
+                            mod.pinned ? `Unpin ${mod.name}` : `Pin ${mod.name} at v${mod.version}`
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            pinModMutation.mutate({
+                              fullName: mod.full_name,
+                              pinned: !mod.pinned,
+                            });
+                          }}
+                        />
+                      }
+                    >
+                      {pinningMod === mod.full_name ? (
+                        <Loader2 className="animate-spin" />
+                      ) : mod.pinned ? (
+                        <PinOff />
+                      ) : (
+                        <Pin />
+                      )}
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {mod.pinned
+                        ? "Pinned — updates are skipped. Click to unpin."
+                        : `Hold at v${mod.version} and skip updates`}
                     </TooltipContent>
                   </Tooltip>
                 )}

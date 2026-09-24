@@ -499,6 +499,7 @@ fn normalize(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::InstalledAs;
 
     fn installed(name: &str, full_name: &str) -> InstalledMod {
         InstalledMod {
@@ -512,6 +513,8 @@ mod tests {
             installed_at: String::new(),
             icon: String::new(),
             manual: false,
+            pinned: false,
+            installed_as: InstalledAs::Explicit,
         }
     }
 

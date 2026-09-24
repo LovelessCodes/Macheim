@@ -6,7 +6,7 @@ use tracing::{debug, info, warn};
 
 use crate::error::{AppError, AppResult};
 use crate::models::{
-    InstalledMod, Manifest, PackageVersion, ParsedDependency, ThunderstorePackage,
+    InstalledAs, InstalledMod, Manifest, PackageVersion, ParsedDependency, ThunderstorePackage,
 };
 use crate::services::gatekeeper;
 use crate::services::thunderstore_client;
@@ -266,6 +266,7 @@ pub async fn install_mod(
     description: &str,
     icon: &str,
     dependencies: &[String],
+    installed_as: InstalledAs,
     game_root: &Path,
 ) -> AppResult<InstalledMod> {
     let full_name = format!("{}-{}", author, name);
@@ -282,6 +283,7 @@ pub async fn install_mod(
         description,
         icon,
         dependencies,
+        installed_as,
         &zip_bytes,
         game_root,
     )
@@ -295,6 +297,7 @@ pub fn install_mod_from_bytes(
     description: &str,
     icon: &str,
     dependencies: &[String],
+    installed_as: InstalledAs,
     zip_bytes: &[u8],
     game_root: &Path,
 ) -> AppResult<InstalledMod> {
@@ -327,6 +330,8 @@ pub fn install_mod_from_bytes(
         installed_at: chrono::Utc::now().to_rfc3339(),
         icon: icon.to_string(),
         manual: false,
+        pinned: false,
+        installed_as,
     };
 
     info!(
@@ -721,6 +726,40 @@ mod tests {
             source: PackageSource::Thunderstore,
             alternates: Vec::new(),
         }
+    }
+
+    #[test]
+    fn installed_records_carry_the_reason_they_were_installed() {
+        let game = tempfile::tempdir().unwrap();
+        let bytes = zip_bytes(&[("plugins/CoolMod.dll", "binary")]);
+
+        let dependency = install_mod_from_bytes(
+            "Someone",
+            "CoolMod",
+            "1.2.3",
+            "desc",
+            "",
+            &[],
+            InstalledAs::Dependency,
+            &bytes,
+            game.path(),
+        )
+        .unwrap();
+        assert_eq!(dependency.installed_as, InstalledAs::Dependency);
+
+        let explicit = install_mod_from_bytes(
+            "Someone",
+            "OtherMod",
+            "1.0.0",
+            "desc",
+            "",
+            &[],
+            InstalledAs::Explicit,
+            &bytes,
+            game.path(),
+        )
+        .unwrap();
+        assert_eq!(explicit.installed_as, InstalledAs::Explicit);
     }
 
     #[test]

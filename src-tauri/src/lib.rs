@@ -172,6 +172,7 @@ pub fn run() {
             commands::mods::uninstall_mods,
             commands::mods::set_mods_enabled,
             commands::mods::toggle_mod,
+            commands::mods::set_mod_pinned,
             commands::mods::get_installed_mods,
             commands::mods::sync_mods,
             commands::mods::list_unmanaged_mods,
