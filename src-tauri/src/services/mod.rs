@@ -18,6 +18,7 @@ pub mod package_cache;
 pub mod package_sources;
 pub mod plugin_version;
 pub mod profile_manager;
+pub mod profile_transfer;
 pub mod safe_mode;
 pub mod save_manager;
 pub mod thunderstore_client;

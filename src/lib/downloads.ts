@@ -5,6 +5,11 @@ export function isZipPath(path: string): boolean {
   return path.toLowerCase().endsWith(".zip");
 }
 
+/** True when a dragged or picked path is a shared profile export. */
+export function isProfilePath(path: string): boolean {
+  return path.toLowerCase().endsWith(".r2z");
+}
+
 /** Last path segment, for labels. */
 export function fileName(path: string): string {
   return path.split(/[/\\]/).pop() || path;

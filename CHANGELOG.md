@@ -7,6 +7,44 @@ All notable changes to this fork are documented in this file. The format follows
 Upstream releases before this fork are listed on
 [lofcgi/macheim](https://github.com/lofcgi/macheim/releases).
 
+## [Unreleased]
+
+Profiles can now travel: export one as a file the whole Thunderstore family of managers
+understands, import someone else's mod list by file or profile code, and clone a profile
+locally.
+
+### Added
+
+- **Profile sharing** — Export any profile as an `.r2z` file that Macheim, r2modman, Gale
+  and Thunderstore Mod Manager can import. Config files travel with it, and every mod keeps
+  the version it was exported with.
+- **Share a profile as a code** — Any profile can be uploaded as a short-lived Thunderstore
+  code (about an hour), shown with a copy button. Codes are the quick way to hand a mod list
+  to someone; file exports remain for durable sharing, and overly large profiles suggest one.
+- **Drop a profile onto the window** — Dragging an `.r2z` file onto Macheim imports it the
+  same way the Profiles page does, including the prompt to activate the profile and queue its
+  downloads. The drop overlay now says whether a `.zip` will install or a `.r2z` will import.
+- **Profile import** — On the Profiles page, import a shared profile from an `.r2z` file, a
+  Macheim JSON export, or a Thunderstore profile code. Store metadata (author, icon,
+  description, dependencies) is matched back to each mod where possible, and after importing
+  you can activate the profile and queue all its downloads in one step. Manual mods have no
+  store listing and are skipped.
+- **Profile clone** — Duplicate a profile, including its configs, as a starting point for a
+  new setup.
+
+### Changed
+
+- Creating a profile that already exists now reports a clear message instead of a filesystem
+  error.
+
+### Fixed
+
+- Activating an imported profile now downloads its mods without a manual Sync & Clean: the
+  install pipeline judged "already installed" from the profile's mod list alone, so entries
+  that existed only as metadata (as in a freshly imported profile) made every queued install a
+  no-op. Installs now also require the mod's files to exist on disk, and dependencies follow
+  the same rule.
+
 ## [1.3.1] - 2026-09-20
 
 Follow-up to the 1.3.0 reliability work: hand-installed mods are recognised and matched to

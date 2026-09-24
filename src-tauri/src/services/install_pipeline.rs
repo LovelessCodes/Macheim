@@ -208,9 +208,16 @@ pub async fn install_package(
     };
     let full_name = target.full_name.clone();
 
-    // Get currently installed mods to skip existing deps
+    // Get currently installed mods to skip existing deps. Presence is judged by
+    // files on disk, not profile metadata: an imported profile lists its mods
+    // before anything has been downloaded.
     let profile = profile_manager::load_profile(&active_profile)?;
-    let installed_set: HashSet<String> = profile.mods.iter().map(|m| m.full_name.clone()).collect();
+    let installed_set: HashSet<String> = profile
+        .mods
+        .iter()
+        .filter(|m| mod_installer::mod_files_present(&m.full_name, &game_root))
+        .map(|m| m.full_name.clone())
+        .collect();
 
     // Resolve dependencies
     report(
@@ -335,11 +342,13 @@ pub async fn install_package(
     }
 
     // Install the target mod itself. Reinstall when a different version is
-    // requested so users can switch between versions.
+    // requested so users can switch between versions, and when the profile
+    // lists the mod but its files are missing (an imported profile).
     let installed_version = profile
         .mods
         .iter()
         .find(|m| m.full_name == full_name)
+        .filter(|_| mod_installer::mod_files_present(&full_name, &game_root))
         .map(|m| m.version.as_str());
     let version_changed = installed_version != Some(target.version.as_str());
 

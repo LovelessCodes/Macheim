@@ -1,11 +1,30 @@
-import { confirm } from "@tauri-apps/plugin-dialog";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { confirm, open } from "@tauri-apps/plugin-dialog";
 import { cn } from "cn";
-import { Plus, Trash2, User, Check, X, Clock, Package, Loader2 } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  User,
+  Check,
+  X,
+  Clock,
+  Package,
+  Loader2,
+  Copy,
+  Download,
+  Upload,
+  FolderOpen,
+  Link2,
+} from "lucide-react";
 import { useState } from "react";
 
 import {
+  useCloneProfile,
   useCreateProfile,
   useDeleteProfile,
+  useExportProfile,
+  useExportProfileCode,
+  useImportSharedProfile,
   useProfiles,
   useSwitchProfile,
 } from "../../hooks/use-profiles";
@@ -13,6 +32,12 @@ import { formatDate } from "../../lib/format";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent } from "../ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import { Input } from "../ui/input";
 import { toast } from "../ui/toast";
 
@@ -21,14 +46,49 @@ export default function ProfileManager() {
   const createProfileMutation = useCreateProfile();
   const switchProfileMutation = useSwitchProfile();
   const deleteProfileMutation = useDeleteProfile();
+  const cloneProfileMutation = useCloneProfile();
+  const exportProfileMutation = useExportProfile();
+  const exportCodeMutation = useExportProfileCode();
+  const { importShared, isImporting: isImportPending } = useImportSharedProfile();
   const profiles = data?.profiles ?? [];
   const activeProfile = data?.activeProfile ?? "Default";
 
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState("");
+  const [cloningFrom, setCloningFrom] = useState<string | null>(null);
+  const [cloneName, setCloneName] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  const [importCode, setImportCode] = useState("");
+  const [importName, setImportName] = useState("");
+  const [sharedCode, setSharedCode] = useState<{ name: string; code: string } | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
   const deletingProfile = deleteProfileMutation.isPending
     ? (deleteProfileMutation.variables ?? null)
     : null;
+
+  const isExporting = (name: string) =>
+    (exportProfileMutation.isPending && exportProfileMutation.variables === name) ||
+    (exportCodeMutation.isPending && exportCodeMutation.variables === name);
+
+  const handleShareCode = (name: string) => {
+    setCodeCopied(false);
+    exportCodeMutation.mutate(name, {
+      onSuccess: (code) => setSharedCode({ name, code }),
+    });
+  };
+
+  const handleCopyCode = async () => {
+    if (!sharedCode) return;
+    try {
+      await writeText(sharedCode.code);
+      setCodeCopied(true);
+    } catch (err) {
+      toast.add({
+        type: "error",
+        title: `Could not copy the code: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+  };
 
   const handleCreate = () => {
     const name = newName.trim();
@@ -71,6 +131,64 @@ export default function ProfileManager() {
     setNewName("");
   };
 
+  const startClone = (name: string) => {
+    setCloningFrom(name);
+    setCloneName(`${name} copy`);
+  };
+
+  const cancelClone = () => {
+    setCloningFrom(null);
+    setCloneName("");
+  };
+
+  const handleClone = () => {
+    const name = cloneName.trim();
+    if (!cloningFrom || !name) return;
+
+    cloneProfileMutation.mutate(
+      { sourceName: cloningFrom, newName: name },
+      { onSuccess: cancelClone },
+    );
+  };
+
+  const finishImport = () => {
+    setIsImporting(false);
+    setImportCode("");
+    setImportName("");
+  };
+
+  const handleImportCode = () => {
+    const code = importCode.trim();
+    if (!code) return;
+
+    void importShared({
+      kind: "code",
+      value: code,
+      newName: importName.trim() || undefined,
+    }).then((profile) => {
+      if (profile) finishImport();
+    });
+  };
+
+  const handleImportFile = async () => {
+    const chosen = await open({
+      multiple: false,
+      directory: false,
+      filters: [{ name: "Mod profile", extensions: ["r2z", "json"] }],
+    });
+    if (typeof chosen !== "string") return;
+
+    void importShared({
+      kind: "file",
+      value: chosen,
+      newName: importName.trim() || undefined,
+    }).then((profile) => {
+      if (profile) finishImport();
+    });
+  };
+
+  const cancelImport = finishImport;
+
   return (
     <div className="grid gap-4">
       {/* Header */}
@@ -81,11 +199,77 @@ export default function ProfileManager() {
             Manage separate mod configurations for different playstyles.
           </p>
         </div>
-        <Button variant="accent-primary" onClick={() => setIsCreating(true)} disabled={isCreating}>
-          <Plus />
-          New Profile
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setIsImporting(true)}
+            disabled={isImporting}
+            title="Import a shared profile"
+          >
+            <Upload />
+            Import
+          </Button>
+          <Button
+            variant="accent-primary"
+            onClick={() => setIsCreating(true)}
+            disabled={isCreating}
+          >
+            <Plus />
+            New Profile
+          </Button>
+        </div>
       </div>
+
+      {/* Import form */}
+      {isImporting && (
+        <Card className="ring-accent-primary/30 py-3">
+          <CardContent className="grid gap-2">
+            <p className="text-muted-foreground text-sm">
+              Paste a Thunderstore profile code, or choose an <code>.r2z</code> file exported by
+              Macheim, r2modman, Gale or Thunderstore Mod Manager. Codes expire after about an hour;
+              a file keeps working.
+            </p>
+            <Input
+              value={importCode}
+              onChange={(e) => setImportCode(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleImportCode();
+                if (e.key === "Escape") cancelImport();
+              }}
+              placeholder="Profile code (e.g. 019eb41e-401b-a408-b431-2915043cbf7f)"
+              aria-label="Profile code"
+              autoFocus
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                value={importName}
+                onChange={(e) => setImportName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") cancelImport();
+                }}
+                placeholder="Profile name (optional)"
+                aria-label="Profile name (optional)"
+                className="min-w-40 flex-1"
+              />
+              <Button
+                variant="accent-primary"
+                onClick={handleImportCode}
+                disabled={!importCode.trim() || isImportPending}
+              >
+                {isImportPending ? <Loader2 className="animate-spin" /> : <Check />}
+                Import code
+              </Button>
+              <Button variant="outline" onClick={handleImportFile} disabled={isImportPending}>
+                <FolderOpen />
+                Choose file…
+              </Button>
+              <Button size="icon" variant="ghost" onClick={cancelImport} aria-label="Cancel import">
+                <X />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Create form */}
       {isCreating && (
@@ -115,6 +299,76 @@ export default function ProfileManager() {
             <Button size="icon" variant="ghost" onClick={cancelCreate} aria-label="Cancel">
               <X />
             </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Clone form */}
+      {cloningFrom && (
+        <Card className="ring-accent-primary/30 py-3">
+          <CardContent className="flex items-center gap-2">
+            <span className="text-muted-foreground shrink-0 text-sm">Clone "{cloningFrom}" as</span>
+            <Input
+              value={cloneName}
+              onChange={(e) => setCloneName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleClone();
+                if (e.key === "Escape") cancelClone();
+              }}
+              placeholder="New profile name..."
+              aria-label="Clone profile name"
+              autoFocus
+              className="flex-1"
+            />
+            <Button
+              size="icon"
+              variant="accent-primary"
+              onClick={handleClone}
+              disabled={!cloneName.trim() || cloneProfileMutation.isPending}
+              aria-label="Clone profile"
+            >
+              <Check />
+            </Button>
+            <Button size="icon" variant="ghost" onClick={cancelClone} aria-label="Cancel clone">
+              <X />
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Profile code */}
+      {sharedCode && (
+        <Card className="ring-accent-primary/30 py-3">
+          <CardContent className="grid gap-2">
+            <p className="text-muted-foreground text-sm">
+              Profile code for "{sharedCode.name}" — paste it into Macheim, r2modman, Gale or
+              Thunderstore Mod Manager. It expires after about an hour; use a file export to share
+              for longer.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                readOnly
+                value={sharedCode.code}
+                onFocus={(e) => e.currentTarget.select()}
+                aria-label="Profile code"
+                className="min-w-60 flex-1 font-mono"
+              />
+              <Button variant="accent-primary" onClick={handleCopyCode}>
+                {codeCopied ? <Check /> : <Copy />}
+                {codeCopied ? "Copied" : "Copy"}
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => {
+                  setSharedCode(null);
+                  setCodeCopied(false);
+                }}
+                aria-label="Dismiss profile code"
+              >
+                <X />
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -176,6 +430,48 @@ export default function ProfileManager() {
                     </span>
                   </div>
                 </div>
+
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => startClone(profile.name)}
+                  title="Clone profile"
+                  aria-label={`Clone profile ${profile.name}`}
+                  className="text-muted-foreground"
+                >
+                  <Copy />
+                </Button>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        disabled={exportProfileMutation.isPending || exportCodeMutation.isPending}
+                        title="Export profile"
+                        aria-label={`Export profile ${profile.name}`}
+                        className="text-muted-foreground"
+                      />
+                    }
+                  >
+                    {isExporting(profile.name) ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Download />
+                    )}
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => exportProfileMutation.mutate(profile.name)}>
+                      <FolderOpen />
+                      Export as file…
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleShareCode(profile.name)}>
+                      <Link2 />
+                      Share as code
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
                 {!isActive && (
                   <Button variant="outline" size="sm" onClick={() => handleSwitch(profile.name)}>

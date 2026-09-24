@@ -462,6 +462,17 @@ pub fn toggle_mod(mod_full_name: &str, enable: bool, game_root: &Path) -> AppRes
     }
 }
 
+/// True when a mod has files on disk, enabled or disabled. A profile entry
+/// alone is not proof of an install: imported profiles list their mods before
+/// any file has been downloaded.
+pub fn mod_files_present(mod_full_name: &str, game_root: &Path) -> bool {
+    let bepinex_dir = game_root.join("BepInEx");
+    ["plugins", "plugins_disabled"].iter().any(|dir| {
+        let path = bepinex_dir.join(dir).join(mod_full_name);
+        std::fs::read_dir(&path).is_ok_and(|mut entries| entries.next().is_some())
+    })
+}
+
 /// Get list of installed mods by scanning the BepInEx/plugins directory.
 pub fn scan_installed_mods(game_root: &Path) -> AppResult<Vec<String>> {
     let plugins_dir = game_root.join("BepInEx").join("plugins");
@@ -876,6 +887,24 @@ mod tests {
             std::fs::read(game.path().join("config/custom.cfg")).unwrap(),
             b"user edits"
         );
+    }
+
+    #[test]
+    fn mod_files_presence_requires_files() {
+        let game = tempfile::tempdir().unwrap();
+        let bepinex = game.path().join("BepInEx");
+
+        assert!(!mod_files_present("Author-Mod", game.path()));
+
+        std::fs::create_dir_all(bepinex.join("plugins/Author-Mod")).unwrap();
+        assert!(!mod_files_present("Author-Mod", game.path()));
+
+        std::fs::write(bepinex.join("plugins/Author-Mod/Mod.dll"), b"dll").unwrap();
+        assert!(mod_files_present("Author-Mod", game.path()));
+
+        std::fs::create_dir_all(bepinex.join("plugins_disabled/Other-Mod")).unwrap();
+        std::fs::write(bepinex.join("plugins_disabled/Other-Mod/Mod.dll"), b"dll").unwrap();
+        assert!(mod_files_present("Other-Mod", game.path()));
     }
 
     #[test]

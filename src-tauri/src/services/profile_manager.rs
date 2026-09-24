@@ -39,6 +39,12 @@ pub fn ensure_default_profile() -> AppResult<()> {
 pub fn create_profile(name: &str, description: &str) -> AppResult<Profile> {
     validate_name(name)?;
     let dir = get_profile_dir(name);
+    if dir.exists() {
+        return Err(AppError::Profile(format!(
+            "Profile \"{}\" already exists. Choose a different name.",
+            name
+        )));
+    }
     reject_symlink_ancestors(&dir)?;
     std::fs::create_dir_all(get_profiles_dir())?;
     std::fs::create_dir(&dir)?;
@@ -192,7 +198,7 @@ pub fn import_existing_mods(name: &str, root: &Path) -> AppResult<Vec<String>> {
 /// the file name, not who published the mod or which version it is.
 const MANUAL_DESCRIPTION: &str = "Manually installed (version unverified)";
 
-fn is_manual_placeholder(m: &InstalledMod) -> bool {
+pub(crate) fn is_manual_placeholder(m: &InstalledMod) -> bool {
     // The description check covers profiles written before the flag existed.
     m.manual || m.description == MANUAL_DESCRIPTION
 }

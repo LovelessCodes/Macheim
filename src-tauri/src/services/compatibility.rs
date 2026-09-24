@@ -11,7 +11,7 @@ use crate::models::Profile;
 
 pub const MANAGED_DIR: &str = "Macheim-ItemMaterialCompat";
 pub const DLL_NAME: &str = "Macheim.ItemMaterialCompat.dll";
-const CONFIG: &str = "com.macheim.itemmaterialcompat.cfg";
+pub(crate) const CONFIG: &str = "com.macheim.itemmaterialcompat.cfg";
 const PLUGIN: &[u8] =
     include_bytes!("../../resources/compatibility/Macheim.ItemMaterialCompat.dll");
 
