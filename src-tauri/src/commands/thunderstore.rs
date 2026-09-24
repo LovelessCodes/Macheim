@@ -211,7 +211,8 @@ pub async fn publish_modpack(
             .map_err(|e| AppError::Mod(format!("Failed to lock state: {}", e)))?;
         state.game_path.clone()
     };
-    let bepinex_version = modpack_export::resolve_installed_bepinex(game_path.as_deref()).await;
+    let bepinex_version =
+        modpack_export::resolve_installed_bepinex(&profile, game_path.as_deref()).await;
 
     let (zip, _) = modpack_export::build_modpack(
         &profile,

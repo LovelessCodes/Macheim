@@ -113,6 +113,11 @@ pub fn build_modpack(
         if module.full_name.is_empty() {
             continue;
         }
+        // BepInEx is added explicitly below from the published versions, so a
+        // profile record for it must not become a second, conflicting entry.
+        if module.full_name == BEPINEX_PACKAGE {
+            continue;
+        }
         if module.manual {
             skipped_manual.push(module.full_name.clone());
             continue;
@@ -276,8 +281,12 @@ pub fn resolve_bepinex_version(
 
 /// Resolve the BepInEx dependency for an export or publish: the installed
 /// version when it is published, the newest published version otherwise.
-pub async fn resolve_installed_bepinex(game_path: Option<&Path>) -> Option<String> {
+pub async fn resolve_installed_bepinex(
+    profile: &Profile,
+    game_path: Option<&Path>,
+) -> Option<String> {
     let detected = game_path.and_then(detect_bepinex_version);
+    let candidate = bepinex_candidate(profile, detected.as_deref());
 
     let packages = match crate::services::package_sources::fetch_all_packages(false).await {
         Ok(packages) => packages,
@@ -290,7 +299,19 @@ pub async fn resolve_installed_bepinex(game_path: Option<&Path>) -> Option<Strin
         }
     };
 
-    resolve_bepinex_version(detected.as_deref(), &packages)
+    resolve_bepinex_version(candidate.as_deref(), &packages)
+}
+
+/// The best local candidate for the BepInEx package version. A profile record
+/// is a real published version (it was installed from Thunderstore), so it
+/// beats the DLL's own file version.
+fn bepinex_candidate(profile: &Profile, detected: Option<&str>) -> Option<String> {
+    profile
+        .mods
+        .iter()
+        .find(|module| module.full_name == BEPINEX_PACKAGE)
+        .map(|module| module.version.clone())
+        .or_else(|| detected.map(str::to_string))
 }
 
 #[cfg(test)]
@@ -519,6 +540,52 @@ mod tests {
             resolve_bepinex_version(Some("5.4.2350"), &[bepinex_package(&[])]),
             None
         );
+    }
+
+    #[test]
+    fn a_profile_bepinex_record_does_not_duplicate_the_dependency() {
+        let mut profile = profile();
+        profile
+            .mods
+            .push(module("denikson-BepInExPack_Valheim", "5.4.2333"));
+
+        let (bytes, result) = build_modpack(&profile, &metadata(), None, Some("5.4.2333")).unwrap();
+
+        let manifest = manifest_from(&bytes);
+        let bepinex: Vec<&String> = manifest
+            .dependencies
+            .iter()
+            .filter(|dependency| dependency.starts_with("denikson-BepInExPack"))
+            .collect();
+        assert_eq!(
+            bepinex,
+            vec![&"denikson-BepInExPack_Valheim-5.4.2333".to_string()]
+        );
+        assert!(!result
+            .skipped_disabled
+            .contains(&"denikson-BepInExPack_Valheim".to_string()));
+        assert!(!result
+            .skipped_manual
+            .contains(&"denikson-BepInExPack_Valheim".to_string()));
+    }
+
+    #[test]
+    fn the_profile_bepinex_record_beats_the_detected_version() {
+        let mut profile = profile();
+        profile
+            .mods
+            .push(module("denikson-BepInExPack_Valheim", "5.4.2333"));
+        let empty = Profile::new("Test".to_string(), String::new());
+
+        assert_eq!(
+            bepinex_candidate(&profile, Some("5.4.23.0")).as_deref(),
+            Some("5.4.2333")
+        );
+        assert_eq!(
+            bepinex_candidate(&empty, Some("5.4.23.0")).as_deref(),
+            Some("5.4.23.0")
+        );
+        assert_eq!(bepinex_candidate(&empty, None), None);
     }
 
     #[test]

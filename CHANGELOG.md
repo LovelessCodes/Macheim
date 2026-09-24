@@ -60,6 +60,11 @@ known-good version.
 
 ### Fixed
 
+- Modpacks no longer list `BepInExPack_Valheim` twice. Profiles that track the loader as an
+  installed mod (the usual case) produced two dependency entries at different versions, which
+  Thunderstore rejects with "Cannot depend on multiple versions of the same package"; the
+  profile's record is now folded into the single published dependency and its version is
+  preferred for the pin.
 - Modpack exports and publishes now depend on a **published** `BepInExPack_Valheim` version — the
   installed one when it matches, the newest published version otherwise. Previously the manifest
   could pin Doorstop's version (for example `4.4.0`, read from `.doorstop_version`), which
