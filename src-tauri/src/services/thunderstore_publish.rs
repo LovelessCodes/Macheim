@@ -92,13 +92,25 @@ pub struct CurrentUser {
     pub teams: Vec<String>,
 }
 
-/// Validate a token and return the account it belongs to. `Ok(None)` means
-/// Thunderstore rejected the token; `Err` means the request itself failed.
-pub async fn validate_token(token: &str) -> AppResult<Option<CurrentUser>> {
-    validate_token_at(API_BASE, token).await
+/// What Thunderstore says about a token.
+#[derive(Debug)]
+pub enum TokenState {
+    Valid(CurrentUser),
+    /// The API refused the token, with the status it used. Only 401 means the
+    /// token itself is bad; 403 can be a permissions or edge problem.
+    Refused {
+        status: u16,
+        message: String,
+    },
 }
 
-async fn validate_token_at(base: &str, token: &str) -> AppResult<Option<CurrentUser>> {
+/// Ask Thunderstore about a token: `Ok(Valid)` means it works, `Ok(Refused)`
+/// means the API rejected it, `Err` means the request itself failed.
+pub async fn probe_token(token: &str) -> AppResult<TokenState> {
+    probe_token_at(API_BASE, token).await
+}
+
+async fn probe_token_at(base: &str, token: &str) -> AppResult<TokenState> {
     let client = reqwest::Client::new();
     let response = client
         .get(format!("{}/current-user/", base))
@@ -109,13 +121,15 @@ async fn validate_token_at(base: &str, token: &str) -> AppResult<Option<CurrentU
     if response.status() == reqwest::StatusCode::UNAUTHORIZED
         || response.status() == reqwest::StatusCode::FORBIDDEN
     {
-        return Ok(None);
+        let status = response.status().as_u16();
+        let message = response_message(response).await;
+        return Ok(TokenState::Refused { status, message });
     }
     if !response.status().is_success() {
         return Err(api_error(response).await);
     }
 
-    Ok(Some(response.json::<CurrentUser>().await?))
+    Ok(TokenState::Valid(response.json::<CurrentUser>().await?))
 }
 
 // ── Publishing ──────────────────────────────────────────────────
@@ -374,13 +388,10 @@ fn category_slugs(categories: &[String]) -> Vec<&str> {
     slugs
 }
 
-/// Turn a failed API response into a readable error, preferring the API's own
-/// message so duplicate versions and validation problems surface clearly.
-async fn api_error(response: reqwest::Response) -> AppError {
-    let status = response.status();
+/// The API's own message for a failed response, falling back to the raw body.
+async fn response_message(response: reqwest::Response) -> String {
     let body = response.text().await.unwrap_or_default();
-
-    let detail = serde_json::from_str::<serde_json::Value>(&body)
+    serde_json::from_str::<serde_json::Value>(&body)
         .ok()
         .and_then(|value| {
             value
@@ -396,7 +407,14 @@ async fn api_error(response: reqwest::Response) -> AppError {
                         .map(str::to_string)
                 })
         })
-        .unwrap_or_else(|| body.chars().take(300).collect());
+        .unwrap_or_else(|| body.chars().take(300).collect())
+}
+
+/// Turn a failed API response into a readable error, preferring the API's own
+/// message so duplicate versions and validation problems surface clearly.
+async fn api_error(response: reqwest::Response) -> AppError {
+    let status = response.status();
+    let detail = response_message(response).await;
 
     if status == reqwest::StatusCode::UNAUTHORIZED || status == reqwest::StatusCode::FORBIDDEN {
         AppError::Thunderstore(format!("Thunderstore rejected the token: {}", detail))
@@ -636,17 +654,19 @@ mod tests {
             .mount(&server)
             .await;
 
-        let user = validate_token_at(&server.uri(), "tss_test")
-            .await
-            .unwrap()
-            .unwrap();
+        let state = probe_token_at(&server.uri(), "tss_test").await.unwrap();
 
-        assert_eq!(user.username.as_deref(), Some("someone"));
-        assert_eq!(user.teams, vec!["MyTeam", "OtherTeam"]);
+        match state {
+            TokenState::Valid(user) => {
+                assert_eq!(user.username.as_deref(), Some("someone"));
+                assert_eq!(user.teams, vec!["MyTeam", "OtherTeam"]);
+            }
+            other => panic!("expected a valid token, got {other:?}"),
+        }
     }
 
     #[tokio::test]
-    async fn a_rejected_token_validates_as_none() {
+    async fn a_401_is_reported_as_a_refused_token() {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/current-user/"))
@@ -656,10 +676,37 @@ mod tests {
             .mount(&server)
             .await;
 
-        assert!(validate_token_at(&server.uri(), "tss_bad")
-            .await
-            .unwrap()
-            .is_none());
+        let state = probe_token_at(&server.uri(), "tss_bad").await.unwrap();
+
+        match state {
+            TokenState::Refused { status, message } => {
+                assert_eq!(status, 401);
+                assert!(message.contains("Invalid token"));
+            }
+            other => panic!("expected a refusal, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn a_403_is_reported_with_its_own_status() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/current-user/"))
+            .respond_with(
+                ResponseTemplate::new(403).set_body_json(json!({ "detail": "Permission denied" })),
+            )
+            .mount(&server)
+            .await;
+
+        let state = probe_token_at(&server.uri(), "tss_test").await.unwrap();
+
+        match state {
+            TokenState::Refused { status, message } => {
+                assert_eq!(status, 403);
+                assert!(message.contains("Permission denied"));
+            }
+            other => panic!("expected a refusal, got {other:?}"),
+        }
     }
 
     #[tokio::test]

@@ -58,6 +58,12 @@ known-good version.
   duplicate version surfaces Thunderstore's own error — and publishing is modpacks only
   (Valheim, category Modpacks), not mods.
 
+### Fixed
+
+- Thunderstore sign-in no longer silently forgets the token: only a 401 clears it, while a 403
+  or an edge block keeps it and reports the reason, and the Settings card shows sign-in errors
+  with a Retry instead of quietly rendering as signed out.
+
 ## [1.3.2] - 2026-09-24
 
 Profiles can now travel: export one as a file the whole Thunderstore family of managers

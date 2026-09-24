@@ -18,7 +18,7 @@ const TOKEN_PAGE = "https://thunderstore.io/settings/account/";
  * Sign-in for publishing: a service-account token kept in the macOS Keychain.
  */
 export default function ThunderstoreCard() {
-  const { data: auth, isPending } = useThunderstoreAuth();
+  const { data: auth, isPending, error, refetch } = useThunderstoreAuth();
   const signIn = useThunderstoreSignIn();
   const signOut = useThunderstoreSignOut();
   const [token, setToken] = useState("");
@@ -44,6 +44,17 @@ export default function ThunderstoreCard() {
       <CardContent className="grid gap-3">
         {isPending ? (
           <p className="text-muted-foreground text-sm">Checking sign-in...</p>
+        ) : error ? (
+          <div className="grid gap-2">
+            <p className="text-destructive text-xs">
+              {error instanceof Error ? error.message : String(error)}
+            </p>
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => void refetch()}>
+                Retry
+              </Button>
+            </div>
+          </div>
         ) : auth?.signed_in ? (
           <>
             <div className="flex items-center justify-between gap-4">

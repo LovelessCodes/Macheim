@@ -94,29 +94,37 @@ pub async fn get_package_details(
 #[tauri::command]
 pub async fn thunderstore_auth_status() -> AppResult<AuthStatus> {
     let Some(token) = thunderstore_publish::stored_token()? else {
-        return Ok(AuthStatus {
-            signed_in: false,
-            username: None,
-            teams: Vec::new(),
-        });
+        return Ok(signed_out());
     };
 
-    match thunderstore_publish::validate_token(&token).await? {
-        Some(user) => Ok(AuthStatus {
+    match thunderstore_publish::probe_token(&token).await? {
+        thunderstore_publish::TokenState::Valid(user) => Ok(AuthStatus {
             signed_in: true,
             username: user.username,
             teams: user.teams,
         }),
-        None => {
-            // Thunderstore rejected the saved token; drop it so the user is
-            // asked to sign in again.
+        // Only a 401 means the token itself is bad; drop it so the user is
+        // asked to sign in again.
+        thunderstore_publish::TokenState::Refused { status: 401, .. } => {
+            tracing::warn!("Saved Thunderstore token was rejected (401); clearing it");
             thunderstore_publish::clear_token()?;
-            Ok(AuthStatus {
-                signed_in: false,
-                username: None,
-                teams: Vec::new(),
-            })
+            Ok(signed_out())
         }
+        // Anything else (403, edge blocks) keeps the token and says why.
+        thunderstore_publish::TokenState::Refused { status, message } => {
+            Err(AppError::Thunderstore(format!(
+                "Thunderstore refused the saved token ({}): {}",
+                status, message
+            )))
+        }
+    }
+}
+
+fn signed_out() -> AuthStatus {
+    AuthStatus {
+        signed_in: false,
+        username: None,
+        teams: Vec::new(),
     }
 }
 
@@ -132,8 +140,8 @@ pub async fn thunderstore_sign_in(token: String) -> AppResult<AuthStatus> {
         ));
     }
 
-    match thunderstore_publish::validate_token(&token).await? {
-        Some(user) => {
+    match thunderstore_publish::probe_token(&token).await? {
+        thunderstore_publish::TokenState::Valid(user) => {
             thunderstore_publish::store_token(&token)?;
             Ok(AuthStatus {
                 signed_in: true,
@@ -141,9 +149,15 @@ pub async fn thunderstore_sign_in(token: String) -> AppResult<AuthStatus> {
                 teams: user.teams,
             })
         }
-        None => Err(AppError::Thunderstore(
-            "Thunderstore rejected that token".to_string(),
-        )),
+        thunderstore_publish::TokenState::Refused { status: 401, .. } => Err(
+            AppError::Thunderstore("Thunderstore rejected that token".to_string()),
+        ),
+        thunderstore_publish::TokenState::Refused { status, message } => {
+            Err(AppError::Thunderstore(format!(
+                "Thunderstore refused the token ({}): {}",
+                status, message
+            )))
+        }
     }
 }
 

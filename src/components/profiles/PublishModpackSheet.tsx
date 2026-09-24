@@ -44,7 +44,7 @@ export default function PublishModpackSheet({
   open,
   onOpenChange,
 }: PublishModpackSheetProps) {
-  const { data: auth, isPending: authPending } = useThunderstoreAuth();
+  const { data: auth, isPending: authPending, error: authError } = useThunderstoreAuth();
   const { data: categoryOptions = [] } = useValheimCategories();
   const signIn = useThunderstoreSignIn();
   const publish = usePublishModpack();
@@ -136,6 +136,10 @@ export default function PublishModpackSheet({
             </div>
           ) : authPending ? (
             <p className="text-muted-foreground text-sm">Checking sign-in...</p>
+          ) : authError ? (
+            <p className="text-destructive text-xs">
+              {authError instanceof Error ? authError.message : String(authError)}
+            </p>
           ) : !auth?.signed_in ? (
             <>
               <p className="text-muted-foreground text-sm">
