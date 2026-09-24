@@ -10,6 +10,7 @@ import { useDiagnosticsStore } from "../../store/diagnosticsStore";
 import { useModStore } from "../../store/modStore";
 import CompatibilityPage from "../compatibility/CompatibilityPage";
 import ConfigEditor from "../config/ConfigEditor";
+import LogsPage from "../logs/LogsPage";
 import InstalledModList from "../mods/InstalledModList";
 import ModDetail from "../mods/ModDetail";
 import ModGrid from "../mods/ModGrid";
@@ -65,6 +66,8 @@ export default function MainLayout() {
         return <ProfileManager />;
       case "saves":
         return <SavesPage />;
+      case "logs":
+        return <LogsPage />;
       case "settings":
         return <SettingsPage />;
       default:
@@ -77,6 +80,7 @@ export default function MainLayout() {
     currentPage === "browse" ||
     currentPage === "modpacks" ||
     currentPage === "installed" ||
+    currentPage === "logs" ||
     currentPage === "config";
 
   return (

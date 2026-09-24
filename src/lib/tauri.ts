@@ -16,6 +16,8 @@ import type {
   AppSettings,
   ConflictReport,
   CrashReport,
+  LogChunk,
+  LogFile,
   SteamStatus,
   SaveOverview,
   DownloadItem,
@@ -322,4 +324,16 @@ export async function restoreSafeModeMods(): Promise<string[]> {
 
 export async function getSafeMode(): Promise<string[]> {
   return invoke<string[]>("get_safe_mode");
+}
+
+export async function getLatestLog(): Promise<LogFile> {
+  return invoke<LogFile>("read_latest_log");
+}
+
+export async function readLogSince(offset: number, path: string | null): Promise<LogChunk> {
+  return invoke<LogChunk>("read_log_since", { offset, path });
+}
+
+export async function openLogFolder(): Promise<void> {
+  return invoke("open_log_folder");
 }

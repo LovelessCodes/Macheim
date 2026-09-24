@@ -13,4 +13,5 @@ export const compatibilityQueryKey = ["compatibility"] as const;
 export const backupsQueryKey = ["backups"] as const;
 export const appSettingsQueryKey = ["app-settings"] as const;
 export const savesQueryKey = ["saves"] as const;
+export const logsQueryKey = ["logs"] as const;
 export const safeModeQueryKey = ["safe-mode"] as const;

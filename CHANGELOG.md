@@ -7,6 +7,25 @@ All notable changes to this fork are documented in this file. The format follows
 Upstream releases before this fork are listed on
 [lofcgi/macheim](https://github.com/lofcgi/macheim/releases).
 
+## [Unreleased]
+
+The log viewer: read the latest Valheim log in the app instead of hunting for it in Finder,
+with level filters, search and a follow mode that tails the log while the game runs.
+
+### Added
+
+- **BepInEx log viewer** — a new Logs page shows the latest Valheim log, resolved the same way
+  crash triage resolves it (BepInEx's `LogOutput.log`, falling back to Unity's `Player.log`).
+  Lines are parsed for their level, stack traces inherit the level of the error above them, and
+  the page offers a level filter, search with match highlighting and a visible match count,
+  copy for the filtered log or a single line, and Open in Finder. Very large logs load as a
+  capped tail with a notice instead of choking the view.
+- **Follow mode** — a Follow toggle tails the log about once a second while the game runs and
+  auto-scrolls to the newest line. Scrolling up pauses the scroll (lines keep arriving) and a
+  Resume control re-engages; polling pauses while the window is hidden and stops when the page
+  is left. A recreated or rotated log — a new launch, or the fallback switching to the BepInEx
+  log — resets the view instead of mixing contents.
+
 ## [1.3.2] - 2026-09-24
 
 Profiles can now travel: export one as a file the whole Thunderstore family of managers

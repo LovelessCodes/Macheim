@@ -125,6 +125,12 @@ pub fn analyze(game_root: &Path, mods: &[InstalledMod], modded: bool) -> CrashRe
 }
 
 fn pick_log_path(game_root: &Path) -> Option<PathBuf> {
+    existing_log_path(game_root).or(Some(default_log_path(game_root)))
+}
+
+/// The log a viewer should open: the same preference as crash triage, but
+/// `None` when no log exists at all (instead of a hopeful path).
+pub fn existing_log_path(game_root: &Path) -> Option<PathBuf> {
     let bepinex = default_log_path(game_root);
     if bepinex.is_file()
         && std::fs::metadata(&bepinex)
@@ -133,8 +139,7 @@ fn pick_log_path(game_root: &Path) -> Option<PathBuf> {
     {
         return Some(bepinex);
     }
-    let player = player_log_path().filter(|path| path.is_file());
-    player.or(Some(bepinex))
+    player_log_path().filter(|path| path.is_file())
 }
 
 fn empty_report(log_path: Option<&Path>, modded: bool, summary: &str) -> CrashReport {

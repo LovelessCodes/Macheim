@@ -6,6 +6,7 @@ import {
   Layers,
   Package,
   Play,
+  ScrollText,
   Settings,
   Shield,
   User,
@@ -48,6 +49,7 @@ const navItems: NavItem[] = [
   { page: "compatibility", label: "Mac Compatibility", icon: Shield },
   { page: "profiles", label: "Profiles", icon: User },
   { page: "saves", label: "Save Snapshots", icon: DatabaseBackup },
+  { page: "logs", label: "Logs", icon: ScrollText },
   { page: "settings", label: "Settings", icon: Settings },
 ];
 

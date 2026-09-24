@@ -13,6 +13,7 @@ pub mod hexium_client;
 pub mod install_pipeline;
 pub mod launch_monitor;
 pub mod launcher;
+pub mod log_reader;
 pub mod mod_installer;
 pub mod package_cache;
 pub mod package_sources;
