@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useInstallFromFile } from "../../hooks/use-install-from-file";
 import { useImportSharedProfile } from "../../hooks/use-profiles";
 import { isProfilePath, isZipPath } from "../../lib/downloads";
-import { toast } from "../ui/toast";
+import { notify } from "../ui/toast";
 
 type DropHint = "mods" | "profile" | "unsupported";
 
@@ -76,7 +76,7 @@ export default function InstallDropZone() {
                 }
               })();
             } else if (zips.length === 0 && payload.paths.length > 0) {
-              toast.add({
+              notify("drop-unsupported", {
                 type: "warning",
                 title: "Only .zip mod archives and .r2z profiles can be dropped",
               });

@@ -173,7 +173,7 @@ function ToastList() {
   const { toasts } = ToastPrimitive.useToastManager();
 
   return toasts.map((toastItem) => (
-    <Toast key={toastItem.id} toast={toastItem}>
+    <Toast key={toastItem.id} toast={toastItem} className={replayClassName(toastItem)}>
       <ToastContent>
         <ToastIcon type={toastItem.type} />
         <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -185,6 +185,22 @@ function ToastList() {
       </ToastContent>
     </Toast>
   ));
+}
+
+/**
+ * Short pulse that replays when a toast is upserted. Base UI bumps
+ * `updateKey` on every update; alternating two identical animations restarts
+ * the pulse even though the class list otherwise stays the same.
+ */
+function replayClassName(toast: { type?: string; updateKey?: number }): string | undefined {
+  const updateKey = toast.updateKey ?? 0;
+  if (updateKey <= 0) return undefined;
+
+  const isEven = updateKey % 2 === 0;
+  if (toast.type === "error") {
+    return isEven ? "animate-toast-replay-error-even" : "animate-toast-replay-error-odd";
+  }
+  return isEven ? "animate-toast-replay-even" : "animate-toast-replay-odd";
 }
 
 function Toaster({ children, toastManager = toast, ...props }: ToastPrimitive.Provider.Props) {
@@ -203,6 +219,18 @@ function Toaster({ children, toastManager = toast, ...props }: ToastPrimitive.Pr
 const createToastManager = ToastPrimitive.createToastManager;
 const useToastManager = ToastPrimitive.useToastManager;
 
+type ToastAddOptions = Parameters<typeof toast.add>[0];
+
+/**
+ * Upserting toast: calls sharing a `key` update one toast in place and refresh
+ * its auto-dismiss timer instead of stacking a duplicate. Use it for repeatable
+ * actions (launch, sync, save, queue, per-profile mutations) so repeats stay a
+ * single toast.
+ */
+function notify(key: string, options: Omit<ToastAddOptions, "id">) {
+  return toast.add({ ...options, id: key });
+}
+
 export {
   Toaster,
   Toast,
@@ -215,6 +243,7 @@ export {
   ToastTitle,
   ToastViewport,
   createToastManager,
+  notify,
   toast,
   useToastManager,
 };

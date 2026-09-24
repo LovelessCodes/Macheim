@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { toast } from "../components/ui/toast";
+import { notify } from "../components/ui/toast";
 import { savesQueryKey } from "../lib/query-keys";
 import {
   createSaveSnapshot,
@@ -23,10 +23,10 @@ export function useCreateSaveSnapshot() {
     mutationFn: (label?: string) => createSaveSnapshot(label),
     onSuccess: (overview) => {
       queryClient.setQueryData(savesQueryKey, overview);
-      toast.add({ type: "success", title: "Save snapshot created" });
+      notify("snapshot-create", { type: "success", title: "Save snapshot created" });
     },
     onError: (error) => {
-      toast.add({ type: "error", title: `Could not create snapshot: ${error}` });
+      notify("snapshot-create", { type: "error", title: `Could not create snapshot: ${error}` });
     },
   });
 }
@@ -37,14 +37,14 @@ export function useRestoreSaveSnapshot() {
     mutationFn: (id: string) => restoreSaveSnapshot(id),
     onSuccess: (overview) => {
       queryClient.setQueryData(savesQueryKey, overview);
-      toast.add({
+      notify("snapshot-restore", {
         type: "success",
         title: "Saves restored",
         description: "The previous state was kept as a safety snapshot.",
       });
     },
     onError: (error) => {
-      toast.add({ type: "error", title: `Could not restore snapshot: ${error}` });
+      notify("snapshot-restore", { type: "error", title: `Could not restore snapshot: ${error}` });
     },
   });
 }
@@ -55,10 +55,10 @@ export function useDeleteSaveSnapshot() {
     mutationFn: (id: string) => deleteSaveSnapshot(id),
     onSuccess: (overview) => {
       queryClient.setQueryData(savesQueryKey, overview);
-      toast.add({ type: "info", title: "Snapshot deleted" });
+      notify("snapshot-delete", { type: "info", title: "Snapshot deleted" });
     },
     onError: (error) => {
-      toast.add({ type: "error", title: `Could not delete snapshot: ${error}` });
+      notify("snapshot-delete", { type: "error", title: `Could not delete snapshot: ${error}` });
     },
   });
 }

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { toast } from "../components/ui/toast";
+import { notify } from "../components/ui/toast";
 import { installedModsQueryKey, modConflictsQueryKey } from "../lib/query-keys";
 import { uninstallMod } from "../lib/tauri";
 import type { InstalledMod } from "../lib/types";
@@ -15,10 +15,10 @@ export function useModUninstall() {
         prev?.filter((m) => m.full_name !== fullName),
       );
       void queryClient.invalidateQueries({ queryKey: modConflictsQueryKey });
-      toast.add({ type: "info", title: `Uninstalled ${name}` });
+      notify("mod-uninstall", { type: "info", title: `Uninstalled ${name}` });
     },
     onError: (err, { name }) => {
-      toast.add({
+      notify("mod-uninstall", {
         type: "error",
         title: `Failed to uninstall ${name}: ${err}`,
       });

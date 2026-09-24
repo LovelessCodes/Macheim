@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import { toast } from "../components/ui/toast";
+import { notify } from "../components/ui/toast";
 import * as tauri from "../lib/tauri";
 import type {
   DownloadItem,
@@ -41,7 +41,7 @@ async function run(action: () => Promise<DownloadQueueSnapshot>, failure: string
     const snapshot = await action();
     useDownloadStore.getState().setSnapshot(snapshot);
   } catch (error) {
-    toast.add({ type: "error", title: `${failure}: ${String(error)}` });
+    notify(`queue:${failure}`, { type: "error", title: `${failure}: ${String(error)}` });
   }
 }
 

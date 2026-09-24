@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { toast } from "../components/ui/toast";
+import { notify } from "../components/ui/toast";
 import { backupsQueryKey, profilesQueryKey } from "../lib/query-keys";
 import { createBackup, listBackups, restoreBackup } from "../lib/tauri";
 
@@ -20,10 +20,10 @@ export function useCreateBackup() {
     mutationFn: createBackup,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: backupsQueryKey });
-      toast.add({ type: "success", title: "Backup created." });
+      notify("backup-create", { type: "success", title: "Backup created." });
     },
     onError: (err) => {
-      toast.add({ type: "error", title: `Backup failed: ${err}` });
+      notify("backup-create", { type: "error", title: `Backup failed: ${err}` });
     },
   });
 }
@@ -35,10 +35,10 @@ export function useRestoreBackup() {
     mutationFn: restoreBackup,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: profilesQueryKey });
-      toast.add({ type: "success", title: "Backup restored." });
+      notify("backup-restore", { type: "success", title: "Backup restored." });
     },
     onError: (err) => {
-      toast.add({ type: "error", title: `Restore failed: ${err}` });
+      notify("backup-restore", { type: "error", title: `Restore failed: ${err}` });
     },
   });
 }

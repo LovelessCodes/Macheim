@@ -39,7 +39,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { Input } from "../ui/input";
-import { toast } from "../ui/toast";
+import { notify } from "../ui/toast";
 
 export default function ProfileManager() {
   const { data } = useProfiles();
@@ -83,7 +83,7 @@ export default function ProfileManager() {
       await writeText(sharedCode.code);
       setCodeCopied(true);
     } catch (err) {
-      toast.add({
+      notify("profile-code-copy", {
         type: "error",
         title: `Could not copy the code: ${err instanceof Error ? err.message : String(err)}`,
       });
@@ -109,7 +109,7 @@ export default function ProfileManager() {
 
   const handleDelete = async (name: string) => {
     if (name === activeProfile) {
-      toast.add({
+      notify("profile-delete", {
         type: "warning",
         title: "Cannot delete the active profile. Switch to another first.",
       });

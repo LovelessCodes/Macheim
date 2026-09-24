@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
 
-import { toast } from "../components/ui/toast";
+import { notify } from "../components/ui/toast";
 import { installedModsQueryKey } from "../lib/query-keys";
 import {
   analyzeCrashLogs,
@@ -38,7 +38,7 @@ export function useDiagnosticsSync() {
       const store = useDiagnosticsStore.getState();
       store.setReport(report);
       store.setReportOpen(true);
-      toast.add({
+      notify("crash-report", {
         type: "warning",
         title: "Valheim exited unexpectedly",
         description:
@@ -64,7 +64,7 @@ export function useAnalyzeCrashLogs() {
       const store = useDiagnosticsStore.getState();
       store.setReport(report);
       store.setReportOpen(true);
-      toast.add({
+      notify("crash-analyze", {
         type: report.likely_culprits.length > 0 ? "warning" : "info",
         title:
           report.likely_culprits.length > 0
@@ -73,7 +73,7 @@ export function useAnalyzeCrashLogs() {
       });
     },
     onError: (error) => {
-      toast.add({ type: "error", title: `Could not analyze the log: ${error}` });
+      notify("crash-analyze", { type: "error", title: `Could not analyze the log: ${error}` });
     },
   });
 }
@@ -87,7 +87,7 @@ export function useLaunchSafeMode() {
     onSuccess: async (disabled) => {
       useDiagnosticsStore.getState().setSafeModeMods(disabled);
       await queryClient.invalidateQueries({ queryKey: installedModsQueryKey });
-      toast.add({
+      notify("safe-mode-launch", {
         type: "info",
         title: `Safe mode: ${disabled.length} mod${disabled.length === 1 ? "" : "s"} disabled`,
         description: "Valheim is launching without mods. Restore them from the banner afterwards.",
@@ -95,7 +95,7 @@ export function useLaunchSafeMode() {
       });
     },
     onError: (error) => {
-      toast.add({ type: "error", title: `Safe mode launch failed: ${error}` });
+      notify("safe-mode-launch", { type: "error", title: `Safe mode launch failed: ${error}` });
     },
   });
 }
@@ -109,14 +109,14 @@ export function useRestoreSafeMode() {
     onSuccess: async (restored) => {
       useDiagnosticsStore.getState().setSafeModeMods([]);
       await queryClient.invalidateQueries({ queryKey: installedModsQueryKey });
-      toast.add({
+      notify("safe-mode-restore", {
         type: "success",
         title: `Restored ${restored.length} mod${restored.length === 1 ? "" : "s"}`,
         description: "Safe mode is off.",
       });
     },
     onError: (error) => {
-      toast.add({ type: "error", title: `Could not restore mods: ${error}` });
+      notify("safe-mode-restore", { type: "error", title: `Could not restore mods: ${error}` });
     },
   });
 }

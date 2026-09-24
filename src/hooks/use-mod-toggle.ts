@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { toast } from "../components/ui/toast";
+import { notify } from "../components/ui/toast";
 import { installedModsQueryKey, modConflictsQueryKey } from "../lib/query-keys";
 import { toggleMod } from "../lib/tauri";
 import type { InstalledMod } from "../lib/types";
@@ -18,7 +18,7 @@ export function useModToggle() {
       void queryClient.invalidateQueries({ queryKey: modConflictsQueryKey });
     },
     onError: (err) => {
-      toast.add({ type: "error", title: `Failed to toggle mod: ${err}` });
+      notify("mod-toggle", { type: "error", title: `Failed to toggle mod: ${err}` });
     },
   });
 }
