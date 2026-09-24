@@ -15,6 +15,9 @@ import {
   Upload,
   FolderOpen,
   Link2,
+  Archive,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -22,13 +25,18 @@ import {
   useCloneProfile,
   useCreateProfile,
   useDeleteProfile,
+  useDeletedProfiles,
   useExportProfile,
   useExportProfileCode,
   useImportSharedProfile,
   useProfiles,
+  usePurgeDeletedProfile,
+  usePurgeDeletedProfiles,
+  useRestoreDeletedProfile,
   useSwitchProfile,
 } from "../../hooks/use-profiles";
 import { formatDate } from "../../lib/format";
+import type { DeletedProfile } from "../../lib/types";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent } from "../ui/card";
@@ -49,9 +57,14 @@ export default function ProfileManager() {
   const cloneProfileMutation = useCloneProfile();
   const exportProfileMutation = useExportProfile();
   const exportCodeMutation = useExportProfileCode();
+  const { data: deletedProfiles } = useDeletedProfiles();
+  const restoreArchiveMutation = useRestoreDeletedProfile();
+  const purgeArchiveMutation = usePurgeDeletedProfile();
+  const purgeAllMutation = usePurgeDeletedProfiles();
   const { importShared, isImporting: isImportPending } = useImportSharedProfile();
   const profiles = data?.profiles ?? [];
   const activeProfile = data?.activeProfile ?? "Default";
+  const deleted = deletedProfiles ?? [];
 
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -62,6 +75,7 @@ export default function ProfileManager() {
   const [importName, setImportName] = useState("");
   const [sharedCode, setSharedCode] = useState<{ name: string; code: string } | null>(null);
   const [codeCopied, setCodeCopied] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(false);
   const deletingProfile = deleteProfileMutation.isPending
     ? (deleteProfileMutation.variables ?? null)
     : null;
@@ -149,6 +163,24 @@ export default function ProfileManager() {
       { sourceName: cloningFrom, newName: name },
       { onSuccess: cancelClone },
     );
+  };
+
+  const handlePurge = async (archive: DeletedProfile) => {
+    const confirmed = await confirm(
+      `Delete "${archive.name}" permanently? This cannot be undone.`,
+      { title: "Delete permanently", kind: "warning" },
+    );
+    if (!confirmed) return;
+    purgeArchiveMutation.mutate(archive.archive_name);
+  };
+
+  const handlePurgeAll = async () => {
+    const confirmed = await confirm(
+      `Delete all ${deleted.length} archived profile${deleted.length === 1 ? "" : "s"} permanently? This cannot be undone.`,
+      { title: "Purge deleted profiles", kind: "warning" },
+    );
+    if (!confirmed) return;
+    purgeAllMutation.mutate();
   };
 
   const finishImport = () => {
@@ -495,6 +527,88 @@ export default function ProfileManager() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Deleted profiles */}
+      {deleted.length > 0 && (
+        <div className="grid gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setShowDeleted((prev) => !prev)}
+              aria-expanded={showDeleted}
+              className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-sm font-semibold"
+            >
+              {showDeleted ? (
+                <ChevronDown className="size-4" />
+              ) : (
+                <ChevronRight className="size-4" />
+              )}
+              Deleted profiles ({deleted.length})
+            </button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void handlePurgeAll()}
+              disabled={purgeAllMutation.isPending}
+              className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            >
+              {purgeAllMutation.isPending ? <Loader2 className="animate-spin" /> : <Trash2 />}
+              Purge all
+            </Button>
+          </div>
+
+          {showDeleted &&
+            deleted.map((archive) => (
+              <div
+                key={archive.archive_name}
+                className="bg-card/50 flex items-center gap-4 border p-4"
+              >
+                <div className="bg-muted flex size-10 shrink-0 items-center justify-center">
+                  <Archive className="text-muted-foreground size-4" />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-foreground truncate text-sm font-semibold">{archive.name}</h4>
+                  <div className="text-muted-foreground mt-0.5 flex items-center gap-3 text-xs">
+                    <span className="flex items-center gap-1">
+                      <Package className="size-3" />
+                      {archive.mods} mods
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="size-3" />
+                      Deleted {formatDate(archive.deleted_at)}
+                    </span>
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    restoreArchiveMutation.mutate({ archiveName: archive.archive_name })
+                  }
+                  disabled={restoreArchiveMutation.isPending}
+                >
+                  {restoreArchiveMutation.isPending ? <Loader2 className="animate-spin" /> : null}
+                  Restore
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => void handlePurge(archive)}
+                  disabled={purgeArchiveMutation.isPending}
+                  title="Delete permanently"
+                  aria-label={`Delete ${archive.name} permanently`}
+                  className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <Trash2 />
+                </Button>
+              </div>
+            ))}
         </div>
       )}
     </div>

@@ -6,6 +6,7 @@ import type {
   PackageDetail,
   InstalledMod,
   BulkModResult,
+  DeletedProfile,
   Profile,
   ConfigFile,
   ConfigFileSummary,
@@ -188,8 +189,27 @@ export async function applyCompatibility(
   return invoke("apply_compatibility", { profileName, settings });
 }
 
-export async function deleteProfile(name: string): Promise<void> {
-  return invoke("delete_profile", { name });
+export async function deleteProfile(name: string): Promise<DeletedProfile> {
+  return invoke<DeletedProfile>("delete_profile", { name });
+}
+
+export async function listDeletedProfiles(): Promise<DeletedProfile[]> {
+  return invoke<DeletedProfile[]>("list_deleted_profiles");
+}
+
+export async function restoreDeletedProfile(
+  archiveName: string,
+  newName?: string,
+): Promise<Profile> {
+  return invoke<Profile>("restore_deleted_profile", { archiveName, newName: newName ?? null });
+}
+
+export async function purgeDeletedProfile(archiveName: string): Promise<void> {
+  return invoke("purge_deleted_profile", { archiveName });
+}
+
+export async function purgeDeletedProfiles(): Promise<number> {
+  return invoke<number>("purge_deleted_profiles");
 }
 
 export async function cloneProfile(sourceName: string, newName: string): Promise<Profile> {

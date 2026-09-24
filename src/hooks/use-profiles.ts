@@ -2,8 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { confirm, save } from "@tauri-apps/plugin-dialog";
 import { useCallback } from "react";
 
-import { notify } from "../components/ui/toast";
+import { notify, toast } from "../components/ui/toast";
 import {
+  deletedProfilesQueryKey,
   gameStatusQueryKey,
   installedModsQueryKey,
   modConflictsQueryKey,
@@ -19,7 +20,11 @@ import {
   getGameStatus,
   importProfileCode,
   importProfileFile,
+  listDeletedProfiles,
   listProfiles,
+  purgeDeletedProfile,
+  purgeDeletedProfiles,
+  restoreDeletedProfile,
   switchProfile,
 } from "../lib/tauri";
 import type { Profile } from "../lib/types";
@@ -68,20 +73,106 @@ export function useCreateProfile() {
   });
 }
 
+export function useDeletedProfiles() {
+  return useQuery({
+    queryKey: deletedProfilesQueryKey,
+    queryFn: listDeletedProfiles,
+  });
+}
+
 export function useDeleteProfile() {
   const queryClient = useQueryClient();
 
+  const refresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: profilesQueryKey });
+    await queryClient.invalidateQueries({ queryKey: deletedProfilesQueryKey });
+  };
+
   return useMutation({
     mutationFn: deleteProfile,
-    onSuccess: async (_data, name) => {
-      await queryClient.invalidateQueries({ queryKey: profilesQueryKey });
+    onSuccess: async (deleted, name) => {
+      await refresh();
       notify("profile-delete", {
         type: "info",
-        title: `Removed "${name}". Recoverable from the deleted-profiles data folder.`,
+        title: `Removed "${name}"`,
+        description: "Undo restores it; the archive stays under Deleted profiles.",
+        actionProps: {
+          children: "Undo",
+          onClick: () => {
+            void restoreDeletedProfile(deleted.archive_name)
+              .then(async (profile) => {
+                await refresh();
+                toast.close("profile-delete");
+                notify("profile-restore", {
+                  type: "success",
+                  title: `Restored "${profile.name}"`,
+                });
+              })
+              .catch((err) => {
+                notify("profile-restore", {
+                  type: "error",
+                  title: `Could not restore "${name}": ${err}`,
+                });
+              });
+          },
+        },
       });
     },
     onError: (err) => {
       notify("profile-delete", { type: "error", title: `Failed to delete profile: ${err}` });
+    },
+  });
+}
+
+/** Restore an archived profile (also used by the Undo action on the toast). */
+export function useRestoreDeletedProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ archiveName, newName }: { archiveName: string; newName?: string }) =>
+      restoreDeletedProfile(archiveName, newName),
+    onSuccess: async (profile) => {
+      await queryClient.invalidateQueries({ queryKey: profilesQueryKey });
+      await queryClient.invalidateQueries({ queryKey: deletedProfilesQueryKey });
+      notify("profile-restore", { type: "success", title: `Restored "${profile.name}"` });
+    },
+    onError: (err) => {
+      notify("profile-restore", { type: "error", title: `Could not restore profile: ${err}` });
+    },
+  });
+}
+
+/** Permanently delete an archived profile. Not recoverable. */
+export function usePurgeDeletedProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: purgeDeletedProfile,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: deletedProfilesQueryKey });
+      notify("profile-purge", { type: "info", title: "Deleted profile removed permanently" });
+    },
+    onError: (err) => {
+      notify("profile-purge", { type: "error", title: `Could not remove the archive: ${err}` });
+    },
+  });
+}
+
+/** Permanently delete every archived profile. Not recoverable. */
+export function usePurgeDeletedProfiles() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: purgeDeletedProfiles,
+    onSuccess: async (purged) => {
+      await queryClient.invalidateQueries({ queryKey: deletedProfilesQueryKey });
+      notify("profile-purge", {
+        type: "info",
+        title: `Purged ${purged} archived profile${purged === 1 ? "" : "s"}`,
+      });
+    },
+    onError: (err) => {
+      notify("profile-purge", { type: "error", title: `Could not purge the archives: ${err}` });
     },
   });
 }
