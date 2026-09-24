@@ -49,7 +49,8 @@ known-good version.
   is included at the installed loader version, or omitted with a warning when it cannot be
   detected. Only enabled store mods are exported; manual and disabled mods are reported as
   skipped, and configs stay in the `.r2z` export. Name, version and description are validated
-  against Thunderstore's upload rules, and a non-256×256 icon warns without blocking.
+  against Thunderstore's upload rules, and any icon is cropped and scaled to the required
+  256×256 PNG automatically.
 - **Publish modpacks to Thunderstore** — sign in with a service-account token from Settings
   (stored in a user-only file on your Mac, never logged or shown again; a rejected token is
   cleared automatically), then publish from the modpack export sheet: choose a team, tag extra
