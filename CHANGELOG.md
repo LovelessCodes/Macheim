@@ -60,6 +60,9 @@ known-good version.
 
 ### Fixed
 
+- The Thunderstore token is now stored in the real macOS Keychain. The `keyring` dependency was
+  compiled without a platform backend, so it silently used an in-memory mock store that lost
+  the token on every restart; the `apple-native` feature fixes it.
 - Thunderstore sign-in no longer silently forgets the token: only a 401 clears it, while a 403
   or an edge block keeps it and reports the reason, and the Settings card shows sign-in errors
   with a Retry instead of quietly rendering as signed out.
