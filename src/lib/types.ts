@@ -72,6 +72,15 @@ export interface BulkModResult {
   failed: string[];
 }
 
+/** An archived profile in the deleted-profiles folder. */
+export interface DeletedProfile {
+  /** Folder name inside the archive; identifies it for restore or purge. */
+  archive_name: string;
+  name: string;
+  mods: number;
+  deleted_at: string;
+}
+
 export interface Profile {
   name: string;
   description: string;

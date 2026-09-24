@@ -96,24 +96,192 @@ pub fn list_profiles() -> AppResult<Vec<Profile>> {
     profiles.sort_by_key(|p| (p.name != "Default", p.name.clone()));
     Ok(profiles)
 }
-pub fn delete_profile(name: &str) -> AppResult<()> {
+/// One archived profile inside the deleted-profiles folder.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct DeletedProfile {
+    /// Folder name inside `deleted-profiles`; identifies the archive.
+    pub archive_name: String,
+    /// Profile name at deletion time.
+    pub name: String,
+    pub mods: usize,
+    pub deleted_at: String,
+}
+
+pub fn deleted_profiles_dir() -> PathBuf {
+    thunderstore_client::get_app_data_dir().join("deleted-profiles")
+}
+
+pub fn delete_profile(name: &str) -> AppResult<DeletedProfile> {
     validate_name(name)?;
     if name == "Default" {
         return Err(AppError::Profile(
             "Cannot delete the default profile".into(),
         ));
     }
-    load_profile(name)?;
-    let archive = thunderstore_client::get_app_data_dir().join("deleted-profiles");
+    let profile = load_profile(name)?;
+    let archive = deleted_profiles_dir();
     std::fs::create_dir_all(&archive)?;
-    std::fs::rename(
-        get_profile_dir(name),
-        archive.join(format!(
-            "{}-{}",
-            name,
-            chrono::Utc::now().timestamp_nanos_opt().unwrap_or_default()
-        )),
-    )?;
+    let archive_name = format!(
+        "{}-{}",
+        name,
+        chrono::Utc::now().timestamp_nanos_opt().unwrap_or_default()
+    );
+    std::fs::rename(get_profile_dir(name), archive.join(&archive_name))?;
+    Ok(DeletedProfile {
+        archive_name,
+        name: name.to_string(),
+        mods: profile.mods.len(),
+        deleted_at: chrono::Utc::now().to_rfc3339(),
+    })
+}
+
+pub fn list_deleted_profiles() -> AppResult<Vec<DeletedProfile>> {
+    deleted_profiles_in(&deleted_profiles_dir())
+}
+
+/// Newest first. Archives without a readable `profile.json` still list, using
+/// their folder name.
+fn deleted_profiles_in(dir: &Path) -> AppResult<Vec<DeletedProfile>> {
+    let mut profiles = Vec::new();
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return Ok(profiles);
+    };
+    for entry in entries.flatten() {
+        if !entry.file_type().is_ok_and(|file_type| file_type.is_dir()) {
+            continue;
+        }
+        let archive_name = entry.file_name().to_string_lossy().into_owned();
+        profiles.push(deleted_profile_meta(&entry.path(), &archive_name));
+    }
+    profiles.sort_by(|a, b| b.deleted_at.cmp(&a.deleted_at));
+    Ok(profiles)
+}
+
+fn deleted_profile_meta(dir: &Path, archive_name: &str) -> DeletedProfile {
+    let profile = std::fs::read(dir.join("profile.json"))
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<Profile>(&bytes).ok());
+    let name = profile
+        .as_ref()
+        .map(|profile| profile.name.clone())
+        .unwrap_or_else(|| strip_archive_suffix(archive_name));
+    let deleted_at = archive_timestamp(archive_name)
+        .or_else(|| {
+            dir.metadata()
+                .ok()
+                .and_then(|meta| meta.modified().ok())
+                .map(chrono::DateTime::<chrono::Utc>::from)
+        })
+        .map(|time| time.to_rfc3339())
+        .unwrap_or_default();
+    DeletedProfile {
+        archive_name: archive_name.to_string(),
+        name,
+        mods: profile.map(|profile| profile.mods.len()).unwrap_or(0),
+        deleted_at,
+    }
+}
+
+/// `MyProfile-1758580000000000000` → `MyProfile`.
+fn strip_archive_suffix(archive_name: &str) -> String {
+    archive_name
+        .rsplit_once('-')
+        .filter(|(_, suffix)| !suffix.is_empty() && suffix.chars().all(|c| c.is_ascii_digit()))
+        .map(|(name, _)| name.to_string())
+        .unwrap_or_else(|| archive_name.to_string())
+}
+
+fn archive_timestamp(archive_name: &str) -> Option<chrono::DateTime<chrono::Utc>> {
+    let (_, suffix) = archive_name.rsplit_once('-')?;
+    let nanos: i64 = suffix.parse().ok()?;
+    chrono::DateTime::from_timestamp(nanos / 1_000_000_000, (nanos % 1_000_000_000) as u32)
+}
+
+/// Move an archived profile back into `profiles/`, optionally under a new
+/// name. The archive is consumed, so undo leaves nothing behind.
+pub fn restore_deleted_profile(archive_name: &str, new_name: Option<&str>) -> AppResult<Profile> {
+    validate_archive_name(archive_name)?;
+    let source = deleted_profiles_dir().join(archive_name);
+    if !source.is_dir() {
+        return Err(AppError::Profile(
+            "That deleted profile no longer exists.".into(),
+        ));
+    }
+    let mut profile: Profile = serde_json::from_slice(&std::fs::read(source.join("profile.json"))?)
+        .map_err(|_| {
+            AppError::Profile(
+                "This archive has no readable profile.json; restore it by hand from the deleted-profiles folder."
+                    .into(),
+            )
+        })?;
+    if let Some(name) = new_name {
+        profile.name = name.into();
+    }
+    validate_name(&profile.name)?;
+    let target = get_profile_dir(&profile.name);
+    if target.exists() {
+        return Err(AppError::Profile(format!(
+            "Profile \"{}\" already exists. Switch to it and rename, or restore differently.",
+            profile.name
+        )));
+    }
+    reject_symlink_ancestors(&source)?;
+    reject_symlink_ancestors(&target)?;
+    std::fs::rename(&source, &target)?;
+    if new_name.is_some() {
+        profile.touch();
+        save_profile(&profile)?;
+    }
+    Ok(profile)
+}
+
+/// Permanently remove one archived profile.
+pub fn purge_deleted_profile(archive_name: &str) -> AppResult<()> {
+    validate_archive_name(archive_name)?;
+    let dir = deleted_profiles_dir().join(archive_name);
+    if !dir.exists() {
+        return Err(AppError::Profile(
+            "That deleted profile no longer exists.".into(),
+        ));
+    }
+    reject_symlink_ancestors(&dir)?;
+    std::fs::remove_dir_all(&dir)?;
+    Ok(())
+}
+
+/// Permanently remove every archived profile. Returns how many were purged;
+/// an archive that cannot be removed is skipped, not fatal.
+pub fn purge_deleted_profiles() -> AppResult<usize> {
+    let dir = deleted_profiles_dir();
+    let Ok(entries) = std::fs::read_dir(&dir) else {
+        return Ok(0);
+    };
+    let mut purged = 0;
+    for entry in entries.flatten() {
+        if !entry.file_type().is_ok_and(|file_type| file_type.is_dir()) {
+            continue;
+        }
+        let path = entry.path();
+        if reject_symlink_ancestors(&path).is_err() {
+            warn!("Skipping symlinked archive {}", path.display());
+            continue;
+        }
+        match std::fs::remove_dir_all(&path) {
+            Ok(()) => purged += 1,
+            Err(error) => warn!("Could not purge {}: {}", path.display(), error),
+        }
+    }
+    Ok(purged)
+}
+
+fn validate_archive_name(archive_name: &str) -> AppResult<()> {
+    if archive_name.is_empty()
+        || archive_name.starts_with('.')
+        || archive_name.contains('/')
+        || archive_name.contains('\\')
+    {
+        return Err(AppError::Profile("Invalid archive name".into()));
+    }
     Ok(())
 }
 pub fn clone_profile(source_name: &str, new_name: &str) -> AppResult<Profile> {
@@ -680,6 +848,31 @@ mod tests {
         register_manual_mods(&mut p, game.path()).unwrap();
 
         assert!(p.mods.is_empty());
+    }
+
+    #[test]
+    fn deleted_archives_are_listed_newest_first() {
+        let dir = tempfile::tempdir().unwrap();
+        let archived = dir.path().join("MySetup-1758580000000000000");
+        std::fs::create_dir_all(&archived).unwrap();
+        let mut profile = Profile::new("MySetup".into(), String::new());
+        profile.mods.push(installed_mod("Author-Mod", "desc"));
+        std::fs::write(
+            archived.join("profile.json"),
+            serde_json::to_vec(&profile).unwrap(),
+        )
+        .unwrap();
+        // An archive with no profile.json falls back to its folder name.
+        std::fs::create_dir_all(dir.path().join("Legacy-1700000000000000000")).unwrap();
+
+        let listed = deleted_profiles_in(dir.path()).unwrap();
+
+        assert_eq!(listed.len(), 2);
+        assert_eq!(listed[0].name, "MySetup");
+        assert_eq!(listed[0].mods, 1);
+        assert!(listed[0].deleted_at.starts_with("2025"));
+        assert_eq!(listed[1].name, "Legacy");
+        assert_eq!(listed[1].mods, 0);
     }
 
     #[test]

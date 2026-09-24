@@ -93,12 +93,13 @@ pub async fn switch_profile(
     Ok(profile)
 }
 
-/// Delete a profile.
+/// Delete a profile. The archive stays in the deleted-profiles folder, so the
+/// frontend can offer undo or restore it later.
 #[tauri::command]
 pub async fn delete_profile(
     name: String,
     state: tauri::State<'_, Mutex<AppState>>,
-) -> AppResult<()> {
+) -> AppResult<profile_manager::DeletedProfile> {
     info!("Command: delete_profile({})", name);
 
     {
@@ -113,8 +114,43 @@ pub async fn delete_profile(
         }
     }
 
-    profile_manager::delete_profile(&name)?;
-    Ok(())
+    profile_manager::delete_profile(&name)
+}
+
+/// Archived profiles that can be restored or purged.
+#[tauri::command]
+pub async fn list_deleted_profiles(
+    _state: tauri::State<'_, Mutex<AppState>>,
+) -> AppResult<Vec<profile_manager::DeletedProfile>> {
+    profile_manager::list_deleted_profiles()
+}
+
+/// Move an archived profile back into the profile list, optionally renamed.
+#[tauri::command]
+pub async fn restore_deleted_profile(
+    archive_name: String,
+    new_name: Option<String>,
+    _state: tauri::State<'_, Mutex<AppState>>,
+) -> AppResult<Profile> {
+    info!("Command: restore_deleted_profile({})", archive_name);
+    profile_manager::restore_deleted_profile(&archive_name, new_name.as_deref())
+}
+
+/// Permanently remove an archived profile. Not recoverable.
+#[tauri::command]
+pub async fn purge_deleted_profile(
+    archive_name: String,
+    _state: tauri::State<'_, Mutex<AppState>>,
+) -> AppResult<()> {
+    info!("Command: purge_deleted_profile({})", archive_name);
+    profile_manager::purge_deleted_profile(&archive_name)
+}
+
+/// Permanently remove every archived profile. Returns how many were purged.
+#[tauri::command]
+pub async fn purge_deleted_profiles(_state: tauri::State<'_, Mutex<AppState>>) -> AppResult<usize> {
+    info!("Command: purge_deleted_profiles");
+    profile_manager::purge_deleted_profiles()
 }
 
 /// Clone a profile.

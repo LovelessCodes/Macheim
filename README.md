@@ -83,6 +83,7 @@ Upstream handles the core workflow. This build adds:
 - **Profile sharing and migration** — export any profile as an `.r2z` file that Macheim, r2modman, Gale and Thunderstore Mod Manager can all import, or share it as a short-lived profile code; import a shared profile from an `.r2z` file, a Thunderstore profile code, or by dropping the file onto the window. Imported profiles keep every mod pinned to the version they were exported with; after importing you can activate the profile and queue all its downloads in one step
 - **Profile clone and export** — clone a profile (with its configs) as a starting point, or export one to share
 - **Bulk mod actions** — select several installed mods, or Select all within the current search and filter, and enable, disable or uninstall them in one batch (one confirmation for a bulk uninstall)
+- **Undoable profile deletion** — removing a profile offers Undo on the toast, and a Deleted profiles section on the Profiles page can restore an archived profile or delete it permanently later, one at a time or all at once
 - **Conflict detection** — the Installed Mods page flags duplicate plugin files and dependency version clashes, refreshed after installs, syncs and toggles
 - **Developer console toggle** — decide whether "Play Modded" adds Valheim's `-console` flag, from Settings
 - **Install from file** — drag and drop mod `.zip` archives or a shared profile `.r2z` onto the window, or pick them with "Install from file" on the Installed Mods page; archives are matched back to their Thunderstore listing (so author, icon and update checks are correct) and queue like any other install
@@ -245,6 +246,8 @@ The catalog covers four tested dropped items: VES F weapon and blessed F weapon 
 When upgrading an older installation with multiple profiles and no active-profile record, the live mod files are preserved in a new `Recovered-…` profile. Existing profiles are not overwritten. Switch to your preferred profile after reviewing it. Symlinked mod/profile paths are refused during replacement; back them up and resolve the links first. Do not change profiles while Valheim is running.
 
 An imported profile starts with its config files but no mod files: activate it and Macheim queues the downloads, or switch to it and use **Sync & Clean** later. Exporting includes the profile's config files, which can contain server addresses or passwords — review them before sharing. Manual mods are not part of an export.
+
+Deleting a profile moves it to the Deleted profiles section rather than erasing it: Undo on the toast or Restore in that section puts it back (a restore consumes the archive), and Delete permanently removes it after a confirmation.
 
 ## Build from source
 

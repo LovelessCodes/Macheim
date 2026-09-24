@@ -16,6 +16,10 @@ stacking duplicates.
 
 ### Added
 
+- **Undo and archived profiles** — Removing a profile now offers Undo on the toast, and the
+  Profiles page keeps a Deleted profiles section with each archive's mod count and deletion
+  date. Restore moves an archive back into the profile list (consuming the archive), Delete
+  permanently clears one, and Purge all empties the archive after a single confirmation.
 - **Bulk mod actions** — The Installed Mods page has a Select mode: pick several mods, or Select
   all within the current search and filter, and enable, disable or uninstall them together. A
   batch runs as one backend command — files move once, the profile is written once — and a bulk
