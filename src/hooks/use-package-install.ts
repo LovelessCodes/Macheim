@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 
-import { toast } from "../components/ui/toast";
+import { notify } from "../components/ui/toast";
 import type { ThunderstorePackage } from "../lib/types";
 import { isDownloadActive } from "../lib/types";
 import { useQueuedStatus, useQueuedVersion } from "../store/downloadStore";
@@ -45,14 +45,14 @@ export function useUpdateMods() {
       return { total: targets.length };
     },
     onSuccess: ({ total }) => {
-      toast.add({
+      notify("mod-update", {
         type: "success",
         title: `Queued ${total} update${total === 1 ? "" : "s"}`,
         description: "Track progress from Downloads.",
       });
     },
     onError: (err) => {
-      toast.add({ type: "error", title: `Update failed: ${err}` });
+      notify("mod-update", { type: "error", title: `Update failed: ${err}` });
     },
   });
 }

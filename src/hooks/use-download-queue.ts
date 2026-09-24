@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef } from "react";
 
-import { toast } from "../components/ui/toast";
+import { notify, toast } from "../components/ui/toast";
 import { installedModsQueryKey, modConflictsQueryKey } from "../lib/query-keys";
 import { enqueueInstall, getDownloadQueue } from "../lib/tauri";
 import type {
@@ -39,8 +39,7 @@ function showOutcomeToast(batch: OutcomeBatch) {
 
   if (completed === 1 && failed === 0) {
     const item = batch.completed[0];
-    toast.add({
-      id: OUTCOME_TOAST_ID,
+    notify(OUTCOME_TOAST_ID, {
       type: "success",
       title: `Installed ${item.name}${item.version ? ` v${item.version}` : ""}`,
     });
@@ -49,8 +48,7 @@ function showOutcomeToast(batch: OutcomeBatch) {
 
   if (completed === 0 && failed === 1) {
     const item = batch.failed[0];
-    toast.add({
-      id: OUTCOME_TOAST_ID,
+    notify(OUTCOME_TOAST_ID, {
       type: "error",
       title: `Failed to install ${item.name}`,
       description: item.error ?? undefined,
@@ -62,8 +60,7 @@ function showOutcomeToast(batch: OutcomeBatch) {
   const parts: string[] = [];
   if (completed > 0) parts.push(`installed ${completed} mod${plural(completed)}`);
   if (failed > 0) parts.push(`${failed} failed`);
-  toast.add({
-    id: OUTCOME_TOAST_ID,
+  notify(OUTCOME_TOAST_ID, {
     type: failed > 0 ? "warning" : "success",
     title: parts.join(", ").replace(/^./, (c) => c.toUpperCase()),
     description: failed > 0 ? `First failure: ${batch.failed[0].name} — see Downloads.` : undefined,
@@ -73,8 +70,7 @@ function showOutcomeToast(batch: OutcomeBatch) {
 
 function showWaitingToast(waitingGame: number, waitingNetwork: number) {
   if (waitingNetwork > 0) {
-    toast.add({
-      id: WAITING_TOAST_ID,
+    notify(WAITING_TOAST_ID, {
       type: "warning",
       title: "No connection — retrying automatically",
       description: `${waitingNetwork} install${plural(waitingNetwork)} waiting`,
@@ -82,8 +78,7 @@ function showWaitingToast(waitingGame: number, waitingNetwork: number) {
     });
     return;
   }
-  toast.add({
-    id: WAITING_TOAST_ID,
+  notify(WAITING_TOAST_ID, {
     type: "info",
     title: "Waiting for Valheim to close",
     description: `${waitingGame} install${plural(waitingGame)} queued`,
@@ -217,14 +212,12 @@ export function useEnqueueInstall() {
     );
     if (!options.silent) {
       if (existing && existing.version === target.version) {
-        toast.add({
-          id: ENQUEUE_TOAST_ID,
+        notify(ENQUEUE_TOAST_ID, {
           type: "info",
           title: `${target.name} is already queued`,
         });
       } else {
-        toast.add({
-          id: ENQUEUE_TOAST_ID,
+        notify(ENQUEUE_TOAST_ID, {
           type: "success",
           title: `Queued ${target.name}${target.version ? ` v${target.version}` : ""}`,
           description: "Track or cancel it from Downloads.",

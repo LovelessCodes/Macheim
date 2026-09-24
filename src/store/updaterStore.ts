@@ -2,7 +2,7 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { create } from "zustand";
 
-import { toast } from "../components/ui/toast";
+import { notify } from "../components/ui/toast";
 
 export type UpdaterStatus =
   | "idle"
@@ -55,7 +55,7 @@ export const useUpdaterStore = create<UpdaterState>((set, get) => ({
 
       if (!update) {
         set({ status: "up-to-date", version: null, notes: null, progress: null });
-        if (announce) toast.add({ type: "success", title: "Macheim is up to date." });
+        if (announce) notify("update-check", { type: "success", title: "Macheim is up to date." });
         return;
       }
 
@@ -65,7 +65,7 @@ export const useUpdaterStore = create<UpdaterState>((set, get) => ({
       // Quiet checks notify once per version so a skipped update does not nag.
       if (announce || localStorage.getItem(NOTIFIED_VERSION_KEY) !== version) {
         localStorage.setItem(NOTIFIED_VERSION_KEY, version);
-        toast.add({
+        notify("update-check", {
           type: "info",
           title: `Macheim ${version} is available`,
           description: firstMeaningfulLine(update.body) ?? "A new version is ready to install.",
@@ -75,7 +75,8 @@ export const useUpdaterStore = create<UpdaterState>((set, get) => ({
       }
     } catch (err) {
       set({ status: "error", error: String(err) });
-      if (announce) toast.add({ type: "error", title: `Update check failed: ${String(err)}` });
+      if (announce)
+        notify("update-check", { type: "error", title: `Update check failed: ${String(err)}` });
     }
   },
 
@@ -103,7 +104,7 @@ export const useUpdaterStore = create<UpdaterState>((set, get) => ({
 
       pending = null;
       set({ status: "ready", progress: 1 });
-      toast.add({
+      notify("app-update", {
         type: "success",
         title: `Macheim ${update.version} is ready`,
         description: "Restart to finish updating. Your mods and profiles are untouched.",
@@ -112,7 +113,7 @@ export const useUpdaterStore = create<UpdaterState>((set, get) => ({
       });
     } catch (err) {
       set({ status: "error", error: String(err), progress: null });
-      toast.add({ type: "error", title: `Update failed: ${String(err)}` });
+      notify("app-update", { type: "error", title: `Update failed: ${String(err)}` });
     }
   },
 

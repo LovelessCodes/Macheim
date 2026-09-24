@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { confirm, save } from "@tauri-apps/plugin-dialog";
 import { useCallback } from "react";
 
-import { toast } from "../components/ui/toast";
+import { notify } from "../components/ui/toast";
 import {
   gameStatusQueryKey,
   installedModsQueryKey,
@@ -45,10 +45,10 @@ export function useSwitchProfile() {
       await queryClient.invalidateQueries({ queryKey: installedModsQueryKey });
       await queryClient.invalidateQueries({ queryKey: modConflictsQueryKey });
       await queryClient.invalidateQueries({ queryKey: profilesQueryKey });
-      toast.add({ type: "success", title: `Switched to profile "${name}"` });
+      notify("profile-switch", { type: "success", title: `Switched to profile "${name}"` });
     },
     onError: (err) => {
-      toast.add({ type: "error", title: `Failed to switch profile: ${err}` });
+      notify("profile-switch", { type: "error", title: `Failed to switch profile: ${err}` });
     },
   });
 }
@@ -60,10 +60,10 @@ export function useCreateProfile() {
     mutationFn: createProfile,
     onSuccess: async (_profile, name) => {
       await queryClient.invalidateQueries({ queryKey: profilesQueryKey });
-      toast.add({ type: "success", title: `Created profile "${name}"` });
+      notify("profile-create", { type: "success", title: `Created profile "${name}"` });
     },
     onError: (err) => {
-      toast.add({ type: "error", title: `Failed to create profile: ${err}` });
+      notify("profile-create", { type: "error", title: `Failed to create profile: ${err}` });
     },
   });
 }
@@ -75,13 +75,13 @@ export function useDeleteProfile() {
     mutationFn: deleteProfile,
     onSuccess: async (_data, name) => {
       await queryClient.invalidateQueries({ queryKey: profilesQueryKey });
-      toast.add({
+      notify("profile-delete", {
         type: "info",
         title: `Removed "${name}". Recoverable from the deleted-profiles data folder.`,
       });
     },
     onError: (err) => {
-      toast.add({ type: "error", title: `Failed to delete profile: ${err}` });
+      notify("profile-delete", { type: "error", title: `Failed to delete profile: ${err}` });
     },
   });
 }
@@ -94,10 +94,10 @@ export function useCloneProfile() {
       cloneProfile(sourceName, newName),
     onSuccess: async (profile) => {
       await queryClient.invalidateQueries({ queryKey: profilesQueryKey });
-      toast.add({ type: "success", title: `Cloned to "${profile.name}"` });
+      notify("profile-clone", { type: "success", title: `Cloned to "${profile.name}"` });
     },
     onError: (err) => {
-      toast.add({ type: "error", title: `Failed to clone profile: ${err}` });
+      notify("profile-clone", { type: "error", title: `Failed to clone profile: ${err}` });
     },
   });
 }
@@ -118,7 +118,7 @@ export function useExportProfile() {
     },
     onSuccess: (path) => {
       if (path) {
-        toast.add({
+        notify("profile-export", {
           type: "success",
           title: "Profile exported",
           description:
@@ -128,7 +128,7 @@ export function useExportProfile() {
       }
     },
     onError: (err) => {
-      toast.add({ type: "error", title: `Failed to export profile: ${err}` });
+      notify("profile-export", { type: "error", title: `Failed to export profile: ${err}` });
     },
   });
 }
@@ -141,7 +141,7 @@ export function useExportProfileCode() {
   return useMutation({
     mutationFn: exportProfileCode,
     onError: (err) => {
-      toast.add({
+      notify("profile-code", {
         type: "error",
         title: `Could not create a profile code: ${err}`,
         timeout: 8000,
@@ -165,14 +165,14 @@ export function useImportProfile() {
       kind === "code" ? importProfileCode(value, newName) : importProfileFile(value, newName),
     onSuccess: async (profile) => {
       await queryClient.invalidateQueries({ queryKey: profilesQueryKey });
-      toast.add({
+      notify("profile-import", {
         type: "success",
         title: `Imported "${profile.name}"`,
         description: `${profile.mods.length} mod${profile.mods.length === 1 ? "" : "s"} in the profile.`,
       });
     },
     onError: (err) => {
-      toast.add({
+      notify("profile-import", {
         type: "error",
         title: `Import failed: ${err}`,
         timeout: 8000,
@@ -224,13 +224,13 @@ export function useImportSharedProfile() {
             { silent: true },
           );
         }
-        toast.add({
+        notify("download-enqueue", {
           type: "success",
           title: `Queued ${enabled.length} download${enabled.length === 1 ? "" : "s"}`,
           description: "Track progress from Downloads.",
         });
       } catch (err) {
-        toast.add({
+        notify("download-enqueue", {
           type: "error",
           title: `Could not queue downloads: ${err instanceof Error ? err.message : String(err)}`,
         });

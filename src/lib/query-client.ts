@@ -6,7 +6,7 @@ import type {
 } from "@tanstack/react-query-persist-client";
 import { get, set, del } from "idb-keyval";
 
-import { toast } from "../components/ui/toast";
+import { notify } from "../components/ui/toast";
 import { packagesQueryKey } from "./query-keys";
 
 const DAY = 1000 * 60 * 60 * 24;
@@ -15,7 +15,7 @@ export const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error, query) => {
       const title = query.meta?.errorTitle as string | undefined;
-      if (title) toast.add({ type: "error", title: `${title}: ${error}` });
+      if (title) notify(`query-error:${title}`, { type: "error", title: `${title}: ${error}` });
     },
   }),
   defaultOptions: {

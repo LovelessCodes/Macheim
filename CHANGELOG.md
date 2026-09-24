@@ -11,10 +11,15 @@ Upstream releases before this fork are listed on
 
 Profiles can now travel: export one as a file the whole Thunderstore family of managers
 understands, import someone else's mod list by file or profile code, and clone a profile
-locally.
+locally. Notifications are quieter too: repeatable actions update one toast instead of
+stacking duplicates.
 
 ### Added
 
+- **Quieter notifications** — Repeatable actions upsert their toast: another launch, sync,
+  save, profile change, update check or queue confirmation updates the existing toast in
+  place and refreshes its timer instead of stacking a duplicate, with a short highlight
+  replaying on each update.
 - **Profile sharing** — Export any profile as an `.r2z` file that Macheim, r2modman, Gale
   and Thunderstore Mod Manager can import. Config files travel with it, and every mod keeps
   the version it was exported with.

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { toast } from "../components/ui/toast";
+import { notify } from "../components/ui/toast";
 import { appSettingsQueryKey } from "../lib/query-keys";
 import { getAppSettings, setConsoleEnabled, setSnapshotSaves } from "../lib/tauri";
 import type { AppSettings } from "../lib/types";
@@ -34,7 +34,7 @@ function useBooleanSetting(
       if (context?.previous) {
         queryClient.setQueryData(appSettingsQueryKey, context.previous);
       }
-      toast.add({ type: "error", title: `Could not update setting: ${error}` });
+      notify("app-setting", { type: "error", title: `Could not update setting: ${error}` });
     },
     onSuccess: (settings) => {
       queryClient.setQueryData(appSettingsQueryKey, settings);

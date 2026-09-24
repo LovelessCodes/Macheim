@@ -7,7 +7,7 @@ import DownloadQueuePanel from "./components/downloads/DownloadQueuePanel";
 import InstallDropZone from "./components/downloads/InstallDropZone";
 import MainLayout from "./components/layout/MainLayout";
 import SetupWizard from "./components/setup/SetupWizard";
-import { toast, Toaster } from "./components/ui/toast";
+import { notify, Toaster } from "./components/ui/toast";
 import { useDiagnosticsSync } from "./hooks/use-diagnostics";
 import { useDownloadQueueSync } from "./hooks/use-download-queue";
 import { useGameStatus } from "./hooks/use-game-status";
@@ -26,7 +26,7 @@ export default function App() {
 
   useEffect(() => {
     const unlisten = listen<CdnFallbackEvent>("cdn-fallback", (event) => {
-      toast.add({
+      notify("cdn-fallback", {
         type: "info",
         description:
           `Thunderstore's main download server (${event.payload.from}) is blocked by antivirus software ` +

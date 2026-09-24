@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { toast } from "../components/ui/toast";
+import { notify } from "../components/ui/toast";
 import { compatibilityQueryKey } from "../lib/query-keys";
 import { applyCompatibility, getCompatibility } from "../lib/tauri";
 import type { CompatibilitySettings } from "../lib/types";
@@ -25,7 +25,7 @@ export function useApplyCompatibility() {
     }) => applyCompatibility(profileName, settings),
     onSuccess: (status) => {
       queryClient.setQueryData(compatibilityQueryKey, status);
-      toast.add({
+      notify("compatibility", {
         type: "success",
         title: "Compatibility settings saved for the next game launch.",
       });

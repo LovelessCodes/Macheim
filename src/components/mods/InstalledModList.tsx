@@ -36,7 +36,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
 import { Switch } from "../ui/switch";
-import { toast } from "../ui/toast";
+import { notify } from "../ui/toast";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import ModConflictsPanel from "./ModConflictsPanel";
@@ -108,7 +108,7 @@ export default function InstalledModList() {
   const openDetail = (mod: InstalledMod) => {
     const pkg = resolvePackage(mod);
     if (!pkg) {
-      toast.add({
+      notify(`mod-listing:${mod.name}`, {
         type: "info",
         title: `No store listing found for ${mod.name}`,
       });
@@ -151,7 +151,7 @@ export default function InstalledModList() {
         approvedUnmanaged: doClean ? unmanaged : [],
       });
     } catch (err) {
-      toast.add({ type: "error", title: `Sync failed: ${String(err)}` });
+      notify("sync", { type: "error", title: `Sync failed: ${String(err)}` });
     }
   };
 
@@ -159,7 +159,7 @@ export default function InstalledModList() {
     try {
       await openPluginsFolder();
     } catch (err) {
-      toast.add({ type: "error", title: String(err) });
+      notify("plugins-folder", { type: "error", title: String(err) });
     }
   };
 
