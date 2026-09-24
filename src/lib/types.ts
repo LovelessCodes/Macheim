@@ -377,6 +377,30 @@ export interface ModpackExportResult {
   icon_warning: string | null;
 }
 
+/** The saved Thunderstore sign-in, validated against the API. */
+export interface ThunderstoreAuthStatus {
+  signed_in: boolean;
+  username: string | null;
+  teams: string[];
+}
+
+/** A published modpack. */
+export interface ModpackPublishResult {
+  full_name: string;
+  version_number: string;
+  package_url: string;
+}
+
+/** Live progress for a publish, emitted while it uploads. */
+export interface PublishProgressEvent {
+  stage: string;
+  current: number;
+  total: number;
+  bytes_uploaded: number;
+  bytes_total: number;
+  message: string;
+}
+
 /** The latest Valheim log, resolved like crash triage resolves it. */
 export interface LogFile {
   /** Resolved log path, or null when no log exists yet. */

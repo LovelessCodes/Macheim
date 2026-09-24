@@ -1,10 +1,14 @@
+use std::path::Path;
 use std::sync::Mutex;
 
+use tauri::Emitter;
 use tracing::info;
 
 use crate::error::{AppError, AppResult};
 use crate::models::thunderstore::{PackageListing, ThunderstorePackage};
-use crate::services::{package_sources, thunderstore_client};
+use crate::services::modpack_export::{self, ModpackMetadata};
+use crate::services::thunderstore_publish::{self, AuthStatus, PublishOutcome, PublishProgress};
+use crate::services::{package_sources, profile_manager, thunderstore_client};
 use crate::AppState;
 
 /// Fetch all packages from every supported store (uses cache if fresh).
@@ -80,4 +84,123 @@ pub async fn get_package_details(
     state.cache_updated_at = Some(chrono::Utc::now());
 
     found.ok_or_else(|| AppError::Network(format!("Package '{}' not found", full_name)))
+}
+
+// ── Publishing ──────────────────────────────────────────────────
+
+/// The saved Thunderstore sign-in, validated against the API.
+#[tauri::command]
+pub async fn thunderstore_auth_status() -> AppResult<AuthStatus> {
+    let Some(token) = thunderstore_publish::stored_token()? else {
+        return Ok(AuthStatus {
+            signed_in: false,
+            username: None,
+            teams: Vec::new(),
+        });
+    };
+
+    match thunderstore_publish::validate_token(&token).await? {
+        Some(user) => Ok(AuthStatus {
+            signed_in: true,
+            username: user.username,
+            teams: user.teams,
+        }),
+        None => {
+            // Thunderstore rejected the saved token; drop it so the user is
+            // asked to sign in again.
+            thunderstore_publish::clear_token()?;
+            Ok(AuthStatus {
+                signed_in: false,
+                username: None,
+                teams: Vec::new(),
+            })
+        }
+    }
+}
+
+/// Save a service-account token after Thunderstore accepts it.
+#[tauri::command]
+pub async fn thunderstore_sign_in(token: String) -> AppResult<AuthStatus> {
+    info!("Command: thunderstore_sign_in");
+
+    let token = token.trim().to_string();
+    if token.is_empty() {
+        return Err(AppError::Thunderstore(
+            "Paste a service-account token first".to_string(),
+        ));
+    }
+
+    match thunderstore_publish::validate_token(&token).await? {
+        Some(user) => {
+            thunderstore_publish::store_token(&token)?;
+            Ok(AuthStatus {
+                signed_in: true,
+                username: user.username,
+                teams: user.teams,
+            })
+        }
+        None => Err(AppError::Thunderstore(
+            "Thunderstore rejected that token".to_string(),
+        )),
+    }
+}
+
+/// Forget the saved token.
+#[tauri::command]
+pub async fn thunderstore_sign_out() -> AppResult<()> {
+    info!("Command: thunderstore_sign_out");
+    thunderstore_publish::clear_token()
+}
+
+/// Build the profile's modpack and publish it under `team`, emitting
+/// `modpack-publish` progress events while it uploads.
+#[tauri::command]
+pub async fn publish_modpack(
+    app: tauri::AppHandle,
+    profile_name: String,
+    metadata: ModpackMetadata,
+    icon_path: Option<String>,
+    team: String,
+    has_nsfw_content: bool,
+    state: tauri::State<'_, Mutex<AppState>>,
+) -> AppResult<PublishOutcome> {
+    info!("Command: publish_modpack({})", profile_name);
+
+    let team = team.trim().to_string();
+    if team.is_empty() {
+        return Err(AppError::Thunderstore(
+            "Choose a team to publish under".to_string(),
+        ));
+    }
+
+    let token = thunderstore_publish::stored_token()?
+        .ok_or_else(|| AppError::Thunderstore("Sign in to Thunderstore first".to_string()))?;
+
+    let profile = profile_manager::load_profile(&profile_name)?;
+    let icon = match icon_path {
+        Some(icon_path) => Some(modpack_export::read_icon(Path::new(&icon_path))?),
+        None => None,
+    };
+
+    let game_path = {
+        let state = state
+            .lock()
+            .map_err(|e| AppError::Mod(format!("Failed to lock state: {}", e)))?;
+        state.game_path.clone()
+    };
+    let bepinex_version = game_path.and_then(|path| modpack_export::detect_bepinex_version(&path));
+
+    let (zip, _) = modpack_export::build_modpack(
+        &profile,
+        &metadata,
+        icon.as_deref(),
+        bepinex_version.as_deref(),
+    )?;
+    let filename = format!("{}-{}.zip", metadata.name.trim(), metadata.version.trim());
+
+    let progress = move |event: PublishProgress| {
+        let _ = app.emit("modpack-publish", &event);
+    };
+
+    thunderstore_publish::publish(&token, &zip, &filename, &team, has_nsfw_content, &progress).await
 }

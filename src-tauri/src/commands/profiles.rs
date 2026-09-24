@@ -5,9 +5,7 @@ use tracing::info;
 use crate::error::{AppError, AppResult};
 use crate::models::Profile;
 use crate::services::modpack_export::{self, ModpackExportResult, ModpackMetadata};
-use crate::services::{
-    bepinex_installer, game_detector, package_sources, profile_manager, profile_transfer,
-};
+use crate::services::{game_detector, package_sources, profile_manager, profile_transfer};
 use crate::AppState;
 
 /// List all profiles.
@@ -228,14 +226,13 @@ pub async fn export_profile_modpack(
 
     // BepInEx lives outside the profile, so its version comes from the game
     // folder; without one the dependency is omitted and the UI warns.
-    let bepinex_version = {
+    let game_path = {
         let state = state
             .lock()
             .map_err(|e| AppError::Mod(format!("Failed to lock state: {}", e)))?;
         state.game_path.clone()
-    }
-    .map(|game_path| game_detector::get_valheim_root(&game_path))
-    .and_then(|game_root| bepinex_installer::check_bepinex_status(&game_root).version);
+    };
+    let bepinex_version = game_path.and_then(|path| modpack_export::detect_bepinex_version(&path));
 
     let (bytes, result) = modpack_export::build_modpack(
         &profile,

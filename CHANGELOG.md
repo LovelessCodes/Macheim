@@ -50,6 +50,12 @@ known-good version.
   detected. Only enabled store mods are exported; manual and disabled mods are reported as
   skipped, and configs stay in the `.r2z` export. Name, version and description are validated
   against Thunderstore's upload rules, and a non-256×256 icon warns without blocking.
+- **Publish modpacks to Thunderstore** — sign in with a service-account token from Settings
+  (stored in the macOS Keychain, never logged or shown again; a rejected token is cleared
+  automatically), then publish from the modpack export sheet: choose a team, set the NSFW flag,
+  and watch upload progress. Success links to the published package page. Versions are never
+  auto-bumped — a duplicate version surfaces Thunderstore's own error — and publishing is
+  modpacks only (Valheim, category Modpacks), not mods.
 
 ## [1.3.2] - 2026-09-24
 

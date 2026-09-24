@@ -236,6 +236,13 @@ pub fn read_icon(path: &Path) -> AppResult<Vec<u8>> {
     Ok(bytes)
 }
 
+/// The installed BepInEx version, when Macheim can find one. The loader lives
+/// outside the profile, so this reads the game folder's BepInEx install.
+pub fn detect_bepinex_version(game_path: &Path) -> Option<String> {
+    let game_root = crate::services::game_detector::get_valheim_root(game_path);
+    crate::services::bepinex_installer::check_bepinex_status(&game_root).version
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

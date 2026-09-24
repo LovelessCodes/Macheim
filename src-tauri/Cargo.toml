@@ -58,3 +58,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 futures-util = "0.3"
 tauri-plugin-updater = "2.11.0"
 tauri-plugin-process = "2.3.1"
+keyring = "3"
+
+[dev-dependencies]
+wiremock = "0.6"

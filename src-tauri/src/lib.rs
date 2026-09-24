@@ -167,6 +167,10 @@ pub fn run() {
             // Thunderstore
             commands::thunderstore::fetch_packages,
             commands::thunderstore::get_package_details,
+            commands::thunderstore::thunderstore_auth_status,
+            commands::thunderstore::thunderstore_sign_in,
+            commands::thunderstore::thunderstore_sign_out,
+            commands::thunderstore::publish_modpack,
             // Mod management
             commands::mods::uninstall_mod,
             commands::mods::uninstall_mods,

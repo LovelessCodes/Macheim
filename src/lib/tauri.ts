@@ -20,7 +20,9 @@ import type {
   LogFile,
   ModpackExportResult,
   ModpackMetadata,
+  ModpackPublishResult,
   SteamStatus,
+  ThunderstoreAuthStatus,
   SaveOverview,
   DownloadItem,
   DownloadKind,
@@ -55,6 +57,30 @@ export async function fetchPackages(): Promise<ThunderstorePackage[]> {
 
 export async function getPackageDetails(fullName: string): Promise<PackageDetail> {
   return invoke<PackageDetail>("get_package_details", { fullName });
+}
+
+// ── Thunderstore publishing ─────────────────────────────────────
+
+export async function thunderstoreAuthStatus(): Promise<ThunderstoreAuthStatus> {
+  return invoke<ThunderstoreAuthStatus>("thunderstore_auth_status");
+}
+
+export async function thunderstoreSignIn(token: string): Promise<ThunderstoreAuthStatus> {
+  return invoke<ThunderstoreAuthStatus>("thunderstore_sign_in", { token });
+}
+
+export async function thunderstoreSignOut(): Promise<void> {
+  return invoke("thunderstore_sign_out");
+}
+
+export async function publishModpack(input: {
+  profileName: string;
+  metadata: ModpackMetadata;
+  iconPath: string | null;
+  team: string;
+  hasNsfwContent: boolean;
+}): Promise<ModpackPublishResult> {
+  return invoke<ModpackPublishResult>("publish_modpack", input);
 }
 
 // ── Mod Management ──────────────────────────────────────────────

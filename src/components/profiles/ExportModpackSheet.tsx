@@ -1,5 +1,5 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { FileArchive, Image, Loader2, X } from "lucide-react";
+import { CloudUpload, FileArchive, Image, Loader2, X } from "lucide-react";
 import { useState } from "react";
 
 import { useExportModpack } from "../../hooks/use-profiles";
@@ -15,6 +15,7 @@ import {
   SheetTitle,
 } from "../ui/sheet";
 import { Textarea } from "../ui/textarea";
+import PublishModpackSheet from "./PublishModpackSheet";
 
 interface ExportModpackSheetProps {
   profileName: string;
@@ -37,6 +38,7 @@ export default function ExportModpackSheet({
   const [description, setDescription] = useState("");
   const [website, setWebsite] = useState("");
   const [iconPath, setIconPath] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
 
   const metadata = {
     name,
@@ -155,6 +157,14 @@ export default function ExportModpackSheet({
             Cancel
           </Button>
           <Button
+            variant="outline"
+            onClick={() => setPublishing(true)}
+            disabled={validationError !== null}
+          >
+            <CloudUpload />
+            Publish to Thunderstore…
+          </Button>
+          <Button
             variant="accent-primary"
             onClick={handleExport}
             disabled={validationError !== null || exportModpack.isPending}
@@ -164,6 +174,14 @@ export default function ExportModpackSheet({
           </Button>
         </SheetFooter>
       </SheetContent>
+
+      <PublishModpackSheet
+        profileName={profileName}
+        metadata={metadata}
+        iconPath={iconPath}
+        open={publishing}
+        onOpenChange={setPublishing}
+      />
     </Sheet>
   );
 }
