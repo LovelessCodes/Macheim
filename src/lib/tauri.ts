@@ -18,6 +18,8 @@ import type {
   CrashReport,
   LogChunk,
   LogFile,
+  ModpackExportResult,
+  ModpackMetadata,
   SteamStatus,
   SaveOverview,
   DownloadItem,
@@ -224,6 +226,20 @@ export async function cloneProfile(sourceName: string, newName: string): Promise
 
 export async function exportProfileFile(name: string, path: string): Promise<void> {
   return invoke("export_profile_file", { name, path });
+}
+
+export async function exportProfileModpack(
+  name: string,
+  metadata: ModpackMetadata,
+  iconPath: string | null,
+  path: string,
+): Promise<ModpackExportResult> {
+  return invoke<ModpackExportResult>("export_profile_modpack", {
+    name,
+    metadata,
+    iconPath,
+    path,
+  });
 }
 
 export async function exportProfileCode(name: string): Promise<string> {

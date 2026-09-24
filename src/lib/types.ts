@@ -360,6 +360,23 @@ export function isDownloadActive(status: DownloadStatus): boolean {
   return status === "downloading" || status === "installing";
 }
 
+/** Metadata for a Thunderstore modpack export. */
+export interface ModpackMetadata {
+  name: string;
+  version: string;
+  description: string;
+  website_url: string;
+}
+
+/** What an exported modpack contains, for reporting back to the user. */
+export interface ModpackExportResult {
+  dependencies: string[];
+  skipped_disabled: string[];
+  skipped_manual: string[];
+  bepinex_version: string | null;
+  icon_warning: string | null;
+}
+
 /** The latest Valheim log, resolved like crash triage resolves it. */
 export interface LogFile {
   /** Resolved log path, or null when no log exists yet. */

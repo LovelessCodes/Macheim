@@ -218,6 +218,7 @@ pub fn run() {
             commands::profiles::clone_profile,
             commands::profiles::export_profile,
             commands::profiles::export_profile_file,
+            commands::profiles::export_profile_modpack,
             commands::profiles::export_profile_code,
             commands::profiles::import_profile,
             commands::profiles::import_profile_file,

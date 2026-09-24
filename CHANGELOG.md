@@ -43,6 +43,13 @@ known-good version.
   mods that nothing depends on any more — including the transitive closure — and removes them
   through the normal bulk uninstall after one confirmation. Pinned, manually installed and
   explicitly installed mods are never listed, and disabled mods still count as dependents.
+- **Export as Thunderstore modpack** — the Profiles export menu turns any profile into a
+  Thunderstore modpack zip: `manifest.json` with every mod at its exact installed version,
+  a generated README, and an icon (chosen PNG or the bundled Macheim icon). `BepInExPack_Valheim`
+  is included at the installed loader version, or omitted with a warning when it cannot be
+  detected. Only enabled store mods are exported; manual and disabled mods are reported as
+  skipped, and configs stay in the `.r2z` export. Name, version and description are validated
+  against Thunderstore's upload rules, and a non-256×256 icon warns without blocking.
 
 ## [1.3.2] - 2026-09-24
 

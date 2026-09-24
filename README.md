@@ -81,6 +81,7 @@ Upstream handles the core workflow. This build adds:
 ### Mod management
 
 - **Profile sharing and migration** — export any profile as an `.r2z` file that Macheim, r2modman, Gale and Thunderstore Mod Manager can all import, or share it as a short-lived profile code; import a shared profile from an `.r2z` file, a Thunderstore profile code, or by dropping the file onto the window. Imported profiles keep every mod pinned to the version they were exported with; after importing you can activate the profile and queue all its downloads in one step
+- **Export as Thunderstore modpack** — turn any profile into a modpack zip (`manifest.json`, README and icon) that Gale, r2modman and Thunderstore Mod Manager can import and that is upload-ready: exact installed versions, `BepInExPack_Valheim` pinned to your installed loader, validated against Thunderstore's upload rules. Manual mods and disabled mods are reported as skipped; configs stay in the `.r2z` export
 - **Profile clone and export** — clone a profile (with its configs) as a starting point, or export one to share
 - **Bulk mod actions** — select several installed mods, or Select all within the current search and filter, and enable, disable or uninstall them in one batch (one confirmation for a bulk uninstall)
 - **Undoable profile deletion** — removing a profile offers Undo on the toast, and a Deleted profiles section on the Profiles page can restore an archived profile or delete it permanently later, one at a time or all at once
