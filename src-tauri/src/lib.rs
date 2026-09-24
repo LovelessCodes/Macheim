@@ -170,6 +170,7 @@ pub fn run() {
             commands::thunderstore::thunderstore_auth_status,
             commands::thunderstore::thunderstore_sign_in,
             commands::thunderstore::thunderstore_sign_out,
+            commands::thunderstore::valheim_categories,
             commands::thunderstore::publish_modpack,
             // Mod management
             commands::mods::uninstall_mod,

@@ -23,6 +23,7 @@ import type {
   ModpackPublishResult,
   SteamStatus,
   ThunderstoreAuthStatus,
+  ThunderstoreCategory,
   SaveOverview,
   DownloadItem,
   DownloadKind,
@@ -73,11 +74,16 @@ export async function thunderstoreSignOut(): Promise<void> {
   return invoke("thunderstore_sign_out");
 }
 
+export async function valheimCategories(): Promise<ThunderstoreCategory[]> {
+  return invoke<ThunderstoreCategory[]>("valheim_categories");
+}
+
 export async function publishModpack(input: {
   profileName: string;
   metadata: ModpackMetadata;
   iconPath: string | null;
   team: string;
+  categories: string[];
   hasNsfwContent: boolean;
 }): Promise<ModpackPublishResult> {
   return invoke<ModpackPublishResult>("publish_modpack", input);

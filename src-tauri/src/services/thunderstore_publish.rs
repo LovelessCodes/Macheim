@@ -49,6 +49,34 @@ pub fn clear_token() -> AppResult<()> {
 
 // ── Account status ──────────────────────────────────────────────
 
+/// A community category a modpack can be published under.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Category {
+    pub name: String,
+    pub slug: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct CategoryPage {
+    results: Vec<Category>,
+}
+
+/// The Valheim community's categories, used by the publish dialog.
+pub async fn fetch_valheim_categories() -> AppResult<Vec<Category>> {
+    fetch_valheim_categories_at(API_BASE).await
+}
+
+async fn fetch_valheim_categories_at(base: &str) -> AppResult<Vec<Category>> {
+    let response = reqwest::Client::new()
+        .get(format!("{}/community/{}/category/", base, COMMUNITY))
+        .send()
+        .await?;
+    if !response.status().is_success() {
+        return Err(api_error(response).await);
+    }
+    Ok(response.json::<CategoryPage>().await?.results)
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct AuthStatus {
     pub signed_in: bool,
@@ -168,12 +196,14 @@ struct SubmittedVersion {
     full_name: Option<String>,
 }
 
-/// Upload and publish a modpack zip under `team`.
+/// Upload and publish a modpack zip under `team`. The modpacks category is
+/// always included; `categories` adds further community categories.
 pub async fn publish(
     token: &str,
     zip: &[u8],
     filename: &str,
     team: &str,
+    categories: &[String],
     has_nsfw_content: bool,
     progress: &(dyn Fn(PublishProgress) + Send + Sync),
 ) -> AppResult<PublishOutcome> {
@@ -183,18 +213,21 @@ pub async fn publish(
         zip,
         filename,
         team,
+        categories,
         has_nsfw_content,
         progress,
     )
     .await
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn publish_at(
     base: &str,
     token: &str,
     zip: &[u8],
     filename: &str,
     team: &str,
+    categories: &[String],
     has_nsfw_content: bool,
     progress: &(dyn Fn(PublishProgress) + Send + Sync),
 ) -> AppResult<PublishOutcome> {
@@ -290,7 +323,7 @@ async fn publish_at(
         message: "Publishing...".to_string(),
     });
     let mut community_categories = BTreeMap::new();
-    community_categories.insert(COMMUNITY, vec![MODPACK_CATEGORY]);
+    community_categories.insert(COMMUNITY, category_slugs(categories));
     let response = client
         .post(format!("{}/submission/submit/", base))
         .bearer_auth(token)
@@ -326,6 +359,19 @@ async fn publish_at(
             COMMUNITY, namespace, result.package_version.name
         ),
     })
+}
+
+/// The modpacks category is what lists the package as a modpack, so it always
+/// leads; the publisher's extra categories follow, deduplicated.
+fn category_slugs(categories: &[String]) -> Vec<&str> {
+    let mut slugs = vec![MODPACK_CATEGORY];
+    for category in categories {
+        let slug = category.as_str();
+        if !slug.is_empty() && !slugs.contains(&slug) {
+            slugs.push(slug);
+        }
+    }
+    slugs
 }
 
 /// Turn a failed API response into a readable error, preferring the API's own
@@ -443,7 +489,7 @@ mod tests {
                 "communities": ["valheim"],
                 "categories": [],
                 "has_nsfw_content": false,
-                "community_categories": { "valheim": ["modpacks"] }
+                "community_categories": { "valheim": ["modpacks", "client-side"] }
             })))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "package_version": {
@@ -464,6 +510,7 @@ mod tests {
             &zip_bytes(),
             "MyPack-1.0.0.zip",
             "MyTeam",
+            &["client-side".to_string(), "modpacks".to_string()],
             false,
             &progress,
         )
@@ -507,6 +554,7 @@ mod tests {
             &zip_bytes(),
             "pack.zip",
             "MyTeam",
+            &[],
             false,
             &progress,
         )
@@ -562,6 +610,7 @@ mod tests {
             &zip_bytes(),
             "pack.zip",
             "MyTeam",
+            &[],
             false,
             &progress,
         )
@@ -611,5 +660,27 @@ mod tests {
             .await
             .unwrap()
             .is_none());
+    }
+
+    #[tokio::test]
+    async fn valheim_categories_are_listed() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/community/valheim/category/"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "pagination": { "next_link": null, "previous_link": null },
+                "results": [
+                    { "name": "Modpacks", "slug": "modpacks" },
+                    { "name": "Client-side", "slug": "client-side" }
+                ]
+            })))
+            .mount(&server)
+            .await;
+
+        let categories = fetch_valheim_categories_at(&server.uri()).await.unwrap();
+
+        assert_eq!(categories.len(), 2);
+        assert_eq!(categories[0].slug, "modpacks");
+        assert_eq!(categories[1].name, "Client-side");
     }
 }

@@ -52,10 +52,11 @@ known-good version.
   against Thunderstore's upload rules, and a non-256×256 icon warns without blocking.
 - **Publish modpacks to Thunderstore** — sign in with a service-account token from Settings
   (stored in the macOS Keychain, never logged or shown again; a rejected token is cleared
-  automatically), then publish from the modpack export sheet: choose a team, set the NSFW flag,
-  and watch upload progress. Success links to the published package page. Versions are never
-  auto-bumped — a duplicate version surfaces Thunderstore's own error — and publishing is
-  modpacks only (Valheim, category Modpacks), not mods.
+  automatically), then publish from the modpack export sheet: choose a team, tag extra
+  categories alongside the mandatory Modpacks one, set the NSFW flag, and watch upload
+  progress. Success links to the published package page. Versions are never auto-bumped — a
+  duplicate version surfaces Thunderstore's own error — and publishing is modpacks only
+  (Valheim, category Modpacks), not mods.
 
 ## [1.3.2] - 2026-09-24
 

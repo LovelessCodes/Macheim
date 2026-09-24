@@ -15,4 +15,5 @@ export const appSettingsQueryKey = ["app-settings"] as const;
 export const savesQueryKey = ["saves"] as const;
 export const logsQueryKey = ["logs"] as const;
 export const thunderstoreAuthQueryKey = ["thunderstore-auth"] as const;
+export const thunderstoreCategoriesQueryKey = ["thunderstore-categories"] as const;
 export const safeModeQueryKey = ["safe-mode"] as const;

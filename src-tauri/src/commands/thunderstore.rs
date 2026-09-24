@@ -7,7 +7,9 @@ use tracing::info;
 use crate::error::{AppError, AppResult};
 use crate::models::thunderstore::{PackageListing, ThunderstorePackage};
 use crate::services::modpack_export::{self, ModpackMetadata};
-use crate::services::thunderstore_publish::{self, AuthStatus, PublishOutcome, PublishProgress};
+use crate::services::thunderstore_publish::{
+    self, AuthStatus, Category, PublishOutcome, PublishProgress,
+};
 use crate::services::{package_sources, profile_manager, thunderstore_client};
 use crate::AppState;
 
@@ -152,6 +154,12 @@ pub async fn thunderstore_sign_out() -> AppResult<()> {
     thunderstore_publish::clear_token()
 }
 
+/// The Valheim community's publish categories.
+#[tauri::command]
+pub async fn valheim_categories() -> AppResult<Vec<Category>> {
+    thunderstore_publish::fetch_valheim_categories().await
+}
+
 /// Build the profile's modpack and publish it under `team`, emitting
 /// `modpack-publish` progress events while it uploads.
 #[tauri::command]
@@ -161,6 +169,7 @@ pub async fn publish_modpack(
     metadata: ModpackMetadata,
     icon_path: Option<String>,
     team: String,
+    categories: Vec<String>,
     has_nsfw_content: bool,
     state: tauri::State<'_, Mutex<AppState>>,
 ) -> AppResult<PublishOutcome> {
@@ -202,5 +211,14 @@ pub async fn publish_modpack(
         let _ = app.emit("modpack-publish", &event);
     };
 
-    thunderstore_publish::publish(&token, &zip, &filename, &team, has_nsfw_content, &progress).await
+    thunderstore_publish::publish(
+        &token,
+        &zip,
+        &filename,
+        &team,
+        &categories,
+        has_nsfw_content,
+        &progress,
+    )
+    .await
 }

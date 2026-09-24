@@ -7,9 +7,11 @@ import {
   usePublishModpack,
   useThunderstoreAuth,
   useThunderstoreSignIn,
+  useValheimCategories,
 } from "../../hooks/use-thunderstore";
 import type { ModpackMetadata, ModpackPublishResult, PublishProgressEvent } from "../../lib/types";
 import ProgressBar from "../common/ProgressBar";
+import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
@@ -43,11 +45,13 @@ export default function PublishModpackSheet({
   onOpenChange,
 }: PublishModpackSheetProps) {
   const { data: auth, isPending: authPending } = useThunderstoreAuth();
+  const { data: categoryOptions = [] } = useValheimCategories();
   const signIn = useThunderstoreSignIn();
   const publish = usePublishModpack();
 
   const [token, setToken] = useState("");
   const [team, setTeam] = useState("");
+  const [extraCategories, setExtraCategories] = useState<string[]>([]);
   const [nsfw, setNsfw] = useState(false);
   const [progress, setProgress] = useState<PublishProgressEvent | null>(null);
   const [result, setResult] = useState<ModpackPublishResult | null>(null);
@@ -77,8 +81,21 @@ export default function PublishModpackSheet({
   const handlePublish = () => {
     setProgress(null);
     publish.mutate(
-      { profileName, metadata, iconPath, team: selectedTeam, hasNsfwContent: nsfw },
+      {
+        profileName,
+        metadata,
+        iconPath,
+        team: selectedTeam,
+        categories: ["modpacks", ...extraCategories],
+        hasNsfwContent: nsfw,
+      },
       { onSuccess: (published) => setResult(published) },
+    );
+  };
+
+  const toggleCategory = (slug: string) => {
+    setExtraCategories((prev) =>
+      prev.includes(slug) ? prev.filter((entry) => entry !== slug) : [...prev, slug],
     );
   };
 
@@ -166,6 +183,33 @@ export default function PublishModpackSheet({
                     This token has no teams; ask for publish rights on one first.
                   </p>
                 )}
+              </div>
+
+              <div className="grid gap-1.5">
+                <span className="text-xs font-medium">Categories</span>
+                <div className="flex flex-wrap gap-1.5">
+                  <Badge variant="secondary">Modpacks</Badge>
+                  {categoryOptions
+                    .filter((category) => category.slug !== "modpacks")
+                    .map((category) => {
+                      const active = extraCategories.includes(category.slug);
+                      return (
+                        <Button
+                          key={category.slug}
+                          type="button"
+                          size="xs"
+                          variant={active ? "accent-primary" : "outline"}
+                          aria-pressed={active}
+                          onClick={() => toggleCategory(category.slug)}
+                        >
+                          {category.name}
+                        </Button>
+                      );
+                    })}
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  Modpacks is always included; add any others that fit.
+                </p>
               </div>
 
               <div className="flex items-center gap-3 text-sm">

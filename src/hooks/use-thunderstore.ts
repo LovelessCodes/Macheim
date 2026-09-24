@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { notify } from "../components/ui/toast";
-import { thunderstoreAuthQueryKey } from "../lib/query-keys";
+import { thunderstoreAuthQueryKey, thunderstoreCategoriesQueryKey } from "../lib/query-keys";
 import {
   publishModpack,
   thunderstoreAuthStatus,
   thunderstoreSignIn,
   thunderstoreSignOut,
+  valheimCategories,
 } from "../lib/tauri";
 import type { ModpackMetadata, ThunderstoreAuthStatus } from "../lib/types";
 
@@ -59,6 +60,15 @@ export function useThunderstoreSignOut() {
   });
 }
 
+/** The Valheim publish categories; they change rarely. */
+export function useValheimCategories() {
+  return useQuery({
+    queryKey: thunderstoreCategoriesQueryKey,
+    queryFn: valheimCategories,
+    staleTime: Infinity,
+  });
+}
+
 /** Publish a profile's modpack; progress arrives as `modpack-publish` events. */
 export function usePublishModpack() {
   return useMutation({
@@ -67,6 +77,7 @@ export function usePublishModpack() {
       metadata: ModpackMetadata;
       iconPath: string | null;
       team: string;
+      categories: string[];
       hasNsfwContent: boolean;
     }) => publishModpack(input),
   });

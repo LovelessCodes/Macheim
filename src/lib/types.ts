@@ -384,6 +384,12 @@ export interface ThunderstoreAuthStatus {
   teams: string[];
 }
 
+/** A Valheim community category a modpack can be published under. */
+export interface ThunderstoreCategory {
+  name: string;
+  slug: string;
+}
+
 /** A published modpack. */
 export interface ModpackPublishResult {
   full_name: string;
