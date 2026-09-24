@@ -57,6 +57,9 @@ export default function ModConflictsPanel({ report }: { report: ConflictReport |
             {mismatch.installed_version} is installed, but <ModNames mods={mismatch.required_by} />{" "}
             require
             {mismatch.required_by.length === 1 ? "s" : ""} v{mismatch.required_version}
+            {mismatch.pinned && (
+              <> — pinned, so it stays at v{mismatch.installed_version}; unpin it to update</>
+            )}
           </li>
         ))}
       </ul>

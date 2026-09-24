@@ -89,6 +89,7 @@ Upstream handles the core workflow. This build adds:
 - **Install from file** — drag and drop mod `.zip` archives or a shared profile `.r2z` onto the window, or pick them with "Install from file" on the Installed Mods page; archives are matched back to their Thunderstore listing (so author, icon and update checks are correct) and queue like any other install
 - **Background download queue** — installs queue instead of failing when Valheim is running or the connection drops, then start automatically once the game closes or the network returns. Track, pause, resume, cancel, retry, uninstall and re-install downloads from the header button, anywhere in the app; the queue survives app restarts
 - **Update detection and "Update All"** — installed mods are checked against latest versions, with a one-click bulk update for everything that's outdated
+- **Version pinning** — hold a mod at its installed version: Update All and the per-mod update skip it, the row is badged as pinned, and conflict detection explains when a pin no longer satisfies another mod's requirement. Manual mods have no pin control because they never auto-update
 - **Version history and downgrades** — open a mod's Version History to install or switch to an older release directly from the detail panel
 - **Safer uninstalls** — uninstalling from the installed list asks for confirmation first (hold Shift to skip)
 - **Clearer installed list** — outdated versions are badged, row actions use tooltips, and the scroll-to-top button sits bottom-center, clear of the row controls

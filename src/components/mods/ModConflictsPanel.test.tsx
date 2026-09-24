@@ -46,6 +46,7 @@ test("summarizes duplicates, conflicts and mismatches", () => {
             required_by: ["A-Mod"],
             required_version: "2.4.0",
             installed_version: "2.3.9",
+            pinned: false,
           },
         ],
       })}
@@ -57,4 +58,24 @@ test("summarizes duplicates, conflicts and mismatches", () => {
   expect(screen.getByText(/is provided by/)).toBeTruthy();
   expect(screen.getByText(/is required at different versions/)).toBeTruthy();
   expect(screen.getByText(/v2\.3\.9 is installed/)).toBeTruthy();
+});
+
+test("names the pin as the cause of a mismatch", () => {
+  render(
+    <ModConflictsPanel
+      report={report({
+        version_mismatches: [
+          {
+            dependency: "Dev-Jotunn",
+            required_by: ["A-Mod"],
+            required_version: "2.4.0",
+            installed_version: "2.3.9",
+            pinned: true,
+          },
+        ],
+      })}
+    />,
+  );
+
+  expect(screen.getByText(/pinned, so it stays at v2\.3\.9/)).toBeTruthy();
 });

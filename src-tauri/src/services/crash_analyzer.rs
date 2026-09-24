@@ -512,6 +512,7 @@ mod tests {
             installed_at: String::new(),
             icon: String::new(),
             manual: false,
+            pinned: false,
         }
     }
 

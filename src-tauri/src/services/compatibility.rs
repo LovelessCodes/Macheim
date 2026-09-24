@@ -336,6 +336,7 @@ mod tests {
                 installed_at: "".into(),
                 icon: "".into(),
                 manual: false,
+                pinned: false,
             });
         }
         std::fs::create_dir_all(root.path().join("BepInEx/core")).unwrap();

@@ -9,8 +9,8 @@ Upstream releases before this fork are listed on
 
 ## [Unreleased]
 
-The log viewer: read the latest Valheim log in the app instead of hunting for it in Finder,
-with level filters, search and a follow mode that tails the log while the game runs.
+The log viewer and per-mod version pinning: read the log in-app, and hold a mod at a
+known-good version.
 
 ### Added
 
@@ -25,6 +25,13 @@ with level filters, search and a follow mode that tails the log while the game r
   Resume control re-engages; polling pauses while the window is hidden and stops when the page
   is left. A recreated or rotated log — a new launch, or the fallback switching to the BepInEx
   log — resets the view instead of mixing contents.
+- **Version pinning** — pin any store-managed mod from the Installed Mods list to hold it at
+  the version currently installed. Pinned mods are excluded from Update All and their count,
+  badged in the list, and their per-mod update control explains the pin instead of updating.
+  The pin lives in the profile, so it survives restarts and profile switches, and switching
+  versions through Version History while pinned moves the hold. Conflict detection now says
+  when a dependency mismatch is caused by a pin — still a warning, never a blocked launch.
+  Manual mods have no pin control; they already never auto-update.
 
 ## [1.3.2] - 2026-09-24
 

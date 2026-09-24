@@ -64,6 +64,8 @@ export interface InstalledMod {
   installed_at: string;
   /** Discovered on disk instead of installed by Macheim. */
   manual?: boolean;
+  /** Held at the installed version; excluded from updates. */
+  pinned?: boolean;
 }
 
 /** Outcome of a bulk mod action: what changed, and what could not. */
@@ -196,6 +198,8 @@ export interface VersionMismatch {
   required_by: string[];
   required_version: string;
   installed_version: string;
+  /** The dependency is pinned, so the mismatch is deliberate. */
+  pinned: boolean;
 }
 
 export interface ConflictReport {

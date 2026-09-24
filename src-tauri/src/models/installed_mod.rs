@@ -19,6 +19,10 @@ pub struct InstalledMod {
     /// rebuilt on every profile scan and matched to store listings by name.
     #[serde(default)]
     pub manual: bool,
+    /// Held at its installed version: excluded from updates. A pin follows the
+    /// installed version, so switching versions while pinned moves the hold.
+    #[serde(default)]
+    pub pinned: bool,
 }
 
 impl InstalledMod {

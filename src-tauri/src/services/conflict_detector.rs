@@ -48,6 +48,9 @@ pub struct VersionMismatch {
     pub required_by: Vec<String>,
     pub required_version: String,
     pub installed_version: String,
+    /// The dependency is pinned at the installed version, so the mismatch is
+    /// deliberate rather than an install that went wrong.
+    pub pinned: bool,
 }
 
 pub fn detect_conflicts(
@@ -218,6 +221,7 @@ fn detect_dependency_issues(
                 required_by: required_by.into_iter().collect(),
                 required_version,
                 installed_version: installed_dep.version.clone(),
+                pinned: installed_dep.pinned,
             });
         }
     }
@@ -243,6 +247,7 @@ mod tests {
             installed_at: String::new(),
             icon: String::new(),
             manual: false,
+            pinned: false,
         }
     }
 
@@ -387,6 +392,23 @@ mod tests {
         assert_eq!(mismatch.required_version, "2.4.0");
         assert_eq!(mismatch.installed_version, "2.3.9");
         assert_eq!(mismatch.required_by, vec!["Owner-ModA"]);
+        assert!(!mismatch.pinned);
+    }
+
+    #[test]
+    fn a_pinned_dependency_is_reported_as_the_cause_of_a_mismatch() {
+        let mut pinned = installed("Dev-Jotunn", "2.3.9");
+        pinned.pinned = true;
+        let mods = vec![installed("Owner-ModA", "1.0.0"), pinned];
+        let packages = vec![
+            package("Owner-ModA", "1.0.0", &["Dev-Jotunn-2.4.0"]),
+            package("Dev-Jotunn", "2.3.9", &[]),
+        ];
+
+        let report = detect_conflicts(tempfile::tempdir().unwrap().path(), &mods, &packages);
+
+        assert_eq!(report.version_mismatches.len(), 1);
+        assert!(report.version_mismatches[0].pinned);
     }
 
     #[test]

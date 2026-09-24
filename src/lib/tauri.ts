@@ -65,6 +65,10 @@ export async function toggleMod(fullName: string, enable: boolean): Promise<void
   return invoke("toggle_mod", { fullName, enable });
 }
 
+export async function setModPinned(fullName: string, pinned: boolean): Promise<void> {
+  return invoke("set_mod_pinned", { fullName, pinned });
+}
+
 export async function setModsEnabled(fullNames: string[], enable: boolean): Promise<BulkModResult> {
   return invoke<BulkModResult>("set_mods_enabled", { fullNames, enable });
 }

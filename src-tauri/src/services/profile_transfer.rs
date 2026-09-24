@@ -408,6 +408,7 @@ pub fn to_installed_mod(parsed: &ParsedMod, packages: &[ThunderstorePackage]) ->
         installed_at: chrono::Utc::now().to_rfc3339(),
         icon: metadata.map(|v| v.icon.clone()).unwrap_or_default(),
         manual: false,
+        pinned: false,
     }
 }
 
@@ -543,6 +544,7 @@ mod tests {
             installed_at: "2026-01-01T00:00:00Z".into(),
             icon: String::new(),
             manual,
+            pinned: false,
         }
     }
 

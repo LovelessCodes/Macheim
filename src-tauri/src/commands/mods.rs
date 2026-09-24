@@ -202,6 +202,27 @@ pub async fn toggle_mod(
     Ok(result)
 }
 
+/// Hold a mod at its installed version, or release it. Pinning only changes
+/// profile metadata, so it is safe while Valheim runs.
+#[tauri::command]
+pub async fn set_mod_pinned(
+    full_name: String,
+    pinned: bool,
+    state: tauri::State<'_, Mutex<AppState>>,
+) -> AppResult<()> {
+    info!("Command: set_mod_pinned({}, pinned={})", full_name, pinned);
+    profile_manager::validate_name(&full_name)?;
+
+    let active_profile = {
+        let state = state
+            .lock()
+            .map_err(|e| AppError::Mod(format!("Failed to lock state: {}", e)))?;
+        state.active_profile.clone()
+    };
+
+    profile_manager::set_mod_pinned(&active_profile, &full_name, pinned)
+}
+
 /// Get list of installed mods for the active profile.
 #[tauri::command]
 pub async fn get_installed_mods(

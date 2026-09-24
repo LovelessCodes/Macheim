@@ -7,6 +7,8 @@ import {
   FolderOpen,
   ListChecks,
   Package,
+  Pin,
+  PinOff,
   Trash2,
   Power,
   PowerOff,
@@ -22,6 +24,7 @@ import { useEnqueueInstall } from "../../hooks/use-download-queue";
 import { useInstallFromFile } from "../../hooks/use-install-from-file";
 import { useInstalledMods } from "../../hooks/use-installed-mods";
 import { useModConflicts } from "../../hooks/use-mod-conflicts";
+import { useModPin } from "../../hooks/use-mod-pin";
 import { useModToggle, useModsToggle } from "../../hooks/use-mod-toggle";
 import { useModUninstall, useUninstallMods } from "../../hooks/use-mod-uninstall";
 import { useUpdateMods } from "../../hooks/use-package-install";
@@ -31,6 +34,7 @@ import { groupPackagesByName, matchManualMod } from "../../lib/packages";
 import { listUnmanagedMods, openPluginsFolder } from "../../lib/tauri";
 import type { InstalledMod } from "../../lib/types";
 import { isDownloadActive, isDownloadPending } from "../../lib/types";
+import { updatableMods } from "../../lib/updates";
 import { useDownloadStore } from "../../store/downloadStore";
 import { useModStore } from "../../store/modStore";
 import { ListSkeleton } from "../common/LoadingSkeleton";
@@ -59,6 +63,7 @@ export default function InstalledModList() {
   const toggleModMutation = useModToggle();
   const bulkToggleMutation = useModsToggle();
   const bulkUninstallMutation = useUninstallMods();
+  const pinModMutation = useModPin();
   const syncModsMutation = useSyncMods();
   const setSelectedPackage = useModStore((s) => s.setSelectedPackage);
   const queuedNames = useDownloadStore(
@@ -80,6 +85,7 @@ export default function InstalledModList() {
   const togglingMod = toggleModMutation.isPending
     ? (toggleModMutation.variables?.fullName ?? null)
     : null;
+  const pinningMod = pinModMutation.isPending ? (pinModMutation.variables?.fullName ?? null) : null;
   const syncing = syncModsMutation.isPending;
   const updatingAll = updateModsMutation.isPending;
 
@@ -97,15 +103,11 @@ export default function InstalledModList() {
 
   const isManual = (mod: InstalledMod) => mod.manual === true;
 
+  // Pinned and manual mods never take part in Update All; the per-row control
+  // explains the pin instead.
   const updatable = useMemo(
-    () =>
-      installedMods.flatMap((mod) => {
-        const pkg = packageByFullName.get(mod.full_name);
-        return pkg && pkg.version_number !== mod.version
-          ? [{ fullName: mod.full_name, name: mod.name, version: pkg.version_number }]
-          : [];
-      }),
-    [installedMods, packageByFullName],
+    () => updatableMods(installedMods, packages),
+    [installedMods, packages],
   );
 
   const handleUpdateAll = () => {
@@ -423,6 +425,11 @@ export default function InstalledModList() {
                         v{mod.version}
                       </Badge>
                     )}
+                    {mod.pinned && (
+                      <Badge variant="secondary" className="shrink-0">
+                        Pinned
+                      </Badge>
+                    )}
                     {!mod.enabled && (
                       <Badge variant="secondary" className="shrink-0">
                         Disabled
@@ -434,7 +441,7 @@ export default function InstalledModList() {
                   </p>
                 </div>
 
-                {!selecting && update && (
+                {!selecting && update && !mod.pinned && (
                   <Tooltip>
                     <TooltipTrigger
                       render={
@@ -474,6 +481,63 @@ export default function InstalledModList() {
                       {isQueued
                         ? "Update queued — open downloads"
                         : `Update to v${update.version_number}`}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
+                {!selecting && update && mod.pinned && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant="outline-accent-primary"
+                          size="icon-sm"
+                          disabled
+                          aria-label={`${mod.name} is pinned at v${mod.version}`}
+                        />
+                      }
+                    >
+                      <ArrowUpCircle />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Pinned at v{mod.version} — unpin to update to v{update.version_number}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
+                {!selecting && !isManual(mod) && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          disabled={pinningMod === mod.full_name}
+                          aria-label={
+                            mod.pinned ? `Unpin ${mod.name}` : `Pin ${mod.name} at v${mod.version}`
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            pinModMutation.mutate({
+                              fullName: mod.full_name,
+                              pinned: !mod.pinned,
+                            });
+                          }}
+                        />
+                      }
+                    >
+                      {pinningMod === mod.full_name ? (
+                        <Loader2 className="animate-spin" />
+                      ) : mod.pinned ? (
+                        <PinOff />
+                      ) : (
+                        <Pin />
+                      )}
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {mod.pinned
+                        ? "Pinned — updates are skipped. Click to unpin."
+                        : `Hold at v${mod.version} and skip updates`}
                     </TooltipContent>
                   </Tooltip>
                 )}
