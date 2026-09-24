@@ -206,7 +206,10 @@ pub fn run() {
             commands::profiles::delete_profile,
             commands::profiles::clone_profile,
             commands::profiles::export_profile,
+            commands::profiles::export_profile_file,
             commands::profiles::import_profile,
+            commands::profiles::import_profile_file,
+            commands::profiles::import_profile_code,
             commands::profiles::get_active_profile,
             // App settings
             commands::settings::get_app_settings,

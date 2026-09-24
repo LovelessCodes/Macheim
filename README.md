@@ -53,7 +53,7 @@ All three are free Thunderstore mod managers. The difference is the platform.
 | Games supported                                     |             Valheim only              | 150+ on Thunderstore |           150+           |         Multiple         |    Valheim     |
 | Mod sources                                         |         Thunderstore, Hexium          | Thunderstore, Hexium |       Thunderstore       |       Thunderstore       |  Thunderstore  |
 | One-click installs, dependency resolution, profiles |                  Yes                  |         Yes          |           Yes            |           Yes            |       No       |
-| Import r2modman / Thunderstore profiles             |                  No                   |         Yes          |           Yes            |           Yes            |       —        |
+| Import r2modman / Thunderstore profiles             |           Yes (file + code)           |         Yes          |           Yes            |           Yes            |       —        |
 | Publish modpacks to Thunderstore                    |                  No                   |         Yes          |           Yes            |           Yes            |       —        |
 | Mod config editor                                   |                  Yes                  |         Yes          |           Yes            |           Yes            |  Text editor   |
 | Gatekeeper, BepInEx and Rosetta launch handling     |                  Yes                  |         n/a          |           n/a            |           n/a            |     Manual     |
@@ -80,9 +80,11 @@ Upstream handles the core workflow. This build adds:
 
 ### Mod management
 
+- **Profile sharing and migration** — export any profile as an `.r2z` file that Macheim, r2modman, Gale and Thunderstore Mod Manager can all import, and import a shared profile from an `.r2z` file, a Thunderstore profile code, or by dropping the file onto the window. Imported profiles keep every mod pinned to the version they were exported with; after importing you can activate the profile and queue all its downloads in one step
+- **Profile clone and export** — clone a profile (with its configs) as a starting point, or export one to share
 - **Conflict detection** — the Installed Mods page flags duplicate plugin files and dependency version clashes, refreshed after installs, syncs and toggles
 - **Developer console toggle** — decide whether "Play Modded" adds Valheim's `-console` flag, from Settings
-- **Install from file** — drag and drop mod `.zip` archives onto the window, or pick them with "Install from file" on the Installed Mods page; archives are matched back to their Thunderstore listing (so author, icon and update checks are correct) and queue like any other install
+- **Install from file** — drag and drop mod `.zip` archives or a shared profile `.r2z` onto the window, or pick them with "Install from file" on the Installed Mods page; archives are matched back to their Thunderstore listing (so author, icon and update checks are correct) and queue like any other install
 - **Background download queue** — installs queue instead of failing when Valheim is running or the connection drops, then start automatically once the game closes or the network returns. Track, pause, resume, cancel, retry, uninstall and re-install downloads from the header button, anywhere in the app; the queue survives app restarts
 - **Update detection and "Update All"** — installed mods are checked against latest versions, with a one-click bulk update for everything that's outdated
 - **Version history and downgrades** — open a mod's Version History to install or switch to an older release directly from the detail panel
@@ -116,7 +118,7 @@ Inherited from upstream and still present here:
 - **Thunderstore mod browser** — search and filter thousands of mods (Popular / Newest / Top Rated / A-Z)
 - **One-click mod install** — automatic dependency resolution by topological sort
 - **Modpack support** — install entire modpacks with all dependencies in one click
-- **Profile management** — create and switch profiles; the active profile is remembered across restarts and manual mods are preserved
+- **Profile management** — create, clone, export and import profiles; the active profile is remembered across restarts and manual mods are preserved
 - **Mac Compatibility** — automatically apply version-pinned visual workarounds for tested item effects, with per-profile and per-rule opt-out
 - **BepInEx config editor** — edit mod configuration files directly in the app
 - **Backup and restore** — back up profile metadata and configs (not mod binaries or worlds); restore into a separate profile
@@ -158,11 +160,11 @@ Macheim is ad-hoc signed but not Apple-notarized, so Gatekeeper blocks the first
 
 ### What is the best mod manager for Valheim on macOS?
 
-Macheim is the only native option, so on macOS the short answer is Macheim. On Windows or Linux, Gale is the current pick and r2modman remains a fine alternative — both support more games than Macheim does and can import each other's profiles. If you play Valheim on both a Mac and a PC, Macheim cannot import a Gale or r2modman profile, so keep the two setups separate.
+Macheim is the only native option, so on macOS the short answer is Macheim. On Windows or Linux, Gale is the current pick and r2modman remains a fine alternative — both support more games than Macheim does and can import each other's profiles. If you play Valheim on both a Mac and a PC, export a profile from the PC manager and import the `.r2z` file in Macheim (or the other way around) to keep the two setups in sync.
 
 ### Can I import an r2modman or Thunderstore profile code?
 
-No. r2modman/Thunderstore profile-code import is not supported — Macheim's metadata import/export is a different format and is not a PC profile importer. Recreate the mod list by installing the same Thunderstore mods; version pins are shown in each mod's Version History.
+Yes. On the Profiles page, choose **Import** and paste a Thunderstore profile code, or pick an `.r2z` file exported by r2modman, Gale or Thunderstore Mod Manager — you can also drag the `.r2z` file straight onto the window. Codes expire after about an hour, so ask for a fresh one or use a file export. Macheim also imports its own `.r2z` and JSON exports. Every mod keeps the version it was exported with, and after importing you can activate the profile and queue its downloads in one step. Manual mods have no store listing, so they are not part of an export.
 
 ### Where does Macheim keep its files?
 
@@ -240,6 +242,8 @@ The catalog covers four tested dropped items: VES F weapon and blessed F weapon 
 ## Profile and recovery notes
 
 When upgrading an older installation with multiple profiles and no active-profile record, the live mod files are preserved in a new `Recovered-…` profile. Existing profiles are not overwritten. Switch to your preferred profile after reviewing it. Symlinked mod/profile paths are refused during replacement; back them up and resolve the links first. Do not change profiles while Valheim is running.
+
+An imported profile starts with its config files but no mod files: activate it and Macheim queues the downloads, or switch to it and use **Sync & Clean** later. Exporting includes the profile's config files, which can contain server addresses or passwords — review them before sharing. Manual mods are not part of an export.
 
 ## Build from source
 

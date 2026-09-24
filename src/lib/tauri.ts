@@ -183,6 +183,22 @@ export async function deleteProfile(name: string): Promise<void> {
   return invoke("delete_profile", { name });
 }
 
+export async function cloneProfile(sourceName: string, newName: string): Promise<Profile> {
+  return invoke<Profile>("clone_profile", { sourceName, newName });
+}
+
+export async function exportProfileFile(name: string, path: string): Promise<void> {
+  return invoke("export_profile_file", { name, path });
+}
+
+export async function importProfileFile(path: string, newName?: string): Promise<Profile> {
+  return invoke<Profile>("import_profile_file", { path, newName: newName ?? null });
+}
+
+export async function importProfileCode(code: string, newName?: string): Promise<Profile> {
+  return invoke<Profile>("import_profile_code", { code, newName: newName ?? null });
+}
+
 // ── Config Editor ───────────────────────────────────────────────
 
 export async function getConfigFiles(): Promise<ConfigFileSummary[]> {

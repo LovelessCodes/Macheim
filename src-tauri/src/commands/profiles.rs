@@ -4,7 +4,7 @@ use tracing::info;
 
 use crate::error::{AppError, AppResult};
 use crate::models::Profile;
-use crate::services::{game_detector, profile_manager};
+use crate::services::{game_detector, package_sources, profile_manager, profile_transfer};
 use crate::AppState;
 
 /// List all profiles.
@@ -149,6 +149,114 @@ pub async fn import_profile(
 ) -> AppResult<Profile> {
     info!("Command: import_profile");
     let profile = profile_manager::import_profile(&json, new_name.as_deref())?;
+    Ok(profile)
+}
+
+/// Export a profile as an r2modman-compatible `.r2z` file that Macheim,
+/// r2modman, Gale and Thunderstore Mod Manager can all import.
+#[tauri::command]
+pub async fn export_profile_file(
+    name: String,
+    path: String,
+    _state: tauri::State<'_, Mutex<AppState>>,
+) -> AppResult<()> {
+    info!("Command: export_profile_file({})", name);
+    let profile = profile_manager::load_profile(&name)?;
+    let bytes =
+        profile_transfer::build_share_payload(&profile, &profile_manager::get_profile_dir(&name))?;
+    crate::services::compatibility::atomic_write(std::path::Path::new(&path), &bytes)?;
+    Ok(())
+}
+
+/// Import a shared profile from an `.r2z` file or a Macheim profile JSON.
+#[tauri::command]
+pub async fn import_profile_file(
+    path: String,
+    new_name: Option<String>,
+    state: tauri::State<'_, Mutex<AppState>>,
+) -> AppResult<Profile> {
+    info!("Command: import_profile_file({})", path);
+    let bytes = std::fs::read(&path)
+        .map_err(|e| AppError::Profile(format!("Could not read '{}': {}", path, e)))?;
+
+    if profile_transfer::looks_like_share_payload(&bytes) {
+        let parsed = profile_transfer::parse_share_payload(&bytes)?;
+        return create_imported_profile(
+            parsed,
+            new_name,
+            &state,
+            "Imported from a shared profile file",
+        );
+    }
+
+    let json = String::from_utf8(bytes).map_err(|_| {
+        AppError::Profile(
+            "This file is not a Macheim or r2modman profile. Use an .r2z export or a Macheim JSON export."
+                .into(),
+        )
+    })?;
+    profile_manager::import_profile(&json, new_name.as_deref())
+}
+
+/// Import a shared profile by its Thunderstore profile code. Codes are
+/// short-lived; file exports are the durable way to share a profile.
+#[tauri::command]
+pub async fn import_profile_code(
+    code: String,
+    new_name: Option<String>,
+    state: tauri::State<'_, Mutex<AppState>>,
+) -> AppResult<Profile> {
+    info!("Command: import_profile_code");
+    let bytes = profile_transfer::fetch_profile_code(&code).await?;
+    let parsed = profile_transfer::parse_share_payload(&bytes)?;
+    create_imported_profile(
+        parsed,
+        new_name,
+        &state,
+        "Imported from a Thunderstore profile code",
+    )
+}
+
+fn create_imported_profile(
+    parsed: profile_transfer::ParsedProfile,
+    new_name: Option<String>,
+    state: &tauri::State<'_, Mutex<AppState>>,
+    description: &str,
+) -> AppResult<Profile> {
+    let name = match new_name
+        .map(|name| name.trim().to_string())
+        .filter(|name| !name.is_empty())
+    {
+        Some(name) => name,
+        None if profile_manager::validate_name(&parsed.name).is_ok() => parsed.name.clone(),
+        None => format!("Imported-{}", chrono::Utc::now().format("%Y%m%d-%H%M%S")),
+    };
+    profile_manager::validate_name(&name)?;
+
+    let packages = state
+        .lock()
+        .ok()
+        .and_then(|state| state.package_cache.clone())
+        .unwrap_or_else(package_sources::cached_packages_any_age);
+
+    let mut profile = profile_manager::create_profile(&name, description)?;
+    let result = (|| -> AppResult<()> {
+        let config_root = profile_manager::get_profile_dir(&name).join("BepInEx/config");
+        for (relative, bytes) in &parsed.configs {
+            crate::services::compatibility::atomic_write(&config_root.join(relative), bytes)?;
+        }
+        profile.mods = parsed
+            .mods
+            .iter()
+            .map(|m| profile_transfer::to_installed_mod(m, &packages))
+            .collect();
+        profile.touch();
+        profile_manager::save_profile(&profile)
+    })();
+    if let Err(error) = result {
+        let _ = std::fs::remove_dir_all(profile_manager::get_profile_dir(&name));
+        return Err(error);
+    }
     Ok(profile)
 }
 
