@@ -12,6 +12,7 @@ running app at a 1200×800 window and shipped as WebP (see "Why WebP" below).
 | `modpacks.webp`          | Modpacks                       |
 | `config-editor.webp`     | Config Editor with a file open |
 | `mac-compatibility.webp` | Mac Compatibility              |
+| `profiles.webp`          | Profiles                       |
 | `downloads-sheet.webp`   | Downloads sheet with a queue   |
 
 ## Capturing
@@ -52,13 +53,55 @@ because almost every page calls Tauri commands.
 
 7. If you added a page, add it to the README table.
 
+### Scripted capture (no clicking)
+
+The capture itself does not need a human: find the window id with a small
+CoreGraphics script, then capture by id.
+
+```sh
+swift - <<'EOF'
+import CoreGraphics
+let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as! [[String: Any]]
+for window in list where (window[kCGWindowOwnerName as String] as? String) == "macheim" {
+    print(window[kCGWindowNumber as String] as? Int ?? 0)
+}
+EOF
+
+screencapture -o -x -l38645 screenshots/browse-mods.png
+```
+
+Pages and transient states are driven from a temporary `src/capture-scaffold.ts`
+imported at the end of `main.tsx`. It runs before React mounts, so it can set
+the page (`useAppStore`), open a mod detail (`useModStore.setSelectedPackage`
+once `packages` is in the query cache), or seed the downloads sheet
+(`useDownloadStore.setState` with representative rows and a no-op
+`setSnapshot`). Change its `SHOT` constant per capture; the edit triggers a full
+reload and the state applies. `main.tsx` is the import site because a module it
+imports has no HMR boundary, which is what forces the reload.
+
+Caveats:
+
+- Wait for the header button to read **Refresh** again. A reload refetches the
+  package list, and `Refreshing...` in the frame is a rejected capture.
+- If the app restarts while Vite re-optimizes its dependency cache, the webview
+  can come up blank. Wait for the dev server and capture again.
+- The collapsed-sidebar shot needs `defaultOpen = false` in
+  `src/components/ui/sidebar.tsx`. The Config Editor shot needs a `.cfg` in
+  `<Valheim>/BepInEx/config` (the dev machine's profile is often empty) or a
+  temporary effect that selects the first file. Both are scaffolding.
+- Delete `src/capture-scaffold.ts`, its `main.tsx` import, staged config files
+  and every temporary edit before committing: the only committed changes should
+  be the WebPs and doc updates.
+
 ## Capture checklist
 
-- Use the **Default** profile, dark theme, and a clean window (no progress
+- Use a real profile with a few mods installed (the current set shows a `Macheim`
+  profile over a `Default` one), dark theme, and a clean window (no progress
   overlay, no update toast, no hover tooltips). Park the cursor away from the
   icon-only sidebar before shooting — otherwise an icon tooltip lands in frame.
-- The **Settings** page prints your real Steam/BepInEx paths — do not include it
-  in public screenshots, or redact the paths first.
+- **Settings**, **Save Snapshots** and any other page that prints a local path
+  expose your username — leave them out of public screenshots, or redact the
+  paths first.
 - Mod names, counts and versions change over time; that's fine. What matters is
   that the layout matches what users see today.
 - Keep every capture at the same window size so the README grid stays aligned.
