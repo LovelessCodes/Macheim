@@ -26,6 +26,10 @@ void mock.module("../../lib/tauri", () => ({
   ),
   getInstalledMods: mock(() => Promise.resolve([])),
   enqueueInstall: mock(() => Promise.resolve({})),
+  listSubscriptions: mock(() => Promise.resolve([])),
+  subscribeProfile: mock(() => Promise.resolve({})),
+  unsubscribeProfile: mock(() => Promise.resolve()),
+  createProfile: mock(() => Promise.resolve({})),
 }));
 
 import ModpackBrowser from "./ModpackBrowser";

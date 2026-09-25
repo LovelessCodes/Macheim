@@ -43,6 +43,13 @@ known-good version.
   mods that nothing depends on any more — including the transitive closure — and removes them
   through the normal bulk uninstall after one confirmation. Pinned, manually installed and
   explicitly installed mods are never listed, and disabled mods still count as dependents.
+- **Modpack subscriptions** — follow a published Thunderstore modpack from the Modpacks tab
+  and link it to a new profile named after the pack or an existing unlinked one. The link is a
+  sidecar next to the profile, so the profile format, exports and codes are unchanged; clones
+  start unlinked. The Profiles page and the profile selector badge the profile with the pack
+  name, flag when the cached store catalog has a newer pack version, and mark a pack that has
+  been removed or deprecated upstream. Unlink removes only the link — mods, files and configs
+  stay put. Hexium-only listings cannot be followed because they carry no dependency data.
 
 ## [1.3.2] - 2026-09-24
 

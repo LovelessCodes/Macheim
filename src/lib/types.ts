@@ -94,6 +94,22 @@ export interface Profile {
   updated_at: string;
 }
 
+/** A profile's link to a published Thunderstore modpack. */
+export interface Subscription {
+  /** Thunderstore full name: "Author-PackName". */
+  modpack: string;
+  /** The modpack version the profile was last synced to. */
+  version: string;
+  /** The pack's dependency full names at the last sync, BepInEx excluded. */
+  mods: string[];
+  synced_at: string;
+}
+
+export interface ProfileSubscription {
+  profile: string;
+  subscription: Subscription;
+}
+
 export interface GameStatus {
   installed: boolean;
   game_path: string | null;

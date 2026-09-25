@@ -15,12 +15,14 @@ import {
   Upload,
   FolderOpen,
   Link2,
+  Unlink,
   Archive,
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
 import { useState } from "react";
 
+import { usePackages } from "../../hooks/use-packages";
 import {
   useCloneProfile,
   useCreateProfile,
@@ -35,7 +37,9 @@ import {
   useRestoreDeletedProfile,
   useSwitchProfile,
 } from "../../hooks/use-profiles";
+import { useSubscriptions, useUnsubscribeModpack } from "../../hooks/use-subscriptions";
 import { formatDate } from "../../lib/format";
+import { subscriptionForProfile, subscriptionStatus } from "../../lib/subscriptions";
 import type { DeletedProfile } from "../../lib/types";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -62,6 +66,9 @@ export default function ProfileManager() {
   const purgeArchiveMutation = usePurgeDeletedProfile();
   const purgeAllMutation = usePurgeDeletedProfiles();
   const { importShared, isImporting: isImportPending } = useImportSharedProfile();
+  const { data: packages = [] } = usePackages();
+  const { data: subscriptions = [] } = useSubscriptions();
+  const unlinkModpackMutation = useUnsubscribeModpack();
   const profiles = data?.profiles ?? [];
   const activeProfile = data?.activeProfile ?? "Default";
   const deleted = deletedProfiles ?? [];
@@ -417,6 +424,8 @@ export default function ProfileManager() {
           {profiles.map((profile) => {
             const isActive = profile.name === activeProfile;
             const isDeleting = deletingProfile === profile.name;
+            const subscription = subscriptionForProfile(subscriptions, profile.name);
+            const status = subscription ? subscriptionStatus(subscription, packages) : null;
 
             return (
               <div
@@ -441,7 +450,7 @@ export default function ProfileManager() {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h4 className="text-foreground truncate text-sm font-semibold">
                       {profile.name}
                     </h4>
@@ -449,6 +458,23 @@ export default function ProfileManager() {
                       <Badge className="bg-accent-primary/20 text-accent-primary border-transparent">
                         Active
                       </Badge>
+                    )}
+                    {subscription && (
+                      <Badge
+                        variant="outline"
+                        className="border-accent-primary/40 text-accent-primary max-w-56 truncate"
+                        title={`Follows ${subscription.modpack}`}
+                      >
+                        {subscription.modpack}
+                      </Badge>
+                    )}
+                    {subscription && status?.updateAvailable && (
+                      <Badge variant="secondary">
+                        Update v{subscription.version} → v{status.latestVersion}
+                      </Badge>
+                    )}
+                    {subscription && status?.unavailable && (
+                      <Badge variant="destructive">Modpack unavailable</Badge>
                     )}
                   </div>
                   <div className="text-muted-foreground mt-0.5 flex items-center gap-3 text-xs">
@@ -502,6 +528,12 @@ export default function ProfileManager() {
                       <Link2 />
                       Share as code
                     </DropdownMenuItem>
+                    {subscription && (
+                      <DropdownMenuItem onClick={() => unlinkModpackMutation.mutate(profile.name)}>
+                        <Unlink />
+                        Unlink modpack
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
 
