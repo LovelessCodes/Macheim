@@ -16,6 +16,8 @@ interface ModCardProps {
   pkg: ThunderstorePackage;
   kind?: "mod" | "modpack";
   extraMeta?: ReactNode;
+  /** Extra action rendered next to Install (e.g. Follow on modpacks). */
+  secondaryAction?: ReactNode;
   showVersion?: boolean;
 }
 
@@ -23,6 +25,7 @@ export default function ModCard({
   pkg,
   kind = "mod",
   extraMeta,
+  secondaryAction,
   showVersion = true,
 }: ModCardProps) {
   const setSelectedPackage = useModStore((s) => s.setSelectedPackage);
@@ -94,33 +97,36 @@ export default function ModCard({
           {extraMeta}
         </div>
 
-        <Button
-          size="sm"
-          variant={isInstalled ? "outline-success" : isQueued ? "secondary" : "accent-primary"}
-          onClick={handleInstall}
-          disabled={isInstalled}
-          title={isQueued ? "Open downloads" : undefined}
-          className="shrink-0"
-        >
-          {isInstalled ? (
-            <>
-              <CheckCircle />
-              Installed
-            </>
-          ) : isInstalling ? (
-            <>
-              <Loader2 className="animate-spin" />
-              {downloadStatusLabel(queueStatus ?? "installing")}
-            </>
-          ) : isQueued ? (
-            <>
-              <Clock />
-              {downloadStatusLabel(queueStatus ?? "queued")}
-            </>
-          ) : (
-            "Install"
-          )}
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          {secondaryAction}
+          <Button
+            size="sm"
+            variant={isInstalled ? "outline-success" : isQueued ? "secondary" : "accent-primary"}
+            onClick={handleInstall}
+            disabled={isInstalled}
+            title={isQueued ? "Open downloads" : undefined}
+            className="shrink-0"
+          >
+            {isInstalled ? (
+              <>
+                <CheckCircle />
+                Installed
+              </>
+            ) : isInstalling ? (
+              <>
+                <Loader2 className="animate-spin" />
+                {downloadStatusLabel(queueStatus ?? "installing")}
+              </>
+            ) : isQueued ? (
+              <>
+                <Clock />
+                {downloadStatusLabel(queueStatus ?? "queued")}
+              </>
+            ) : (
+              "Install"
+            )}
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   );

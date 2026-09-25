@@ -46,6 +46,9 @@ void mock.module("../../lib/tauri", () => ({
     }),
   ),
   enqueueInstall: mock(() => Promise.resolve({})),
+  fetchPackages: mock(() => Promise.resolve([])),
+  listSubscriptions: mock(() => Promise.resolve([])),
+  unsubscribeProfile: mock(() => Promise.resolve()),
 }));
 void mock.module("@tauri-apps/plugin-dialog", () => ({
   confirm: mock(() => Promise.resolve(true)),

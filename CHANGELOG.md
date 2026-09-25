@@ -43,6 +43,21 @@ known-good version.
   mods that nothing depends on any more — including the transitive closure — and removes them
   through the normal bulk uninstall after one confirmation. Pinned, manually installed and
   explicitly installed mods are never listed, and disabled mods still count as dependents.
+- **Modpack subscriptions** — follow a published Thunderstore modpack from the Modpacks tab
+  and link it to a new profile named after the pack or an existing unlinked one. The link is a
+  sidecar next to the profile, so the profile format, exports and codes are unchanged; clones
+  start unlinked. The Profiles page and the profile selector badge the profile with the pack
+  name, flag when the cached store catalog has a newer pack version, and mark a pack that has
+  been removed or deprecated upstream. Unlink removes only the link — mods, files and configs
+  stay put. Hexium-only listings cannot be followed because they carry no dependency data.
+- **Modpack sync** — Sync on a subscribed profile diffs it against the pack's latest published
+  version and shows what it would install, update and drop before anything happens. Applying
+  queues the missing and outdated mods as downloads, removes dropped mods only while the
+  checkbox is on, and records the new pack version; pins are skipped with a hint to unpin,
+  manually installed mods that collide with the pack are reported instead of overwritten, and
+  extra mods, enabled states and configs are left alone. Syncing an inactive profile offers to
+  switch to it first, and the plan reports the BepInEx version the pack expects when it differs
+  from what is installed.
 
 ## [1.3.2] - 2026-09-24
 

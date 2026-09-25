@@ -8,6 +8,9 @@ import type {
   BulkModResult,
   DeletedProfile,
   Profile,
+  ProfileSubscription,
+  Subscription,
+  SyncPlan,
   ConfigFile,
   ConfigFileSummary,
   BackupInfo,
@@ -236,6 +239,32 @@ export async function importProfileFile(path: string, newName?: string): Promise
 
 export async function importProfileCode(code: string, newName?: string): Promise<Profile> {
   return invoke<Profile>("import_profile_code", { code, newName: newName ?? null });
+}
+
+// ── Modpack Subscriptions ───────────────────────────────────────
+
+export async function listSubscriptions(): Promise<ProfileSubscription[]> {
+  return invoke<ProfileSubscription[]>("list_subscriptions");
+}
+
+export async function subscribeProfile(profile: string, modpack: string): Promise<Subscription> {
+  return invoke<Subscription>("subscribe_profile", { profile, modpack });
+}
+
+export async function unsubscribeProfile(profile: string): Promise<void> {
+  return invoke("unsubscribe_profile", { profile });
+}
+
+export async function getSyncPlan(profile: string): Promise<SyncPlan> {
+  return invoke<SyncPlan>("get_sync_plan", { profile });
+}
+
+export async function completeSubscriptionSync(
+  profile: string,
+  version: string,
+  mods: string[],
+): Promise<Subscription> {
+  return invoke<Subscription>("complete_subscription_sync", { profile, version, mods });
 }
 
 // ── Config Editor ───────────────────────────────────────────────
