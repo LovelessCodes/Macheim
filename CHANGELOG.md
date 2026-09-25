@@ -50,6 +50,14 @@ known-good version.
   name, flag when the cached store catalog has a newer pack version, and mark a pack that has
   been removed or deprecated upstream. Unlink removes only the link — mods, files and configs
   stay put. Hexium-only listings cannot be followed because they carry no dependency data.
+- **Modpack sync** — Sync on a subscribed profile diffs it against the pack's latest published
+  version and shows what it would install, update and drop before anything happens. Applying
+  queues the missing and outdated mods as downloads, removes dropped mods only while the
+  checkbox is on, and records the new pack version; pins are skipped with a hint to unpin,
+  manually installed mods that collide with the pack are reported instead of overwritten, and
+  extra mods, enabled states and configs are left alone. Syncing an inactive profile offers to
+  switch to it first, and the plan reports the BepInEx version the pack expects when it differs
+  from what is installed.
 
 ## [1.3.2] - 2026-09-24
 

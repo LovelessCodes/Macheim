@@ -9,6 +9,7 @@ export const modConflictsQueryKey = ["mod-conflicts"] as const;
 export const profilesQueryKey = ["profiles"] as const;
 export const deletedProfilesQueryKey = ["deleted-profiles"] as const;
 export const subscriptionsQueryKey = ["subscriptions"] as const;
+export const syncPlanQueryKey = (profile: string) => ["sync-plan", profile] as const;
 export const appVersionQueryKey = ["app-version"] as const;
 export const compatibilityQueryKey = ["compatibility"] as const;
 export const backupsQueryKey = ["backups"] as const;

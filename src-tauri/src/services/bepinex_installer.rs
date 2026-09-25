@@ -267,6 +267,11 @@ fn set_executable(path: &Path) -> AppResult<()> {
     Ok(())
 }
 
+/// Installed BepInEx version for a game root, when it can be determined.
+pub fn installed_version(game_root: &Path) -> Option<String> {
+    read_bepinex_version(&game_root.join("BepInEx/core"))
+}
+
 /// Read BepInEx version from core directory.
 fn read_bepinex_version(core_dir: &Path) -> Option<String> {
     // Try to find BepInEx.dll or similar and extract version

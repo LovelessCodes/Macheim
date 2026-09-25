@@ -16,6 +16,7 @@ import {
   FolderOpen,
   Link2,
   Unlink,
+  RefreshCw,
   Archive,
   ChevronDown,
   ChevronRight,
@@ -52,6 +53,7 @@ import {
 } from "../ui/dropdown-menu";
 import { Input } from "../ui/input";
 import { notify } from "../ui/toast";
+import SyncModpackSheet from "./SyncModpackSheet";
 
 export default function ProfileManager() {
   const { data } = useProfiles();
@@ -83,9 +85,11 @@ export default function ProfileManager() {
   const [sharedCode, setSharedCode] = useState<{ name: string; code: string } | null>(null);
   const [codeCopied, setCodeCopied] = useState(false);
   const [showDeleted, setShowDeleted] = useState(false);
+  const [syncTarget, setSyncTarget] = useState<string | null>(null);
   const deletingProfile = deleteProfileMutation.isPending
     ? (deleteProfileMutation.variables ?? null)
     : null;
+  const syncSubscription = syncTarget ? subscriptionForProfile(subscriptions, syncTarget) : null;
 
   const isExporting = (name: string) =>
     (exportProfileMutation.isPending && exportProfileMutation.variables === name) ||
@@ -489,6 +493,23 @@ export default function ProfileManager() {
                   </div>
                 </div>
 
+                {subscription && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSyncTarget(profile.name)}
+                    disabled={status?.unavailable}
+                    title={
+                      status?.unavailable
+                        ? "The pack is missing from the store catalog"
+                        : "Sync with the modpack"
+                    }
+                  >
+                    <RefreshCw />
+                    Sync
+                  </Button>
+                )}
+
                 <Button
                   variant="ghost"
                   size="icon-sm"
@@ -642,6 +663,17 @@ export default function ProfileManager() {
               </div>
             ))}
         </div>
+      )}
+
+      {syncTarget && syncSubscription && (
+        <SyncModpackSheet
+          profileName={syncTarget}
+          subscription={syncSubscription}
+          open
+          onOpenChange={(open) => {
+            if (!open) setSyncTarget(null);
+          }}
+        />
       )}
     </div>
   );

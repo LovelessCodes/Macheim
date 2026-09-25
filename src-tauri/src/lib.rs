@@ -227,6 +227,8 @@ pub fn run() {
             commands::subscriptions::list_subscriptions,
             commands::subscriptions::subscribe_profile,
             commands::subscriptions::unsubscribe_profile,
+            commands::subscriptions::get_sync_plan,
+            commands::subscriptions::complete_subscription_sync,
             // App settings
             commands::settings::get_app_settings,
             commands::settings::set_console_enabled,

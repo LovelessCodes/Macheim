@@ -1,3 +1,4 @@
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -5,8 +6,10 @@ use tracing::warn;
 
 use super::compatibility::{atomic_write, reject_symlink_ancestors};
 use super::profile_manager;
-use crate::error::{AppError, AppResult};
-use crate::models::{PackageSource, PackageVersion, ParsedDependency, ThunderstorePackage};
+use crate::error::AppResult;
+use crate::models::{
+    InstalledMod, PackageSource, PackageVersion, ParsedDependency, ThunderstorePackage,
+};
 
 /// Sidecar file stored next to a profile's `profile.json`. Keeping the link
 /// out of the profile keeps the upstream profile format and its exports
@@ -176,6 +179,185 @@ fn thunderstore_carries(package: &ThunderstorePackage, version: &PackageVersion)
     version.sources.contains(&PackageSource::Thunderstore)
 }
 
+/// One mod the sync plan adds, updates or removes. `from_version` is the
+/// installed version, `to_version` the pack's version; removals have no target.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SyncItem {
+    pub full_name: String,
+    pub name: String,
+    pub from_version: Option<String>,
+    pub to_version: Option<String>,
+}
+
+/// What the pack expects of the loader, against what is installed.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct BepInExStatus {
+    pub expected: String,
+    pub installed: Option<String>,
+    pub outdated: bool,
+}
+
+/// The difference between a subscribed profile and the pack's latest version.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SyncPlan {
+    pub modpack: String,
+    pub from_version: String,
+    pub to_version: String,
+    pub add: Vec<SyncItem>,
+    pub update: Vec<SyncItem>,
+    /// Mods recorded at the last sync that the pack has since dropped.
+    pub remove: Vec<SyncItem>,
+    /// Profile mods that are not part of the pack; never touched.
+    pub kept: Vec<String>,
+    /// Pack members held by a pin, skipped by the sync.
+    pub pinned_skips: Vec<SyncItem>,
+    /// Manually installed mods whose name matches a pack dependency.
+    pub manual_conflicts: Vec<SyncItem>,
+    /// The pack's dependency full names at its latest version.
+    pub pack_mods: Vec<String>,
+    pub bepinex: Option<BepInExStatus>,
+    pub up_to_date: bool,
+}
+
+/// Diff a subscribed profile against the pack's latest version. Pure: the
+/// caller resolves the pack and the installed loader version.
+pub fn plan_sync(
+    subscription: &Subscription,
+    mods: &[InstalledMod],
+    latest: &PackageVersion,
+    installed_bepinex: Option<String>,
+) -> SyncPlan {
+    let dependencies = parse_dependencies(&latest.dependencies);
+    let pack: Vec<&ParsedDependency> = dependencies
+        .iter()
+        .filter(|dependency| dependency.full_name != BEPINEX_PACKAGE)
+        .collect();
+
+    let bepinex = dependencies
+        .iter()
+        .find(|dependency| dependency.full_name == BEPINEX_PACKAGE)
+        .map(|dependency| BepInExStatus {
+            expected: dependency.version.clone(),
+            installed: installed_bepinex.clone(),
+            outdated: installed_bepinex
+                .as_deref()
+                .is_some_and(|installed| version_is_older(installed, &dependency.version)),
+        });
+
+    let installed: HashMap<&str, &InstalledMod> = mods
+        .iter()
+        .map(|module| (module.full_name.as_str(), module))
+        .collect();
+
+    let mut add = Vec::new();
+    let mut update = Vec::new();
+    let mut pinned_skips = Vec::new();
+    let mut manual_conflicts = Vec::new();
+    for dependency in &pack {
+        let Some(module) = installed.get(dependency.full_name.as_str()) else {
+            add.push(SyncItem {
+                full_name: dependency.full_name.clone(),
+                name: dependency.name.clone(),
+                from_version: None,
+                to_version: Some(dependency.version.clone()),
+            });
+            continue;
+        };
+        let item = SyncItem {
+            full_name: dependency.full_name.clone(),
+            name: dependency.name.clone(),
+            from_version: Some(module.version.clone()),
+            to_version: Some(dependency.version.clone()),
+        };
+        if profile_manager::is_manual_placeholder(module) {
+            manual_conflicts.push(item);
+        } else if module.version != dependency.version {
+            if module.pinned {
+                pinned_skips.push(item);
+            } else {
+                update.push(item);
+            }
+        }
+    }
+
+    let pack_names: HashSet<&str> = pack
+        .iter()
+        .map(|dependency| dependency.full_name.as_str())
+        .collect();
+    let mut remove = Vec::new();
+    for full_name in &subscription.mods {
+        if pack_names.contains(full_name.as_str()) {
+            continue;
+        }
+        let Some(module) = installed.get(full_name.as_str()) else {
+            continue;
+        };
+        if profile_manager::is_manual_placeholder(module) {
+            continue;
+        }
+        let item = SyncItem {
+            full_name: full_name.clone(),
+            name: module.name.clone(),
+            from_version: Some(module.version.clone()),
+            to_version: None,
+        };
+        if module.pinned {
+            pinned_skips.push(item);
+        } else {
+            remove.push(item);
+        }
+    }
+
+    let removed: HashSet<&str> = remove.iter().map(|item| item.full_name.as_str()).collect();
+    let skipped: HashSet<&str> = pinned_skips
+        .iter()
+        .map(|item| item.full_name.as_str())
+        .collect();
+    let conflicting: HashSet<&str> = manual_conflicts
+        .iter()
+        .map(|item| item.full_name.as_str())
+        .collect();
+    let kept = mods
+        .iter()
+        .filter(|module| {
+            !pack_names.contains(module.full_name.as_str())
+                && !removed.contains(module.full_name.as_str())
+                && !skipped.contains(module.full_name.as_str())
+                && !conflicting.contains(module.full_name.as_str())
+        })
+        .map(|module| module.full_name.clone())
+        .collect();
+
+    SyncPlan {
+        modpack: subscription.modpack.clone(),
+        from_version: subscription.version.clone(),
+        to_version: latest.version_number.clone(),
+        up_to_date: add.is_empty() && update.is_empty() && remove.is_empty(),
+        add,
+        update,
+        remove,
+        kept,
+        pinned_skips,
+        manual_conflicts,
+        pack_mods: pack
+            .iter()
+            .map(|dependency| dependency.full_name.clone())
+            .collect(),
+        bepinex,
+    }
+}
+
+/// Strictly older by semver; unparsable versions are treated as unknown.
+fn version_is_older(installed: &str, expected: &str) -> bool {
+    match (
+        semver::Version::parse(installed),
+        semver::Version::parse(expected),
+    ) {
+        (Ok(installed), Ok(expected)) => installed < expected,
+        _ => false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -222,10 +404,7 @@ mod tests {
             "Author-Pack",
             &version(
                 "1.2.3",
-                &[
-                    "Author-ModA-1.0.0",
-                    "denikson-BepInExPack_Valheim-5.4.2350",
-                ],
+                &["Author-ModA-1.0.0", "denikson-BepInExPack_Valheim-5.4.2350"],
             ),
         );
 
@@ -286,5 +465,167 @@ mod tests {
         assert!(latest_thunderstore_version(&mixed, "Author-Pack").is_some());
 
         assert!(latest_thunderstore_version(&[], "Author-Pack").is_none());
+    }
+
+    fn installed(full_name: &str, version: &str) -> crate::models::InstalledMod {
+        crate::models::InstalledMod {
+            full_name: full_name.to_string(),
+            author: full_name.split('-').next().unwrap_or(full_name).to_string(),
+            name: full_name
+                .rsplit('-')
+                .next()
+                .unwrap_or(full_name)
+                .to_string(),
+            version: version.to_string(),
+            description: String::new(),
+            enabled: true,
+            dependencies: Vec::new(),
+            installed_at: "2026-01-01T00:00:00Z".to_string(),
+            icon: String::new(),
+            manual: false,
+            pinned: false,
+            installed_as: crate::models::InstalledAs::Explicit,
+        }
+    }
+
+    fn subscription(version: &str, mods: &[&str]) -> Subscription {
+        Subscription {
+            modpack: "Author-Pack".to_string(),
+            version: version.to_string(),
+            mods: mods.iter().map(|name| name.to_string()).collect(),
+            synced_at: "2026-01-01T00:00:00Z".to_string(),
+        }
+    }
+
+    #[test]
+    fn plan_classifies_add_update_remove_and_kept() {
+        let subscription = subscription("1.0.0", &["Author-ModA", "Author-ModB", "Author-Old"]);
+        let mods = vec![
+            installed("Author-ModA", "0.9.0"),
+            installed("Author-ModB", "1.0.0"),
+            installed("Author-Old", "1.0.0"),
+            installed("Author-Extra", "1.0.0"),
+        ];
+        let latest = version(
+            "2.0.0",
+            &[
+                "Author-ModA-1.0.0",
+                "Author-ModB-1.0.0",
+                "Author-New-2.0.0",
+                "denikson-BepInExPack_Valheim-5.4.2350",
+            ],
+        );
+
+        let plan = plan_sync(&subscription, &mods, &latest, Some("5.4.2350".to_string()));
+
+        assert_eq!(plan.to_version, "2.0.0");
+        assert_eq!(
+            plan.add,
+            vec![SyncItem {
+                full_name: "Author-New".to_string(),
+                name: "New".to_string(),
+                from_version: None,
+                to_version: Some("2.0.0".to_string()),
+            }]
+        );
+        assert_eq!(
+            plan.update,
+            vec![SyncItem {
+                full_name: "Author-ModA".to_string(),
+                name: "ModA".to_string(),
+                from_version: Some("0.9.0".to_string()),
+                to_version: Some("1.0.0".to_string()),
+            }]
+        );
+        assert_eq!(
+            plan.remove,
+            vec![SyncItem {
+                full_name: "Author-Old".to_string(),
+                name: "Old".to_string(),
+                from_version: Some("1.0.0".to_string()),
+                to_version: None,
+            }]
+        );
+        assert_eq!(plan.kept, vec!["Author-Extra"]);
+        assert_eq!(
+            plan.pack_mods,
+            vec!["Author-ModA", "Author-ModB", "Author-New"]
+        );
+        assert_eq!(
+            plan.bepinex,
+            Some(BepInExStatus {
+                expected: "5.4.2350".to_string(),
+                installed: Some("5.4.2350".to_string()),
+                outdated: false,
+            })
+        );
+        assert!(!plan.up_to_date);
+    }
+
+    #[test]
+    fn pinned_pack_members_are_skipped_for_updates_and_removals() {
+        let subscription = subscription("1.0.0", &["Author-ModA", "Author-Old"]);
+        let mut pinned_update = installed("Author-ModA", "0.9.0");
+        pinned_update.pinned = true;
+        let mut pinned_remove = installed("Author-Old", "1.0.0");
+        pinned_remove.pinned = true;
+        let mods = vec![pinned_update, pinned_remove];
+        let latest = version("2.0.0", &["Author-ModA-1.0.0"]);
+
+        let plan = plan_sync(&subscription, &mods, &latest, None);
+
+        assert!(plan.update.is_empty());
+        assert!(plan.remove.is_empty());
+        assert_eq!(plan.pinned_skips.len(), 2);
+        assert_eq!(plan.pinned_skips[0].full_name, "Author-ModA");
+        assert_eq!(plan.pinned_skips[1].full_name, "Author-Old");
+        // Pinned entries are not reported as kept extras either.
+        assert!(plan.kept.is_empty());
+    }
+
+    #[test]
+    fn manually_installed_pack_members_are_conflicts_not_updates() {
+        let subscription = subscription("1.0.0", &["Author-ModA"]);
+        let mut manual = installed("Author-ModA", "0.9.0");
+        manual.manual = true;
+        let mods = vec![manual];
+        let latest = version("2.0.0", &["Author-ModA-1.0.0"]);
+
+        let plan = plan_sync(&subscription, &mods, &latest, None);
+
+        assert!(plan.update.is_empty());
+        assert!(plan.kept.is_empty());
+        assert_eq!(plan.manual_conflicts.len(), 1);
+        assert_eq!(plan.manual_conflicts[0].full_name, "Author-ModA");
+    }
+
+    #[test]
+    fn a_profile_matching_the_pack_is_up_to_date() {
+        let subscription = subscription("2.0.0", &["Author-ModA"]);
+        let mods = vec![installed("Author-ModA", "1.0.0")];
+        let latest = version("2.0.0", &["Author-ModA-1.0.0"]);
+
+        let plan = plan_sync(&subscription, &mods, &latest, None);
+
+        assert!(plan.up_to_date);
+        assert!(plan.bepinex.is_none());
+    }
+
+    #[test]
+    fn an_older_installed_loader_is_reported_outdated() {
+        let subscription = subscription("1.0.0", &[]);
+        let latest = version("2.0.0", &["denikson-BepInExPack_Valheim-5.4.2350"]);
+
+        let older = plan_sync(&subscription, &[], &latest, Some("5.4.2200".to_string()));
+        assert!(older.bepinex.as_ref().unwrap().outdated);
+
+        let newer = plan_sync(&subscription, &[], &latest, Some("5.5.0".to_string()));
+        assert!(!newer.bepinex.as_ref().unwrap().outdated);
+
+        // Unknown installed version: report the expectation, do not claim outdated.
+        let unknown = plan_sync(&subscription, &[], &latest, None);
+        let bepinex = unknown.bepinex.unwrap();
+        assert_eq!(bepinex.installed, None);
+        assert!(!bepinex.outdated);
     }
 }

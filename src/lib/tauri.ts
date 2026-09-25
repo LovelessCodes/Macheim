@@ -10,6 +10,7 @@ import type {
   Profile,
   ProfileSubscription,
   Subscription,
+  SyncPlan,
   ConfigFile,
   ConfigFileSummary,
   BackupInfo,
@@ -252,6 +253,18 @@ export async function subscribeProfile(profile: string, modpack: string): Promis
 
 export async function unsubscribeProfile(profile: string): Promise<void> {
   return invoke("unsubscribe_profile", { profile });
+}
+
+export async function getSyncPlan(profile: string): Promise<SyncPlan> {
+  return invoke<SyncPlan>("get_sync_plan", { profile });
+}
+
+export async function completeSubscriptionSync(
+  profile: string,
+  version: string,
+  mods: string[],
+): Promise<Subscription> {
+  return invoke<Subscription>("complete_subscription_sync", { profile, version, mods });
 }
 
 // ── Config Editor ───────────────────────────────────────────────
