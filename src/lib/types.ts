@@ -154,9 +154,12 @@ export interface GameStatus {
   active_profile: string;
 }
 
+export type CdnPreference = "auto" | "main" | "alternative";
+
 export interface AppSettings {
   console_enabled: boolean;
   snapshot_saves: boolean;
+  cdn_preference: CdnPreference;
 }
 
 export interface SteamStatus {

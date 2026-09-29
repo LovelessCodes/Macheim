@@ -239,6 +239,7 @@ pub fn run() {
             commands::settings::get_app_settings,
             commands::settings::set_console_enabled,
             commands::settings::set_snapshot_saves,
+            commands::settings::set_cdn_preference,
             // Config editor
             commands::config::get_config_files,
             commands::config::get_config,
