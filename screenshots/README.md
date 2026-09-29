@@ -1,7 +1,10 @@
 # Screenshots
 
-These images are embedded in the project README. They are captured from the
-running app at a 1200×800 window and shipped as WebP (see "Why WebP" below).
+These images are embedded in the project README. Each one is a diagonal
+composite of the same 1200×800 app window in both themes: the light capture
+fills the top-left triangle, the dark capture the bottom-right, split along the
+bottom-left-to-top-right diagonal. The result ships as WebP (see "Why WebP"
+below).
 
 | File                     | Page                           |
 | ------------------------ | ------------------------------ |
@@ -17,9 +20,10 @@ running app at a 1200×800 window and shipped as WebP (see "Why WebP" below).
 
 ## Capturing
 
-Prerequisites: Valheim (and BepInEx) installed, `bun install` done. Screenshots
-must come from a real app window — the frontend can't run in a plain browser
-because almost every page calls Tauri commands.
+Prerequisites: Valheim (and BepInEx) installed, `bun install` done (the
+converter uses `sharp`). Screenshots must come from a real app window — the
+frontend can't run in a plain browser because almost every page calls Tauri
+commands.
 
 1. Start the app:
 
@@ -30,26 +34,29 @@ because almost every page calls Tauri commands.
 2. Resize the window to **1200×800** if it isn't already (that's the default).
 3. Navigate to the page, then wait until lists, icons and version data have
    finished loading. A screenshot taken mid-load is useless.
-4. Capture the window only, without the drop shadow:
+4. Capture the window only, without the drop shadow, once per theme:
 
    ```sh
-   screencapture -o -x -w ~/Desktop/browse-mods.png
+   screencapture -o -x -w ~/Desktop/browse-mods.light.png
    ```
 
    `-w` turns the cursor into a camera; click the Macheim window. `-o` drops the
-   shadow, `-x` silences the shutter sound.
+   shadow, `-x` silences the shutter sound. Toggle the theme from the titlebar,
+   capture the same page again as `browse-mods.dark.png`, and leave the app in
+   whichever theme you started with.
 
-5. Repeat for each page and name the files after the page (kebab-case, same
-   names as above).
-6. Convert the batch and delete the PNGs:
+5. Repeat for each page in both themes and name the files after the page
+   (kebab-case, `NAME.light.png` / `NAME.dark.png`, same base names as above).
+6. Pair, composite and delete the PNGs:
 
    ```sh
    bun run screenshots
    ```
 
-   The script resizes to 1200px wide at quality 88. `--keep` keeps the source
-   PNGs, `--quality`/`--width` override the defaults, `--dir` points at another
-   folder. It needs `cwebp` (`brew install webp`).
+   The script matches each `NAME.light.png` with its `NAME.dark.png`, stitches
+   them on the diagonal, resizes to 1200px wide at quality 88 and writes
+   `NAME.webp`. `--keep` keeps the source PNGs, `--quality`/`--width` override the
+   defaults, `--dir` points at another folder.
 
 7. If you added a page, add it to the README table.
 
@@ -67,8 +74,11 @@ for window in list where (window[kCGWindowOwnerName as String] as? String) == "m
 }
 EOF
 
-screencapture -o -x -l38645 screenshots/browse-mods.png
+screencapture -o -x -l38645 screenshots/browse-mods.light.png
+screencapture -o -x -l38645 screenshots/browse-mods.dark.png
 ```
+
+Capture each page in both themes before running the converter.
 
 Pages and transient states are driven from a temporary `src/capture-scaffold.ts`
 imported at the end of `main.tsx`. It runs before React mounts, so it can set
@@ -96,9 +106,11 @@ Caveats:
 ## Capture checklist
 
 - Use a real profile with a few mods installed (the current set shows a `Macheim`
-  profile over a `Default` one), dark theme, and a clean window (no progress
-  overlay, no update toast, no hover tooltips). Park the cursor away from the
-  icon-only sidebar before shooting — otherwise an icon tooltip lands in frame.
+  profile over a `Default` one) and a clean window (no progress overlay, no update
+  toast, no hover tooltips). Capture every page in both themes — the light and
+  dark shots must show the exact same state so the diagonal seam lines up. Park
+  the cursor away from the icon-only sidebar before shooting — otherwise an icon
+  tooltip lands in frame.
 - **Settings**, **Save Snapshots** and any other page that prints a local path
   expose your username — leave them out of public screenshots, or redact the
   paths first.

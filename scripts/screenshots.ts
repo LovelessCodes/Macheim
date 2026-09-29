@@ -1,15 +1,17 @@
 #!/usr/bin/env bun
-import { spawnSync } from "node:child_process";
 import { readdirSync, statSync, unlinkSync } from "node:fs";
 import { extname, join } from "node:path";
 
+import sharp from "sharp";
+
 /**
- * Convert raw PNG captures in screenshots/ to WebP for the README.
+ * Build the README screenshots from paired light/dark captures.
  *
- * Captures are taken from a running app (see docs/screenshots.md) and land in
- * screenshots/ as PNG. WebP keeps the same 1200px frame at a fraction of the
- * size, which matters because every image is embedded in the README. PNGs are
- * removed after a successful conversion so only the shipped format is committed.
+ * Each page is captured twice, as `NAME.light.png` and `NAME.dark.png`. The
+ * script stitches the pair into one image split on the bottom-left-to-top-right
+ * diagonal: the top-left triangle keeps the light capture, the bottom-right the
+ * dark one. It then ships the result as WebP and removes the PNGs, so only the
+ * composited, embedded format is committed.
  */
 
 const DEFAULTS = {
@@ -17,6 +19,9 @@ const DEFAULTS = {
   width: 1200,
   quality: 88,
 };
+
+const LIGHT_SUFFIX = ".light.png";
+const DARK_SUFFIX = ".dark.png";
 
 function abort(message: string): never {
   console.error(`\n${message}`);
@@ -43,58 +48,97 @@ function parseArgs(args: string[]) {
 }
 
 const options = parseArgs(process.argv.slice(2));
-if (spawnSync("cwebp", ["-version"], { stdio: "ignore" }).error) {
-  abort("cwebp not found. Install it with: brew install webp");
-}
 
-let pngs: string[];
+let files: string[];
 try {
-  pngs = readdirSync(options.dir).filter((file) => extname(file).toLowerCase() === ".png");
+  files = readdirSync(options.dir);
 } catch {
   abort(`No such directory: ${options.dir}`);
 }
 
-if (pngs.length === 0) {
+/** Base names (without the `.light` / `.dark` suffix) that have any capture. */
+const bases = new Set<string>();
+for (const file of files) {
+  const lower = file.toLowerCase();
+  if (lower.endsWith(LIGHT_SUFFIX) || lower.endsWith(DARK_SUFFIX)) {
+    const suffix = lower.endsWith(DARK_SUFFIX) ? DARK_SUFFIX : LIGHT_SUFFIX;
+    bases.add(file.slice(0, -suffix.length));
+  } else if (extname(lower) === ".png") {
+    console.warn(`Skipping ${file}: captures must be named NAME.light.png / NAME.dark.png.`);
+  }
+}
+
+if (bases.size === 0) {
   abort(
-    `No PNG files found in ${options.dir}. Capture screenshots there first (docs/screenshots.md).`,
+    `No .light.png / .dark.png pairs found in ${options.dir}. Capture both themes first (screenshots/README.md).`,
   );
 }
 
+const missing: string[] = [];
+for (const base of bases) {
+  if (!files.includes(`${base}${LIGHT_SUFFIX}`)) missing.push(`${base}${LIGHT_SUFFIX}`);
+  if (!files.includes(`${base}${DARK_SUFFIX}`)) missing.push(`${base}${DARK_SUFFIX}`);
+}
+if (missing.length > 0) {
+  abort(`Missing captures:\n  ${missing.join("\n  ")}`);
+}
+
 const kb = (bytes: number) => `${(bytes / 1024).toFixed(0)} KB`;
+
+/** Upper-left triangle (above the bottom-left-to-top-right diagonal), white. */
+function maskFor(width: number, height: number) {
+  return Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
+      `<polygon points="0,0 ${width},0 0,${height}" fill="#fff"/></svg>`,
+  );
+}
+
 let saved = 0;
 
-for (const png of pngs) {
-  const source = join(options.dir, png);
-  const target = join(options.dir, `${png.slice(0, -extname(png).length)}.webp`);
+for (const base of bases) {
+  const lightPath = join(options.dir, `${base}${LIGHT_SUFFIX}`);
+  const darkPath = join(options.dir, `${base}${DARK_SUFFIX}`);
+  const target = join(options.dir, `${base}.webp`);
 
-  const result = spawnSync(
-    "cwebp",
-    [
-      "-quiet",
-      "-q",
-      String(options.quality),
-      "-resize",
-      String(options.width),
-      "0",
-      source,
-      "-o",
-      target,
-    ],
-    { encoding: "utf8" },
-  );
+  const light = sharp(lightPath);
+  const [lightMeta, darkMeta] = await Promise.all([
+    sharp(lightPath).metadata(),
+    sharp(darkPath).metadata(),
+  ]);
+  const width = lightMeta.width ?? 0;
+  const height = lightMeta.height ?? 0;
 
-  if (result.status !== 0) {
-    console.error(`Failed: ${png}\n${result.stderr}`);
+  if (width === 0 || height === 0 || darkMeta.width !== width || darkMeta.height !== height) {
+    console.error(
+      `Failed: ${base}\n  ${lightMeta.width}×${lightMeta.height} and ${darkMeta.width}×${darkMeta.height} must match.`,
+    );
     process.exitCode = 1;
     continue;
   }
 
-  const before = statSync(source).size;
+  // Keep the light capture only inside the upper-left triangle, then lay it over
+  // the full dark capture: light top-left, dark bottom-right.
+  const lightTriangle = await light
+    .ensureAlpha()
+    .composite([{ input: maskFor(width, height), blend: "dest-in" }])
+    .png()
+    .toBuffer();
+
+  await sharp(darkPath)
+    .composite([{ input: lightTriangle }])
+    .resize({ width: options.width })
+    .webp({ quality: options.quality })
+    .toFile(target);
+
+  const before = statSync(lightPath).size + statSync(darkPath).size;
   const after = statSync(target).size;
   saved += before - after;
-  console.log(`${png} -> ${target}  ${kb(before)} -> ${kb(after)}`);
+  console.log(`${base}.{light,dark}.png -> ${target}  ${kb(before)} -> ${kb(after)}`);
 
-  if (!options.keep) unlinkSync(source);
+  if (!options.keep) {
+    unlinkSync(lightPath);
+    unlinkSync(darkPath);
+  }
 }
 
 console.log(`\nDone. Saved ${kb(saved)} total.`);
