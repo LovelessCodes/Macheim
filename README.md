@@ -27,7 +27,7 @@ This repository is an independently maintained build of [lofcgi/macheim](https:/
 | :------------------------------------------------: | :----------------------------------------------: | :------------------------------------------------------: |
 | ![Installed Mods](screenshots/installed-mods.webp) | ![Config Editor](screenshots/config-editor.webp) | ![Mac Compatibility](screenshots/mac-compatibility.webp) |
 
-All screenshots are 1200×800 captures of the running app, split light/dark along the diagonal; see [screenshots/README.md](screenshots/README.md) to refresh them.
+All screenshots are 1200×800 captures of the app UI, split light/dark along the diagonal; they are refreshed headlessly on every published release. See [screenshots/README.md](screenshots/README.md) for the pipeline.
 
 ## Install
 

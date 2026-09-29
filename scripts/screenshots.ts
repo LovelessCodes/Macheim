@@ -100,7 +100,6 @@ for (const base of bases) {
   const darkPath = join(options.dir, `${base}${DARK_SUFFIX}`);
   const target = join(options.dir, `${base}.webp`);
 
-  const light = sharp(lightPath);
   const [lightMeta, darkMeta] = await Promise.all([
     sharp(lightPath).metadata(),
     sharp(darkPath).metadata(),
@@ -116,17 +115,26 @@ for (const base of bases) {
     continue;
   }
 
+  // Downscale first: sharp resizes before compositing, and the diagonal mask
+  // must be cut at the output size (captures are 2× on Retina).
+  const [lightScaled, darkScaled] = await Promise.all([
+    sharp(lightPath).resize({ width: options.width }).png().toBuffer(),
+    sharp(darkPath).resize({ width: options.width }).png().toBuffer(),
+  ]);
+  const scaledMeta = await sharp(darkScaled).metadata();
+  const outWidth = scaledMeta.width ?? 0;
+  const outHeight = scaledMeta.height ?? 0;
+
   // Keep the light capture only inside the upper-left triangle, then lay it over
   // the full dark capture: light top-left, dark bottom-right.
-  const lightTriangle = await light
+  const lightTriangle = await sharp(lightScaled)
     .ensureAlpha()
-    .composite([{ input: maskFor(width, height), blend: "dest-in" }])
+    .composite([{ input: maskFor(outWidth, outHeight), blend: "dest-in" }])
     .png()
     .toBuffer();
 
-  await sharp(darkPath)
+  await sharp(darkScaled)
     .composite([{ input: lightTriangle }])
-    .resize({ width: options.width })
     .webp({ quality: options.quality })
     .toFile(target);
 
