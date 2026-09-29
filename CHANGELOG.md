@@ -7,10 +7,12 @@ All notable changes to this fork are documented in this file. The format follows
 Upstream releases before this fork are listed on
 [lofcgi/macheim](https://github.com/lofcgi/macheim/releases).
 
-## [Unreleased]
+## [1.4.0] - 2026-09-29
 
-The log viewer and per-mod version pinning: read the log in-app, and hold a mod at a
-known-good version.
+Modpacks all the way through: export a profile as a Thunderstore modpack, publish it, follow
+someone else's pack, and sync a subscribed profile against its latest version. Alongside that,
+an in-app log viewer, per-mod version pinning, a choice of Thunderstore CDN that keeps downloads
+working when the main server is blocked, and a ⌘K command palette with a light/dark theme toggle.
 
 ### Added
 
@@ -73,6 +75,23 @@ known-good version.
   extra mods, enabled states and configs are left alone. Syncing an inactive profile offers to
   switch to it first, and the plan reports the BepInEx version the pack expects when it differs
   from what is installed.
+- **Thunderstore CDN choice** — Settings → Downloads now picks where Thunderstore mods download
+  from: **Auto** checks both CDNs and uses whichever answers, switching over when a download
+  fails; **Main** keeps Thunderstore's own `thunderstore.io` redirect; **Backup** downloads
+  straight from `hcdn-1.hcdn.thunderstore.io` and skips the redirect entirely. Auto is the
+  default, remembers the CDN that actually served a download, and non-Thunderstore sources are
+  unaffected.
+- **Command palette and theme toggle** — ⌘K opens a palette that searches every page and action
+  and runs it without leaving the keyboard. A theme toggle switches between the light and dark
+  viking themes with a transition, and the choice persists.
+
+### Changed
+
+- The Downloads button and its progress bar moved from the page header into the titlebar, next
+  to search, so queue state lives with the global controls instead of competing with the page
+  title.
+- Config editor numeric settings use a themed number field constrained to the setting's declared
+  range, and boolean settings use the shared switch instead of a hand-rolled toggle.
 
 ### Fixed
 
@@ -92,6 +111,8 @@ known-good version.
 - Thunderstore sign-in no longer silently forgets the token: only a 401 clears it, while a 403
   or an edge block keeps it and reports the reason, and the Settings card shows sign-in errors
   with a Retry instead of quietly rendering as signed out.
+- The config editor compares edits against the file's original values, so changing a setting and
+  changing it back clears the dirty state instead of leaving Save and Reset enabled.
 
 ## [1.3.2] - 2026-09-24
 
