@@ -94,6 +94,59 @@ export interface Profile {
   updated_at: string;
 }
 
+/** A profile's link to a published Thunderstore modpack. */
+export interface Subscription {
+  /** Thunderstore full name: "Author-PackName". */
+  modpack: string;
+  /** The modpack version the profile was last synced to. */
+  version: string;
+  /** The pack's dependency full names at the last sync, BepInEx excluded. */
+  mods: string[];
+  synced_at: string;
+}
+
+export interface ProfileSubscription {
+  profile: string;
+  subscription: Subscription;
+}
+
+/** One mod a sync plan adds, updates or removes. */
+export interface SyncItem {
+  full_name: string;
+  name: string;
+  /** Installed version; absent for additions. */
+  from_version: string | null;
+  /** The pack's version; absent for removals. */
+  to_version: string | null;
+}
+
+export interface BepInExStatus {
+  expected: string;
+  installed: string | null;
+  outdated: boolean;
+}
+
+/** The difference between a subscribed profile and the pack's latest version. */
+export interface SyncPlan {
+  modpack: string;
+  from_version: string;
+  to_version: string;
+  add: SyncItem[];
+  update: SyncItem[];
+  /** Mods recorded at the last sync that the pack has since dropped. */
+  remove: SyncItem[];
+  /** Profile mods that are not part of the pack; never touched. */
+  kept: string[];
+  /** Pack members held by a pin, skipped by the sync. */
+  pinned_skips: SyncItem[];
+  /** Manually installed mods whose name matches a pack dependency. */
+  manual_conflicts: SyncItem[];
+  /** The pack's dependency full names at its latest version. */
+  pack_mods: string[];
+  bepinex: BepInExStatus | null;
+  up_to_date: boolean;
+}
+
 export interface GameStatus {
   installed: boolean;
   game_path: string | null;

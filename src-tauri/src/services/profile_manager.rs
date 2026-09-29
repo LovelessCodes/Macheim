@@ -292,6 +292,8 @@ pub fn clone_profile(source_name: &str, new_name: &str) -> AppResult<Profile> {
         return Err(AppError::Profile("Profile already exists".into()));
     }
     copy_dir_recursive(&get_profile_dir(source_name), &target)?;
+    // A clone is a new setup, not a second follower of the same modpack.
+    super::subscription::clear(&target)?;
     profile.name = new_name.into();
     profile.description = format!("Cloned from {}", source_name);
     profile.touch();
