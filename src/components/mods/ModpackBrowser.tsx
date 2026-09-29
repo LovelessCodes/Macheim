@@ -12,6 +12,7 @@ import type {
 import { GridSkeleton } from "../common/LoadingSkeleton";
 import VirtualGrid from "../common/VirtualGrid";
 import { ScrollArea } from "../ui/scroll-area";
+import FollowModpackButton from "./FollowModpackButton";
 import ModCard from "./ModCard";
 import ModToolbar from "./ModToolbar";
 
@@ -92,6 +93,7 @@ export default function ModpackBrowser() {
               pkg={pkg}
               kind="modpack"
               showVersion={false}
+              secondaryAction={<FollowModpackButton pkg={pkg} />}
               extraMeta={
                 <>
                   <span className="flex items-center gap-1">

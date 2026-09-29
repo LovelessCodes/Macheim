@@ -267,6 +267,11 @@ fn set_executable(path: &Path) -> AppResult<()> {
     Ok(())
 }
 
+/// Installed BepInEx version for a game root, when it can be determined.
+pub fn installed_version(game_root: &Path) -> Option<String> {
+    read_bepinex_version(&game_root.join("BepInEx/core"))
+}
+
 /// Read the installed BepInEx version from its core DLLs' PE version resource.
 /// The `.doorstop_version` file next to the game belongs to Doorstop, not
 /// BepInEx, so it is not a version source.

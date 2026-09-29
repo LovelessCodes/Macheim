@@ -11,4 +11,5 @@ pub mod mods;
 pub mod profiles;
 pub mod saves;
 pub mod settings;
+pub mod subscriptions;
 pub mod thunderstore;

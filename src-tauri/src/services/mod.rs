@@ -23,6 +23,7 @@ pub mod profile_manager;
 pub mod profile_transfer;
 pub mod safe_mode;
 pub mod save_manager;
+pub mod subscription;
 pub mod thunderstore_client;
 pub mod thunderstore_publish;
 
