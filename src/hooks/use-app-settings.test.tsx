@@ -4,23 +4,33 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 
+const baseSettings: AppSettings = {
+  console_enabled: true,
+  snapshot_saves: true,
+  cdn_preference: "auto",
+};
+
 void mock.module("../lib/tauri", () => ({
-  getAppSettings: mock(() => Promise.resolve({ console_enabled: true, snapshot_saves: true })),
+  getAppSettings: mock(() => Promise.resolve(baseSettings)),
   setConsoleEnabled: mock((enabled: boolean) =>
-    Promise.resolve({ console_enabled: enabled, snapshot_saves: true }),
+    Promise.resolve({ ...baseSettings, console_enabled: enabled }),
   ),
   setSnapshotSaves: mock((enabled: boolean) =>
-    Promise.resolve({ console_enabled: true, snapshot_saves: enabled }),
+    Promise.resolve({ ...baseSettings, snapshot_saves: enabled }),
+  ),
+  setCdnPreference: mock((preference: CdnPreference) =>
+    Promise.resolve({ ...baseSettings, cdn_preference: preference }),
   ),
 }));
 
 import { appSettingsQueryKey } from "../lib/query-keys";
-import { getAppSettings, setConsoleEnabled } from "../lib/tauri";
-import type { AppSettings } from "../lib/types";
-import { useAppSettings, useSetConsoleEnabled } from "./use-app-settings";
+import { getAppSettings, setCdnPreference, setConsoleEnabled } from "../lib/tauri";
+import type { AppSettings, CdnPreference } from "../lib/types";
+import { useAppSettings, useSetCdnPreference, useSetConsoleEnabled } from "./use-app-settings";
 
 const getMock = getAppSettings as Mock<typeof getAppSettings>;
 const setMock = setConsoleEnabled as Mock<typeof setConsoleEnabled>;
+const setCdnMock = setCdnPreference as Mock<typeof setCdnPreference>;
 
 let queryClient: QueryClient;
 function wrapper({ children }: { children: ReactNode }) {
@@ -29,11 +39,12 @@ function wrapper({ children }: { children: ReactNode }) {
 
 beforeEach(() => {
   mock.clearAllMocks();
-  getMock.mockImplementation(() =>
-    Promise.resolve({ console_enabled: true, snapshot_saves: true }),
-  );
+  getMock.mockImplementation(() => Promise.resolve(baseSettings));
   setMock.mockImplementation((enabled: boolean) =>
-    Promise.resolve({ console_enabled: enabled, snapshot_saves: true }),
+    Promise.resolve({ ...baseSettings, console_enabled: enabled }),
+  );
+  setCdnMock.mockImplementation((preference: CdnPreference) =>
+    Promise.resolve({ ...baseSettings, cdn_preference: preference }),
   );
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 });
@@ -72,4 +83,21 @@ test("a failed toggle rolls the switch back", async () => {
 
   await waitFor(() => expect(result.current.setConsole.isError).toBe(true));
   expect(queryClient.getQueryData<AppSettings>(appSettingsQueryKey)?.console_enabled).toBe(true);
+});
+
+test("changing the CDN preference updates the cached settings", async () => {
+  const { result } = renderHook(
+    () => ({ settings: useAppSettings(), setCdn: useSetCdnPreference() }),
+    { wrapper },
+  );
+  await waitFor(() => expect(result.current.settings.data).toBeTruthy());
+
+  result.current.setCdn.mutate("alternative");
+
+  await waitFor(() =>
+    expect(queryClient.getQueryData<AppSettings>(appSettingsQueryKey)?.cdn_preference).toBe(
+      "alternative",
+    ),
+  );
+  expect(setCdnMock.mock.calls[0]?.[0]).toBe("alternative");
 });

@@ -6,6 +6,7 @@ import {
   Trash2,
   Archive,
   AlertTriangle,
+  CloudDownload,
   FileSearch,
   Loader2,
   RefreshCw,
@@ -15,17 +16,23 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
-import { useAppSettings, useSetConsoleEnabled } from "../../hooks/use-app-settings";
+import {
+  useAppSettings,
+  useSetCdnPreference,
+  useSetConsoleEnabled,
+} from "../../hooks/use-app-settings";
 import { useAppVersion } from "../../hooks/use-app-version";
 import { useBackups, useCreateBackup, useRestoreBackup } from "../../hooks/use-backups";
 import { useAnalyzeCrashLogs, useLaunchSafeMode } from "../../hooks/use-diagnostics";
 import { useGameStatus, useSteamStatus } from "../../hooks/use-game-status";
 import { useUpdater } from "../../hooks/use-updater";
+import type { CdnPreference } from "../../lib/types";
 import ProgressBar from "../common/ProgressBar";
 import ThunderstoreCard from "../settings/ThunderstoreCard";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../ui/select";
 import { Switch } from "../ui/switch";
 
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -48,6 +55,7 @@ export default function SettingsPage() {
   const restoreBackupMutation = useRestoreBackup();
   const { data: appSettings } = useAppSettings();
   const setConsoleEnabled = useSetConsoleEnabled();
+  const setCdnPreference = useSetCdnPreference();
   const analyzeLogs = useAnalyzeCrashLogs();
   const launchSafeMode = useLaunchSafeMode();
 
@@ -155,6 +163,49 @@ export default function SettingsPage() {
             it. For a smaller client window day to day, turn on Steam&apos;s Small Mode (View &rarr;
             Small Mode), or leave Steam running in Offline Mode for offline play.
           </p>
+        </CardContent>
+      </Card>
+
+      {/* Downloads */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CloudDownload className="size-4" />
+            Downloads
+          </CardTitle>
+          <CardDescription>
+            Thunderstore mods download from its CDN. Auto checks both servers and uses whichever
+            answers, switching over when one fails. Pick a server manually when Auto is not doing
+            what you need: Main is gcdn.thunderstore.io, Backup is hcdn-1.hcdn.thunderstore.io.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <InfoRow label="Thunderstore CDN">
+            <Select
+              items={[
+                { label: "Auto", value: "auto" },
+                { label: "Main", value: "main" },
+                { label: "Backup", value: "alternative" },
+              ]}
+              value={appSettings?.cdn_preference ?? "auto"}
+              onValueChange={(value) => {
+                if (value) setCdnPreference.mutate(value as CdnPreference);
+              }}
+            >
+              <SelectTrigger
+                className="w-40"
+                aria-label="Thunderstore CDN"
+                disabled={!appSettings || setCdnPreference.isPending}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Auto</SelectItem>
+                <SelectItem value="main">Main</SelectItem>
+                <SelectItem value="alternative">Backup</SelectItem>
+              </SelectContent>
+            </Select>
+          </InfoRow>
         </CardContent>
       </Card>
 

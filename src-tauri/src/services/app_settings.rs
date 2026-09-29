@@ -6,6 +6,21 @@ use tracing::warn;
 use crate::error::AppResult;
 use crate::services::thunderstore_client::get_app_data_dir;
 
+/// Which Thunderstore CDN mods download from.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CdnPreference {
+    /// Use whichever CDN is reachable, switching to the other one when a
+    /// download falls back.
+    #[default]
+    Auto,
+    /// Always start from Thunderstore's primary CDN (`gcdn.thunderstore.io`).
+    Main,
+    /// Always start from Thunderstore's backup CDN
+    /// (`hcdn-1.hcdn.thunderstore.io`), for networks that block the primary.
+    Alternative,
+}
+
 /// App-level preferences, persisted next to the queue and caches.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AppSettings {
@@ -15,6 +30,9 @@ pub struct AppSettings {
     /// Snapshot worlds and characters before every modded launch.
     #[serde(default = "default_true")]
     pub snapshot_saves: bool,
+    /// Thunderstore CDN selection for mod downloads.
+    #[serde(default)]
+    pub cdn_preference: CdnPreference,
 }
 
 fn default_true() -> bool {
@@ -28,6 +46,7 @@ impl Default for AppSettings {
         Self {
             console_enabled: true,
             snapshot_saves: true,
+            cdn_preference: CdnPreference::default(),
         }
     }
 }
@@ -81,6 +100,7 @@ mod tests {
         let settings = AppSettings {
             console_enabled: false,
             snapshot_saves: false,
+            cdn_preference: CdnPreference::Alternative,
         };
         save_to(&path, &settings).unwrap();
         assert_eq!(load_from(&path), settings);

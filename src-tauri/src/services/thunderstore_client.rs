@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::Arc;
 
 use tauri::Emitter;
@@ -7,10 +7,12 @@ use tracing::info;
 
 use crate::error::{AppError, AppResult};
 use crate::models::thunderstore::ThunderstorePackage;
+use crate::services::app_settings::{self, CdnPreference};
 use crate::services::package_cache;
 
 const THUNDERSTORE_API_URL: &str = "https://thunderstore.io/c/valheim/api/v1/package/";
 
+const THUNDERSTORE_HOST: &str = "thunderstore.io";
 /// Thunderstore's primary CDN, blocked by some antivirus tools (e.g. Malwarebytes).
 const PRIMARY_CDN_HOST: &str = "gcdn.thunderstore.io";
 /// Thunderstore's backup CDN, used when the primary one is unreachable.
@@ -62,6 +64,19 @@ pub struct CdnFallbackEvent {
 
 static CDN_FALLBACK_NOTIFIED: AtomicBool = AtomicBool::new(false);
 
+/// Host the auto preference resolved to this session (0 = unresolved).
+static AUTO_CDN_CHOICE: AtomicU8 = AtomicU8::new(0);
+
+fn cdn_choice_code(host: &str) -> u8 {
+    if host == PRIMARY_CDN_HOST {
+        1
+    } else if host == FALLBACK_CDN_HOST {
+        2
+    } else {
+        0
+    }
+}
+
 /// Swap Thunderstore's primary CDN host for the backup CDN in place.
 /// Returns true when a rewrite happened.
 fn replace_primary_cdn(url: &mut reqwest::Url) -> bool {
@@ -69,6 +84,43 @@ fn replace_primary_cdn(url: &mut reqwest::Url) -> bool {
         return url.set_host(Some(FALLBACK_CDN_HOST)).is_ok();
     }
     false
+}
+
+/// Swap either known Thunderstore CDN host for the other one in place.
+/// Returns true when a rewrite happened.
+fn swap_cdn_host(url: &mut reqwest::Url) -> bool {
+    let other = match url.host_str() {
+        Some(PRIMARY_CDN_HOST) => FALLBACK_CDN_HOST,
+        Some(FALLBACK_CDN_HOST) => PRIMARY_CDN_HOST,
+        _ => return false,
+    };
+    url.set_host(Some(other)).is_ok()
+}
+
+/// Direct CDN URL for a Thunderstore package download, so the request does not
+/// depend on the `thunderstore.io` redirect, which can be unreachable on its
+/// own. Non-Thunderstore sources return `None` and keep their own URL.
+fn direct_cdn_url(download_url: &str, host: &str) -> Option<reqwest::Url> {
+    let url = reqwest::Url::parse(download_url).ok()?;
+    if url.host_str() != Some(THUNDERSTORE_HOST) {
+        return None;
+    }
+
+    let segments: Vec<&str> = url.path_segments()?.filter(|s| !s.is_empty()).collect();
+    let ["package", "download", namespace, name, version] = segments.as_slice() else {
+        return None;
+    };
+
+    let mut cdn = reqwest::Url::parse(&format!("https://{}/", host)).ok()?;
+    {
+        let mut path = cdn.path_segments_mut().ok()?;
+        path.pop_if_empty();
+        path.push("live");
+        path.push("repository");
+        path.push("packages");
+        path.push(&format!("{}-{}-{}.zip", namespace, name, version));
+    }
+    Some(cdn)
 }
 
 /// Tell the user, once per session, that downloads use the backup CDN.
@@ -94,11 +146,50 @@ fn notify_cdn_fallback_once() {
     }
 }
 
+/// Host to start from for the given preference. Auto probes both CDNs once per
+/// session and remembers whichever one answers.
+async fn resolve_preferred_host(
+    client: &reqwest::Client,
+    preference: CdnPreference,
+) -> &'static str {
+    match preference {
+        CdnPreference::Main => PRIMARY_CDN_HOST,
+        CdnPreference::Alternative => FALLBACK_CDN_HOST,
+        CdnPreference::Auto => match AUTO_CDN_CHOICE.load(Ordering::Relaxed) {
+            1 => PRIMARY_CDN_HOST,
+            2 => FALLBACK_CDN_HOST,
+            _ => {
+                let host = probe_cdn(client).await;
+                AUTO_CDN_CHOICE.store(cdn_choice_code(host), Ordering::Relaxed);
+                host
+            }
+        },
+    }
+}
+
+/// First CDN that answers its health check, primary first.
+async fn probe_cdn(client: &reqwest::Client) -> &'static str {
+    for host in [PRIMARY_CDN_HOST, FALLBACK_CDN_HOST] {
+        let probe = client
+            .get(format!("https://{}/healthz", host))
+            .timeout(std::time::Duration::from_secs(5))
+            .send()
+            .await;
+        if probe.is_ok_and(|response| response.status().is_success()) {
+            return host;
+        }
+    }
+    PRIMARY_CDN_HOST
+}
+
 /// Download a mod's ZIP with optional progress callback. No body timeout.
 ///
-/// Thunderstore redirects package downloads to `gcdn.thunderstore.io`, which
-/// some antivirus tools block. Redirects are followed manually so the primary
-/// CDN host can be swapped for Thunderstore's backup CDN before it is contacted.
+/// Thunderstore downloads normally follow the `thunderstore.io` redirect,
+/// which lands on `gcdn.thunderstore.io`. With the backup CDN preferred (or in
+/// auto mode when the primary one is unreachable) the request is sent straight
+/// to `hcdn-1.hcdn.thunderstore.io`, so the redirect hop - which can be blocked
+/// on its own - is skipped. A failed CDN request is retried once against the
+/// other CDN, and the user is told when downloads end up on the backup one.
 ///
 /// `abort` is polled before the request and between stream chunks; when it
 /// returns true the download stops with `AppError::Cancelled`.
@@ -120,8 +211,20 @@ pub async fn download_mod_with_progress(
         .build()
         .map_err(|e| AppError::Network(format!("Failed to create HTTP client: {}", e)))?;
 
-    let mut url = reqwest::Url::parse(download_url)
-        .map_err(|e| AppError::Network(format!("Invalid download URL: {}", e)))?;
+    let preference = app_settings::load().cdn_preference;
+    let preferred_host = resolve_preferred_host(&client, preference).await;
+
+    // Skipping the thunderstore.io redirect is what makes a direct CDN URL
+    // worthwhile; the main preference keeps Thunderstore's own redirect.
+    let preferred_direct = if preference == CdnPreference::Main {
+        None
+    } else {
+        direct_cdn_url(download_url, preferred_host)
+    };
+    let mut url = preferred_direct
+        .or_else(|| reqwest::Url::parse(download_url).ok())
+        .ok_or_else(|| AppError::Network(format!("Invalid download URL: {}", download_url)))?;
+    let mut tried_alternate = false;
 
     let mut redirects = 0;
     let response = loop {
@@ -129,17 +232,45 @@ pub async fn download_mod_with_progress(
             return Err(AppError::Cancelled);
         }
 
-        if replace_primary_cdn(&mut url) {
-            notify_cdn_fallback_once();
+        if preferred_host == FALLBACK_CDN_HOST && !tried_alternate {
+            replace_primary_cdn(&mut url);
         }
 
-        let response = client
-            .get(url.clone())
-            .send()
-            .await
-            .map_err(|e| AppError::NetworkTransient(format!("Download failed: {}", e)))?;
+        let response = match client.get(url.clone()).send().await {
+            Ok(response) => response,
+            Err(error) => {
+                if !tried_alternate && swap_cdn_host(&mut url) {
+                    tried_alternate = true;
+                    if url.host_str() == Some(FALLBACK_CDN_HOST) {
+                        notify_cdn_fallback_once();
+                    }
+                    continue;
+                }
+                return Err(AppError::NetworkTransient(format!(
+                    "Download failed: {}",
+                    error
+                )));
+            }
+        };
 
         if !matches!(response.status().as_u16(), 301 | 302 | 303 | 307 | 308) {
+            if !response.status().is_success() && !tried_alternate && swap_cdn_host(&mut url) {
+                tried_alternate = true;
+                if url.host_str() == Some(FALLBACK_CDN_HOST) {
+                    notify_cdn_fallback_once();
+                }
+                continue;
+            }
+            // Auto mode remembers the CDN that actually served a download, so
+            // later installs skip the CDN that just failed.
+            if response.status().is_success()
+                && tried_alternate
+                && preference == CdnPreference::Auto
+            {
+                if let Some(host) = url.host_str() {
+                    AUTO_CDN_CHOICE.store(cdn_choice_code(host), Ordering::Relaxed);
+                }
+            }
             break response;
         }
 
@@ -221,5 +352,50 @@ mod tests {
 
         assert!(!replace_primary_cdn(&mut url));
         assert_eq!(url.host_str(), Some("thunderstore.io"));
+    }
+
+    #[test]
+    fn builds_direct_cdn_url_for_thunderstore_packages() {
+        let url = direct_cdn_url(
+            "https://thunderstore.io/package/download/denikson/BepInExPack_Valheim/5.4.2350/",
+            FALLBACK_CDN_HOST,
+        )
+        .unwrap();
+
+        assert_eq!(
+            url.as_str(),
+            "https://hcdn-1.hcdn.thunderstore.io/live/repository/packages/denikson-BepInExPack_Valheim-5.4.2350.zip"
+        );
+    }
+
+    #[test]
+    fn keeps_other_sources_on_their_own_url() {
+        assert!(direct_cdn_url(
+            "https://cdn.hexium.gg/upload/1277/1.0.4.zip",
+            PRIMARY_CDN_HOST
+        )
+        .is_none());
+        assert!(direct_cdn_url(
+            "https://thunderstore.io/package/download/incomplete/",
+            PRIMARY_CDN_HOST
+        )
+        .is_none());
+    }
+
+    #[test]
+    fn swaps_known_cdn_hosts_in_both_directions() {
+        let mut url = reqwest::Url::parse(
+            "https://gcdn.thunderstore.io/live/repository/packages/denikson-BepInExPack_Valheim-5.4.2350.zip",
+        )
+        .unwrap();
+
+        assert!(swap_cdn_host(&mut url));
+        assert_eq!(url.host_str(), Some(FALLBACK_CDN_HOST));
+        assert!(swap_cdn_host(&mut url));
+        assert_eq!(url.host_str(), Some(PRIMARY_CDN_HOST));
+
+        let mut other = reqwest::Url::parse("https://cdn.hexium.gg/upload/1277/1.0.4.zip").unwrap();
+        assert!(!swap_cdn_host(&mut other));
+        assert_eq!(other.host_str(), Some("cdn.hexium.gg"));
     }
 }

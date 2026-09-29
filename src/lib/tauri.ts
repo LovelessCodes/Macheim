@@ -17,6 +17,7 @@ import type {
   CompatibilityStatus,
   CompatibilitySettings,
   AppSettings,
+  CdnPreference,
   ConflictReport,
   CrashReport,
   LogChunk,
@@ -365,6 +366,10 @@ export async function setConsoleEnabled(enabled: boolean): Promise<AppSettings> 
 
 export async function setSnapshotSaves(enabled: boolean): Promise<AppSettings> {
   return invoke<AppSettings>("set_snapshot_saves", { enabled });
+}
+
+export async function setCdnPreference(preference: CdnPreference): Promise<AppSettings> {
+  return invoke<AppSettings>("set_cdn_preference", { preference });
 }
 
 // ── Save Snapshots ──────────────────────────────────────────────

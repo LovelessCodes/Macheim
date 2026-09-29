@@ -1,16 +1,8 @@
-import { Clock, Download, Loader2, Pause, RefreshCw, TriangleAlert } from "lucide-react";
+import { RefreshCw, TriangleAlert } from "lucide-react";
 
 import { useAppStore } from "../../store/appStore";
 import { useDiagnosticsStore } from "../../store/diagnosticsStore";
-import {
-  useDownloadIndicator,
-  useDownloadProgress,
-  usePendingDownloadCount,
-  useDownloadStore,
-} from "../../store/downloadStore";
-import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import { Progress } from "../ui/progress";
 
 const pageTitles: Record<string, string> = {
   browse: "Browse Mods",
@@ -32,26 +24,8 @@ interface HeaderProps {
 export default function Header({ onRefresh, isRefreshing }: HeaderProps) {
   const currentPage = useAppStore((s) => s.currentPage);
 
-  const activeDownload = useDownloadIndicator();
-  const downloadProgress = useDownloadProgress();
-  const pendingDownloads = usePendingDownloadCount();
-  const openDownloads = useDownloadStore((s) => s.setPanelOpen);
   const crashReport = useDiagnosticsStore((s) => s.report);
   const openCrashReport = useDiagnosticsStore((s) => s.setReportOpen);
-
-  const isWaiting =
-    activeDownload === "waiting_for_game" || activeDownload === "waiting_for_network";
-
-  const downloadIcon =
-    activeDownload === "active" ? (
-      <Loader2 className="animate-spin" />
-    ) : isWaiting ? (
-      <Clock />
-    ) : activeDownload === "paused" ? (
-      <Pause />
-    ) : (
-      <Download />
-    );
 
   return (
     <header className="flex h-10 shrink-0 items-center gap-2 border-b px-4" data-tauri-drag-region>
@@ -72,30 +46,6 @@ export default function Header({ onRefresh, isRefreshing }: HeaderProps) {
           Crash report
         </Button>
       )}
-
-      {activeDownload !== "idle" && downloadProgress !== null && (
-        <Progress
-          value={downloadProgress}
-          aria-label={`Download progress: ${downloadProgress}%`}
-          title={`Download progress: ${downloadProgress}%`}
-          className="[&_[data-slot=progress-indicator]]:bg-accent-primary mr-1 w-24 [&_[data-slot=progress-track]]:h-1.5"
-        />
-      )}
-
-      <Button
-        variant={isWaiting ? "outline-warning" : "ghost"}
-        size="sm"
-        onClick={() => openDownloads(true)}
-        title="Downloads"
-      >
-        {downloadIcon}
-        Downloads
-        {pendingDownloads > 0 && (
-          <Badge variant="secondary" className="h-4 px-1.5 text-[10px] tabular-nums">
-            {pendingDownloads}
-          </Badge>
-        )}
-      </Button>
 
       {onRefresh && (
         <Button

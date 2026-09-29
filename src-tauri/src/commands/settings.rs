@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use tauri::State;
 
 use crate::error::{AppError, AppResult};
-use crate::services::app_settings::{self, AppSettings};
+use crate::services::app_settings::{self, AppSettings, CdnPreference};
 use crate::AppState;
 
 /// Current app preferences.
@@ -35,6 +35,16 @@ pub async fn set_snapshot_saves(
 ) -> AppResult<AppSettings> {
     tracing::info!("Command: set_snapshot_saves({})", enabled);
     update_settings(state, |settings| settings.snapshot_saves = enabled)
+}
+
+/// Choose the Thunderstore CDN downloads start from.
+#[tauri::command]
+pub async fn set_cdn_preference(
+    preference: CdnPreference,
+    state: State<'_, Mutex<AppState>>,
+) -> AppResult<AppSettings> {
+    tracing::info!("Command: set_cdn_preference({:?})", preference);
+    update_settings(state, |settings| settings.cdn_preference = preference)
 }
 
 fn update_settings(
