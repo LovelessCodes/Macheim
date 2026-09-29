@@ -672,23 +672,14 @@ export default function ProfileManager() {
       )}
 
       {modpackProfile && (
-        <ExportModpackSheet
-          profileName={modpackProfile}
-          open
-          onOpenChange={(next) => {
-            if (!next) setModpackProfile(null);
-          }}
-        />
+        <ExportModpackSheet profileName={modpackProfile} onClose={() => setModpackProfile(null)} />
       )}
 
       {syncTarget && syncSubscription && (
         <SyncModpackSheet
           profileName={syncTarget}
           subscription={syncSubscription}
-          open
-          onOpenChange={(open) => {
-            if (!open) setSyncTarget(null);
-          }}
+          onClose={() => setSyncTarget(null)}
         />
       )}
     </div>

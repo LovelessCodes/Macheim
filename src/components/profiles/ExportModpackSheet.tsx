@@ -1,6 +1,6 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { CloudUpload, FileArchive, Image, Loader2, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useExportModpack } from "../../hooks/use-profiles";
 import { MAX_MODPACK_DESCRIPTION, validateModpackMetadata } from "../../lib/modpack";
@@ -19,20 +19,20 @@ import PublishModpackSheet from "./PublishModpackSheet";
 
 interface ExportModpackSheetProps {
   profileName: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onClose: () => void;
 }
 
 /**
  * Form for exporting a profile as a Thunderstore modpack: metadata, an
  * optional icon, then the native save dialog.
  */
-export default function ExportModpackSheet({
-  profileName,
-  open,
-  onOpenChange,
-}: ExportModpackSheetProps) {
+export default function ExportModpackSheet({ profileName, onClose }: ExportModpackSheetProps) {
   const exportModpack = useExportModpack();
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setOpen(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
   const [name, setName] = useState(profileName);
   const [version, setVersion] = useState("1.0.0");
   const [description, setDescription] = useState("");
@@ -61,12 +61,18 @@ export default function ExportModpackSheet({
     if (validationError) return;
     exportModpack.mutate(
       { profileName, metadata, iconPath },
-      { onSuccess: (outcome) => outcome && onOpenChange(false) },
+      { onSuccess: (outcome) => outcome && setOpen(false) },
     );
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet
+      open={open}
+      onOpenChange={setOpen}
+      onOpenChangeComplete={(isOpen) => {
+        if (!isOpen) onClose();
+      }}
+    >
       <SheetContent side="right" className="w-full gap-0 p-0 sm:max-w-md">
         <SheetHeader className="border-b">
           <SheetTitle>Export as modpack</SheetTitle>
@@ -153,7 +159,7 @@ export default function ExportModpackSheet({
         </div>
 
         <SheetFooter className="border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
           <Button

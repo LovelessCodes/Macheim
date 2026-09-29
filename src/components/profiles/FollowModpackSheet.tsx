@@ -1,5 +1,5 @@
 import { BookmarkPlus, Check, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useCreateProfile, useProfiles } from "../../hooks/use-profiles";
 import { useSubscribeToModpack, useSubscriptions } from "../../hooks/use-subscriptions";
@@ -19,15 +19,20 @@ import {
 
 interface FollowModpackSheetProps {
   pkg: ThunderstorePackage;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onClose: () => void;
 }
 
-export default function FollowModpackSheet({ pkg, open, onOpenChange }: FollowModpackSheetProps) {
+export default function FollowModpackSheet({ pkg, onClose }: FollowModpackSheetProps) {
   const { data } = useProfiles();
   const { data: subscriptions = [] } = useSubscriptions();
   const createProfileMutation = useCreateProfile();
   const subscribeMutation = useSubscribeToModpack();
+
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setOpen(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   const profiles = data?.profiles ?? [];
   const linked = new Set(subscriptions.map((entry) => entry.profile));
@@ -54,14 +59,20 @@ export default function FollowModpackSheet({ pkg, open, onOpenChange }: FollowMo
       if (!profile) return;
 
       await subscribeMutation.mutateAsync({ profile, modpack: pkg.full_name });
-      onOpenChange(false);
+      setOpen(false);
     } catch {
       // Both mutations report their own errors.
     }
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet
+      open={open}
+      onOpenChange={setOpen}
+      onOpenChangeComplete={(isOpen) => {
+        if (!isOpen) onClose();
+      }}
+    >
       <SheetContent className="sm:max-w-md">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
@@ -143,7 +154,7 @@ export default function FollowModpackSheet({ pkg, open, onOpenChange }: FollowMo
         </div>
 
         <SheetFooter className="flex-row justify-end gap-2">
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>
+          <Button variant="ghost" onClick={() => setOpen(false)} disabled={isPending}>
             Cancel
           </Button>
           <Button
