@@ -9,7 +9,7 @@ import {
   Settings,
   AlertTriangle,
 } from "lucide-react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 
 import { useConfig, useConfigFiles, useSaveConfig } from "../../hooks/use-config";
 import { configQueryKey } from "../../lib/query-keys";
@@ -18,8 +18,16 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
+import {
+  NumberField,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from "../ui/number-field";
 import { ScrollArea } from "../ui/scroll-area";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../ui/select";
+import { Switch } from "../ui/switch";
 
 export default function ConfigEditor() {
   const { data: configFiles = [], isPending: isLoadingFiles } = useConfigFiles();
@@ -92,7 +100,19 @@ export default function ConfigEditor() {
     setEditedEntries(new Map());
   };
 
-  const hasChanges = editedEntries.size > 0;
+  const hasChanges = useMemo(() => {
+    if (!selectedFile) return false;
+    const originals = new Map<string, string>();
+    for (const section of selectedFile.sections) {
+      for (const entry of section.entries) {
+        originals.set(`${section.name}::${entry.key}`, entry.value);
+      }
+    }
+    for (const [key, value] of editedEntries) {
+      if (originals.get(key) !== value) return true;
+    }
+    return false;
+  }, [editedEntries, selectedFile]);
 
   const renderInput = (section: ConfigSection, entry: ConfigEntry) => {
     const value = getEntryValue(section.name, entry);
@@ -110,14 +130,10 @@ export default function ConfigEditor() {
     if (settingType === "boolean" || settingType === "bool") {
       const isTrue = value.toLowerCase() === "true";
       return (
-        <button
-          onClick={() => handleEntryChange(section.name, entry.key, isTrue ? "false" : "true")}
-          className={`relative h-5.5 w-10 shrink-0 cursor-pointer rounded-full transition-colors ${isTrue ? "bg-[var(--color-accent-primary)]" : "bg-[var(--color-border-default)]"} `}
-        >
-          <div
-            className={`absolute top-0.5 h-4.5 w-4.5 rounded-full bg-white shadow transition-transform ${isTrue ? "translate-x-5" : "translate-x-0.5"} `}
-          />
-        </button>
+        <Switch
+          checked={isTrue}
+          onCheckedChange={(v) => handleEntryChange(section.name, entry.key, v ? "true" : "false")}
+        />
       );
     }
 
@@ -150,16 +166,38 @@ export default function ConfigEditor() {
       settingType.includes("single") ||
       settingType.includes("double")
     ) {
+      const isFloat =
+        settingType.includes("float") ||
+        settingType.includes("single") ||
+        settingType.includes("double");
+      const numericValue =
+        value.trim() === "" || Number.isNaN(Number(value)) ? null : Number(value);
+      const rangeMin =
+        acceptableRange && Number.isFinite(Number(acceptableRange[0]))
+          ? Number(acceptableRange[0])
+          : undefined;
+      const rangeMax =
+        acceptableRange && Number.isFinite(Number(acceptableRange[1]))
+          ? Number(acceptableRange[1])
+          : undefined;
+
       return (
         <div className="flex items-center gap-2">
-          <Input
-            type="number"
-            value={value}
-            onChange={(e) => handleEntryChange(section.name, entry.key, e.target.value)}
-            min={acceptableRange?.[0]}
-            max={acceptableRange?.[1]}
-            className="w-28 rounded-md border border-[var(--color-border-default)] bg-[var(--color-bg-input)] px-2.5 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent-primary)] focus:outline-none"
-          />
+          <NumberField
+            value={numericValue}
+            min={rangeMin}
+            max={rangeMax}
+            step={isFloat ? "any" : 1}
+            onValueChange={(next) =>
+              handleEntryChange(section.name, entry.key, next === null ? "" : String(next))
+            }
+          >
+            <NumberFieldGroup>
+              <NumberFieldDecrement />
+              <NumberFieldInput aria-label={entry.key} />
+              <NumberFieldIncrement />
+            </NumberFieldGroup>
+          </NumberField>
           {acceptableRange && (
             <span className="text-muted-foreground text-xs">
               [{acceptableRange[0]} - {acceptableRange[1]}]
@@ -175,7 +213,7 @@ export default function ConfigEditor() {
         type="text"
         value={value}
         onChange={(e) => handleEntryChange(section.name, entry.key, e.target.value)}
-        className="w-60 rounded-md border border-[var(--color-border-default)] bg-[var(--color-bg-input)] px-2.5 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent-primary)] focus:outline-none"
+        className="w-60"
       />
     );
   };
