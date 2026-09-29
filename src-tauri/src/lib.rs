@@ -167,6 +167,11 @@ pub fn run() {
             // Thunderstore
             commands::thunderstore::fetch_packages,
             commands::thunderstore::get_package_details,
+            commands::thunderstore::thunderstore_auth_status,
+            commands::thunderstore::thunderstore_sign_in,
+            commands::thunderstore::thunderstore_sign_out,
+            commands::thunderstore::valheim_categories,
+            commands::thunderstore::publish_modpack,
             // Mod management
             commands::mods::uninstall_mod,
             commands::mods::uninstall_mods,
@@ -218,6 +223,7 @@ pub fn run() {
             commands::profiles::clone_profile,
             commands::profiles::export_profile,
             commands::profiles::export_profile_file,
+            commands::profiles::export_profile_modpack,
             commands::profiles::export_profile_code,
             commands::profiles::import_profile,
             commands::profiles::import_profile_file,

@@ -74,12 +74,7 @@ function renderWithClient(ui: ReactNode) {
 
 test("renders the diff groups and keeps Sync enabled", async () => {
   renderWithClient(
-    <SyncModpackSheet
-      profileName="Default"
-      subscription={subscription}
-      open
-      onOpenChange={() => {}}
-    />,
+    <SyncModpackSheet profileName="Default" subscription={subscription} onClose={() => {}} />,
   );
 
   expect(await screen.findByText("Install (1)")).toBeTruthy();
@@ -101,12 +96,7 @@ test("an up-to-date plan disables Sync", async () => {
   });
 
   renderWithClient(
-    <SyncModpackSheet
-      profileName="Default"
-      subscription={subscription}
-      open
-      onOpenChange={() => {}}
-    />,
+    <SyncModpackSheet profileName="Default" subscription={subscription} onClose={() => {}} />,
   );
 
   expect(await screen.findByText(/Up to date with v2.0.0/)).toBeTruthy();

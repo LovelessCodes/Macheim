@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { cn } from "cn";
 import { AlertTriangle, ArrowRight, Loader2, Pin, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useEnqueueInstall } from "../../hooks/use-download-queue";
 import { useProfiles, useSwitchProfile } from "../../hooks/use-profiles";
@@ -25,8 +25,7 @@ import { notify } from "../ui/toast";
 interface SyncModpackSheetProps {
   profileName: string;
   subscription: Subscription;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onClose: () => void;
 }
 
 function ItemRow({ item, toVersion = true }: { item: SyncItem; toVersion?: boolean }) {
@@ -56,9 +55,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function SyncModpackSheet({
   profileName,
   subscription,
-  open,
-  onOpenChange,
+  onClose,
 }: SyncModpackSheetProps) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setOpen(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
   const queryClient = useQueryClient();
   const { data } = useProfiles();
   const switchProfileMutation = useSwitchProfile();
@@ -134,7 +137,7 @@ export default function SyncModpackSheet({
         description: parts.length > 0 ? parts.join(", ") : undefined,
         timeout: 8000,
       });
-      onOpenChange(false);
+      setOpen(false);
     } catch (err) {
       notify("modpack-sync", {
         type: "error",
@@ -147,7 +150,13 @@ export default function SyncModpackSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet
+      open={open}
+      onOpenChange={setOpen}
+      onOpenChangeComplete={(isOpen) => {
+        if (!isOpen) onClose();
+      }}
+    >
       <SheetContent className="sm:max-w-md">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
@@ -280,7 +289,7 @@ export default function SyncModpackSheet({
         </div>
 
         <SheetFooter className="flex-row justify-end gap-2">
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isBusy}>
+          <Button variant="ghost" onClick={() => setOpen(false)} disabled={isBusy}>
             Close
           </Button>
           <Button

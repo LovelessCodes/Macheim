@@ -27,7 +27,7 @@ This repository is an independently maintained build of [lofcgi/macheim](https:/
 | :------------------------------------------------: | :----------------------------------------------: | :------------------------------------------------------: |
 | ![Installed Mods](screenshots/installed-mods.webp) | ![Config Editor](screenshots/config-editor.webp) | ![Mac Compatibility](screenshots/mac-compatibility.webp) |
 
-All screenshots are 1200×800 captures of the running app; see [screenshots/README.md](screenshots/README.md) to refresh them.
+All screenshots are 1200×800 captures of the running app, split light/dark along the diagonal; see [screenshots/README.md](screenshots/README.md) to refresh them.
 
 ## Install
 
@@ -54,7 +54,7 @@ All three are free Thunderstore mod managers. The difference is the platform.
 | Mod sources                                         |         Thunderstore, Hexium          | Thunderstore, Hexium |       Thunderstore       |       Thunderstore       |  Thunderstore  |
 | One-click installs, dependency resolution, profiles |                  Yes                  |         Yes          |           Yes            |           Yes            |       No       |
 | Import r2modman / Thunderstore profiles             |           Yes (file + code)           |         Yes          |           Yes            |           Yes            |       —        |
-| Publish modpacks to Thunderstore                    |                  No                   |         Yes          |           Yes            |           Yes            |       —        |
+| Publish modpacks to Thunderstore                    |                  Yes                  |         Yes          |           Yes            |           Yes            |       —        |
 | Mod config editor                                   |                  Yes                  |         Yes          |           Yes            |           Yes            |  Text editor   |
 | Gatekeeper, BepInEx and Rosetta launch handling     |                  Yes                  |         n/a          |           n/a            |           n/a            |     Manual     |
 | Crash triage, Safe Mode, save snapshots             |                  Yes                  |          —           |            —             |            —             |       —        |
@@ -81,6 +81,8 @@ Upstream handles the core workflow. This build adds:
 ### Mod management
 
 - **Profile sharing and migration** — export any profile as an `.r2z` file that Macheim, r2modman, Gale and Thunderstore Mod Manager can all import, or share it as a short-lived profile code; import a shared profile from an `.r2z` file, a Thunderstore profile code, or by dropping the file onto the window. Imported profiles keep every mod pinned to the version they were exported with; after importing you can activate the profile and queue all its downloads in one step
+- **Export as Thunderstore modpack** — turn any profile into a modpack zip (`manifest.json`, README and icon) that Gale, r2modman and Thunderstore Mod Manager can import and that is upload-ready: exact installed versions, `BepInExPack_Valheim` pinned to a published loader version (the installed one when it matches, the newest published otherwise), validated against Thunderstore's upload rules, with any icon cropped and scaled to the required 256×256 PNG. Manual mods and disabled mods are reported as skipped; configs stay in the `.r2z` export
+- **Publish modpacks to Thunderstore** — sign in once with a service-account token (kept in a user-only file on your Mac, never shown again), then publish from the export sheet: pick a team and categories (Modpacks is always included), set the NSFW flag, watch upload progress, and open the published page when it is live. Versions are never auto-bumped; a duplicate version comes back as a clear API error
 - **Profile clone and export** — clone a profile (with its configs) as a starting point, or export one to share
 - **Modpack subscriptions** — follow a published Thunderstore modpack from the Modpacks tab and link it to a new or existing profile. The profile is badged with the pack name and flags when the store has a newer version; Sync shows exactly what the update adds, updates and drops, queues the downloads and removes dropped mods only when asked — pins, manual mods, extra mods and configs stay untouched. The link can be removed at any time without touching the profile's mods
 - **Bulk mod actions** — select several installed mods, or Select all within the current search and filter, and enable, disable or uninstall them in one batch (one confirmation for a bulk uninstall)

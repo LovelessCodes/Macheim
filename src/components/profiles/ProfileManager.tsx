@@ -53,6 +53,7 @@ import {
 } from "../ui/dropdown-menu";
 import { Input } from "../ui/input";
 import { notify } from "../ui/toast";
+import ExportModpackSheet from "./ExportModpackSheet";
 import SyncModpackSheet from "./SyncModpackSheet";
 
 export default function ProfileManager() {
@@ -83,6 +84,7 @@ export default function ProfileManager() {
   const [importCode, setImportCode] = useState("");
   const [importName, setImportName] = useState("");
   const [sharedCode, setSharedCode] = useState<{ name: string; code: string } | null>(null);
+  const [modpackProfile, setModpackProfile] = useState<string | null>(null);
   const [codeCopied, setCodeCopied] = useState(false);
   const [showDeleted, setShowDeleted] = useState(false);
   const [syncTarget, setSyncTarget] = useState<string | null>(null);
@@ -545,6 +547,10 @@ export default function ProfileManager() {
                       <FolderOpen />
                       Export as file…
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setModpackProfile(profile.name)}>
+                      <Package />
+                      Export as modpack…
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleShareCode(profile.name)}>
                       <Link2 />
                       Share as code
@@ -665,14 +671,15 @@ export default function ProfileManager() {
         </div>
       )}
 
+      {modpackProfile && (
+        <ExportModpackSheet profileName={modpackProfile} onClose={() => setModpackProfile(null)} />
+      )}
+
       {syncTarget && syncSubscription && (
         <SyncModpackSheet
           profileName={syncTarget}
           subscription={syncSubscription}
-          open
-          onOpenChange={(open) => {
-            if (!open) setSyncTarget(null);
-          }}
+          onClose={() => setSyncTarget(null)}
         />
       )}
     </div>

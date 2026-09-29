@@ -46,9 +46,7 @@ export default function FollowModpackButton({ pkg }: { pkg: ThunderstorePackage 
         <BookmarkPlus />
         Follow
       </Button>
-      {open && (
-        <FollowModpackSheet key={pkg.full_name} pkg={pkg} open={open} onOpenChange={setOpen} />
-      )}
+      {open && <FollowModpackSheet key={pkg.full_name} pkg={pkg} onClose={() => setOpen(false)} />}
     </>
   );
 }

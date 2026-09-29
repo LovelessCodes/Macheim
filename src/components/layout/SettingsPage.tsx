@@ -22,6 +22,7 @@ import { useAnalyzeCrashLogs, useLaunchSafeMode } from "../../hooks/use-diagnost
 import { useGameStatus, useSteamStatus } from "../../hooks/use-game-status";
 import { useUpdater } from "../../hooks/use-updater";
 import ProgressBar from "../common/ProgressBar";
+import ThunderstoreCard from "../settings/ThunderstoreCard";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
@@ -108,6 +109,8 @@ export default function SettingsPage() {
           </InfoRow>
         </CardContent>
       </Card>
+
+      <ThunderstoreCard />
 
       {/* Launch */}
       <Card>

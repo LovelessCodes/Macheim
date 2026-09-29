@@ -30,6 +30,8 @@ pub enum AppError {
     Profile(String),
     #[error("Mod error: {0}")]
     Mod(String),
+    #[error("Thunderstore error: {0}")]
+    Thunderstore(String),
 }
 
 impl Serialize for AppError {

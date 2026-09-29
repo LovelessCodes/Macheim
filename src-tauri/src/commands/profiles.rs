@@ -4,6 +4,7 @@ use tracing::info;
 
 use crate::error::{AppError, AppResult};
 use crate::models::Profile;
+use crate::services::modpack_export::{self, ModpackExportResult, ModpackMetadata};
 use crate::services::{game_detector, package_sources, profile_manager, profile_transfer};
 use crate::AppState;
 
@@ -202,6 +203,47 @@ pub async fn export_profile_file(
         profile_transfer::build_share_payload(&profile, &profile_manager::get_profile_dir(&name))?;
     crate::services::compatibility::atomic_write(std::path::Path::new(&path), &bytes)?;
     Ok(())
+}
+
+/// Export a profile as a Thunderstore modpack zip, ready to import elsewhere
+/// or upload.
+#[tauri::command]
+pub async fn export_profile_modpack(
+    name: String,
+    metadata: ModpackMetadata,
+    icon_path: Option<String>,
+    path: String,
+    state: tauri::State<'_, Mutex<AppState>>,
+) -> AppResult<ModpackExportResult> {
+    info!("Command: export_profile_modpack({})", name);
+
+    let profile = profile_manager::load_profile(&name)?;
+
+    let icon = match icon_path {
+        Some(icon_path) => Some(modpack_export::read_icon(std::path::Path::new(&icon_path))?),
+        None => None,
+    };
+
+    // BepInEx lives outside the profile, so its version comes from the game
+    // folder; without one the dependency is omitted and the UI warns.
+    let game_path = {
+        let state = state
+            .lock()
+            .map_err(|e| AppError::Mod(format!("Failed to lock state: {}", e)))?;
+        state.game_path.clone()
+    };
+    let bepinex_version =
+        modpack_export::resolve_installed_bepinex(&profile, game_path.as_deref()).await;
+
+    let (bytes, result) = modpack_export::build_modpack(
+        &profile,
+        &metadata,
+        icon.as_deref(),
+        bepinex_version.as_deref(),
+    )?;
+    crate::services::compatibility::atomic_write(std::path::Path::new(&path), &bytes)?;
+
+    Ok(result)
 }
 
 /// Share a profile as a short-lived Thunderstore profile code. Codes expire
