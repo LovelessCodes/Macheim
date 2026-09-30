@@ -1,11 +1,11 @@
-import type { Page } from "./types";
+import type { RoutePage } from "./routes";
 
 /** Everything a command may need from the running app. Bindings never touch this. */
 export interface CommandRuntime {
   checkForUpdates: () => void;
   launchModded: () => void;
   launchVanilla: () => void;
-  navigate: (page: Page) => void;
+  navigate: (page: RoutePage) => void;
   openCommandPalette: () => void;
   openPluginsFolder: () => void;
   toggleSidebar: () => void;

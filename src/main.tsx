@@ -1,12 +1,29 @@
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createHashHistory, createRouter, RouterProvider } from "@tanstack/react-router";
 import { ThemeProvider } from "next-themes";
 import React from "react";
 import ReactDOM from "react-dom/client";
 
-import App from "./App";
+import RoutePending from "./components/common/RoutePending";
 import { persistOptions, queryClient } from "./lib/query-client";
+import { routeTree } from "./routeTree.gen";
 
 import "./styles.css";
+
+const router = createRouter({
+  routeTree,
+  history: createHashHistory(),
+  context: { queryClient },
+  defaultPreload: "intent",
+  defaultPreloadStaleTime: 0,
+  defaultPendingComponent: RoutePending,
+});
+
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: typeof router;
+  }
+}
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
@@ -17,7 +34,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
       disableTransitionOnChange
     >
       <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
-        <App />
+        <RouterProvider router={router} />
       </PersistQueryClientProvider>
     </ThemeProvider>
   </React.StrictMode>,

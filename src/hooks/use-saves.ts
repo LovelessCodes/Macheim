@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { notify } from "../components/ui/toast";
 import { savesQueryKey } from "../lib/query-keys";
@@ -9,12 +9,14 @@ import {
   restoreSaveSnapshot,
 } from "../lib/tauri";
 
+export const savesQueryOptions = queryOptions({
+  queryKey: savesQueryKey,
+  queryFn: () => getSaveOverview(),
+  staleTime: 15_000,
+});
+
 export function useSaveOverview() {
-  return useQuery({
-    queryKey: savesQueryKey,
-    queryFn: getSaveOverview,
-    staleTime: 15_000,
-  });
+  return useQuery(savesQueryOptions);
 }
 
 export function useCreateSaveSnapshot() {

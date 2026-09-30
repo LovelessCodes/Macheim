@@ -30,6 +30,7 @@
     "@tanstack/react-hotkeys": "^0.10.0",
     "@tanstack/react-query": "^5.103.1",
     "@tanstack/react-query-persist-client": "^5.103.1",
+    "@tanstack/react-router": "^1.170.40",
     "@tanstack/react-virtual": "^3.14.13",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-clipboard-manager": "^2.3.3",
@@ -52,6 +53,7 @@
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "^20.14.5",
+    "@tanstack/router-plugin": "^1.168.41",
     "@tauri-apps/cli": "^2.11.4",
     "@testing-library/react": "^16.3.3",
     "@types/bun": "^1.4.2",

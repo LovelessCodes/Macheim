@@ -1,3 +1,4 @@
+import { Link, useLocation } from "@tanstack/react-router";
 import type { LucideIcon } from "lucide-react";
 import {
   DatabaseBackup,
@@ -13,11 +14,10 @@ import {
   Wrench,
 } from "lucide-react";
 
-import { Page } from "@/lib/types";
+import { PAGE_PATHS, type RoutePage } from "@/lib/routes";
 
 import { useAppVersion } from "../../hooks/use-app-version";
 import { useLaunchModded, useLaunchVanilla } from "../../hooks/use-launch-game";
-import { useAppStore } from "../../store/appStore";
 import ProfileSelector from "../profiles/ProfileSelector";
 import { Button } from "../ui/button";
 import {
@@ -36,7 +36,7 @@ import {
 } from "../ui/sidebar";
 
 interface NavItem {
-  page: Page;
+  page: RoutePage;
   label: string;
   icon: LucideIcon;
 }
@@ -54,8 +54,7 @@ const navItems: NavItem[] = [
 ];
 
 export default function Sidebar() {
-  const currentPage = useAppStore((s) => s.currentPage);
-  const setCurrentPage = useAppStore((s) => s.setCurrentPage);
+  const { pathname } = useLocation();
   const version = useAppVersion();
   const launchModdedMutation = useLaunchModded();
   const launchVanillaMutation = useLaunchVanilla();
@@ -97,9 +96,9 @@ export default function Sidebar() {
                 return (
                   <SidebarMenuItem key={item.page}>
                     <SidebarMenuButton
-                      isActive={currentPage === item.page}
+                      isActive={pathname === PAGE_PATHS[item.page]}
                       tooltip={item.label}
-                      onClick={() => setCurrentPage(item.page)}
+                      render={<Link to={PAGE_PATHS[item.page]} />}
                     >
                       <Icon />
                       <span>{item.label}</span>

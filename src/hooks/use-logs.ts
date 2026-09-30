@@ -1,18 +1,20 @@
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
 import { applyLogChunk, type LogSnapshot } from "../lib/log-follow";
 import { logsQueryKey } from "../lib/query-keys";
 import { getLatestLog, readLogSince } from "../lib/tauri";
 
+export const latestLogQueryOptions = queryOptions({
+  queryKey: logsQueryKey,
+  queryFn: () => getLatestLog(),
+  staleTime: 0,
+  refetchOnWindowFocus: false,
+});
+
 /** The latest Valheim log. Refetched on demand; never cached stale. */
 export function useLatestLog() {
-  return useQuery({
-    queryKey: logsQueryKey,
-    queryFn: getLatestLog,
-    staleTime: 0,
-    refetchOnWindowFocus: false,
-  });
+  return useQuery(latestLogQueryOptions);
 }
 
 const FOLLOW_INTERVAL_MS = 1000;

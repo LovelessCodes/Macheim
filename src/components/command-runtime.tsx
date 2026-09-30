@@ -1,11 +1,12 @@
+import { useNavigate } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
 
 import { useLaunchModded, useLaunchVanilla } from "../hooks/use-launch-game";
 import { COMMANDS, type AppCommandId, type CommandRuntime } from "../lib/commands";
+import { PAGE_PATHS } from "../lib/routes";
 import { openPluginsFolder } from "../lib/tauri";
 import { switchTheme } from "../lib/theme-transition";
-import { useAppStore } from "../store/appStore";
 import { useUpdaterStore } from "../store/updaterStore";
 import { useSidebar } from "./ui/sidebar";
 import { notify } from "./ui/toast";
@@ -21,7 +22,7 @@ export function CommandRuntimeProvider({
   children,
   onCommandOpenChange,
 }: CommandRuntimeProviderProps) {
-  const setCurrentPage = useAppStore((s) => s.setCurrentPage);
+  const navigate = useNavigate();
   const { toggleSidebar } = useSidebar();
   const { setTheme } = useTheme();
   const launchModded = useLaunchModded();
@@ -32,7 +33,7 @@ export function CommandRuntimeProvider({
       checkForUpdates: () => void useUpdaterStore.getState().check({ announce: true }),
       launchModded: () => launchModded.mutate(),
       launchVanilla: () => launchVanilla.mutate(),
-      navigate: (page) => setCurrentPage(page),
+      navigate: (page) => void navigate({ to: PAGE_PATHS[page] }),
       openCommandPalette: () => onCommandOpenChange(true),
       openPluginsFolder: () => {
         void openPluginsFolder().catch((err) => {
@@ -45,7 +46,7 @@ export function CommandRuntimeProvider({
         switchTheme(nextTheme, { setTheme });
       },
     }),
-    [launchModded, launchVanilla, onCommandOpenChange, setCurrentPage, setTheme, toggleSidebar],
+    [launchModded, launchVanilla, navigate, onCommandOpenChange, setTheme, toggleSidebar],
   );
 
   return (
