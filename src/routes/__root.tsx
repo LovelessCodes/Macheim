@@ -3,6 +3,8 @@ import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
 
+import RouteError from "../components/common/RouteError";
+import RouteNotFound from "../components/common/RouteNotFound";
 import CrashReportSheet from "../components/diagnostics/CrashReportSheet";
 import DownloadQueuePanel from "../components/downloads/DownloadQueuePanel";
 import InstallDropZone from "../components/downloads/InstallDropZone";
@@ -22,7 +24,11 @@ export interface RouterContext {
   queryClient: QueryClient;
 }
 
-export const Route = createRootRouteWithContext<RouterContext>()({ component: RootComponent });
+export const Route = createRootRouteWithContext<RouterContext>()({
+  component: RootComponent,
+  errorComponent: RouteError,
+  notFoundComponent: RouteNotFound,
+});
 
 function RootComponent() {
   const { data: gameStatus, isPending: booting } = useGameStatus();
