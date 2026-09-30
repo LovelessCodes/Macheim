@@ -60,10 +60,7 @@ export default function MainLayout() {
       <CommandRuntimeProvider onCommandOpenChange={setCommandOpen}>
         <Titlebar />
         <Sidebar />
-        <SidebarInset
-          data-tauri-drag-region={false}
-          className="view-transition-page min-w-0 overflow-hidden"
-        >
+        <SidebarInset data-tauri-drag-region={false} className="min-w-0 overflow-hidden">
           <Header onRefresh={showRefresh ? handleRefresh : undefined} isRefreshing={isRefreshing} />
           {safeModeMods.length > 0 && (
             <div className="flex shrink-0 items-center gap-3 border-b border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 px-4 py-2 text-xs">

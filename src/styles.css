@@ -232,43 +232,9 @@
   mix-blend-mode: normal;
 }
 
-/* Route changes slide the page area while the sidebar and overlays stay put.
-   A theme switch drops the name so the clip-path reveal covers the window. */
-.view-transition-page {
-  view-transition-name: main-content;
-}
-
-html[data-theme-vt] .view-transition-page {
-  view-transition-name: none;
-}
-
-@keyframes page-enter {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-}
-
-@keyframes page-exit {
-  to {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-}
-
-::view-transition-old(main-content) {
-  animation: page-exit 150ms cubic-bezier(0.4, 0, 1, 1) both;
-}
-
-::view-transition-new(main-content) {
-  animation: page-enter 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(root),
-  ::view-transition-new(root),
-  ::view-transition-old(main-content),
-  ::view-transition-new(main-content) {
+  ::view-transition-new(root) {
     animation: none;
   }
 }
