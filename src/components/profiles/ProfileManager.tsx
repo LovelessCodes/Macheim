@@ -237,32 +237,20 @@ export default function ProfileManager() {
   return (
     <div className="grid gap-4">
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h3 className="text-foreground text-base font-semibold">Mod Profiles</h3>
-          <p className="text-muted-foreground mt-0.5 text-sm">
-            Manage separate mod configurations for different playstyles.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setIsImporting(true)}
-            disabled={isImporting}
-            title="Import a shared profile"
-          >
-            <Upload />
-            Import
-          </Button>
-          <Button
-            variant="accent-primary"
-            onClick={() => setIsCreating(true)}
-            disabled={isCreating}
-          >
-            <Plus />
-            New Profile
-          </Button>
-        </div>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          onClick={() => setIsImporting(true)}
+          disabled={isImporting}
+          title="Import a shared profile"
+        >
+          <Upload />
+          Import
+        </Button>
+        <Button variant="accent-primary" onClick={() => setIsCreating(true)} disabled={isCreating}>
+          <Plus />
+          New Profile
+        </Button>
       </div>
 
       {/* Import form */}
