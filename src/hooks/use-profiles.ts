@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { confirm, save } from "@tauri-apps/plugin-dialog";
 import { useCallback } from "react";
 
@@ -31,14 +31,16 @@ import {
 import type { ModpackMetadata, Profile } from "../lib/types";
 import { useEnqueueInstall } from "./use-download-queue";
 
+export const profilesQueryOptions = queryOptions({
+  queryKey: profilesQueryKey,
+  queryFn: async () => {
+    const [profiles, activeProfile] = await Promise.all([listProfiles(), getActiveProfile()]);
+    return { profiles, activeProfile };
+  },
+});
+
 export function useProfiles() {
-  return useQuery({
-    queryKey: profilesQueryKey,
-    queryFn: async () => {
-      const [profiles, activeProfile] = await Promise.all([listProfiles(), getActiveProfile()]);
-      return { profiles, activeProfile };
-    },
-  });
+  return useQuery(profilesQueryOptions);
 }
 
 export function useSwitchProfile() {

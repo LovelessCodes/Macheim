@@ -1,4 +1,5 @@
-import { createRootRoute, Outlet } from "@tanstack/react-router";
+import type { QueryClient } from "@tanstack/react-query";
+import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
 
@@ -17,7 +18,11 @@ interface CdnFallbackEvent {
   to: string;
 }
 
-export const Route = createRootRoute({ component: RootComponent });
+export interface RouterContext {
+  queryClient: QueryClient;
+}
+
+export const Route = createRootRouteWithContext<RouterContext>()({ component: RootComponent });
 
 function RootComponent() {
   const { data: gameStatus, isPending: booting } = useGameStatus();

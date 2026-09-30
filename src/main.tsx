@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import React from "react";
 import ReactDOM from "react-dom/client";
 
+import RoutePending from "./components/common/RoutePending";
 import { persistOptions, queryClient } from "./lib/query-client";
 import { routeTree } from "./routeTree.gen";
 
@@ -12,6 +13,10 @@ import "./styles.css";
 const router = createRouter({
   routeTree,
   history: createHashHistory(),
+  context: { queryClient },
+  defaultPreload: "intent",
+  defaultPreloadStaleTime: 0,
+  defaultPendingComponent: RoutePending,
 });
 
 declare module "@tanstack/react-router" {

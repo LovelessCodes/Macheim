@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { notify } from "../components/ui/toast";
 import { configFilesQueryKey, configQueryKey } from "../lib/query-keys";
@@ -16,21 +16,29 @@ const CONFIG_QUERY_OPTIONS = {
   refetchOnWindowFocus: "always",
 } as const;
 
-export function useConfigFiles() {
-  return useQuery({
-    queryKey: configFilesQueryKey,
-    queryFn: getConfigFiles,
+export const configFilesQueryOptions = queryOptions({
+  queryKey: configFilesQueryKey,
+  queryFn: () => getConfigFiles(),
+  ...CONFIG_QUERY_OPTIONS,
+});
+
+export function configQueryOptions(path: string) {
+  return queryOptions({
+    queryKey: configQueryKey(path),
+    queryFn: () => getConfig(path),
+    meta: { errorTitle: "Failed to load config" },
     ...CONFIG_QUERY_OPTIONS,
   });
 }
 
+export function useConfigFiles() {
+  return useQuery(configFilesQueryOptions);
+}
+
 export function useConfig(path: string | null) {
   return useQuery({
-    queryKey: configQueryKey(path ?? ""),
-    queryFn: () => getConfig(path as string),
+    ...configQueryOptions(path ?? ""),
     enabled: path !== null,
-    meta: { errorTitle: "Failed to load config" },
-    ...CONFIG_QUERY_OPTIONS,
   });
 }
 

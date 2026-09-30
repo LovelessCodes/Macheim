@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { notify } from "../components/ui/toast";
 import { appSettingsQueryKey } from "../lib/query-keys";
@@ -10,12 +10,14 @@ import {
 } from "../lib/tauri";
 import type { AppSettings, CdnPreference } from "../lib/types";
 
+export const appSettingsQueryOptions = queryOptions({
+  queryKey: appSettingsQueryKey,
+  queryFn: () => getAppSettings(),
+  staleTime: Infinity,
+});
+
 export function useAppSettings() {
-  return useQuery({
-    queryKey: appSettingsQueryKey,
-    queryFn: getAppSettings,
-    staleTime: Infinity,
-  });
+  return useQuery(appSettingsQueryOptions);
 }
 
 type BooleanSetting = "console_enabled" | "snapshot_saves";
