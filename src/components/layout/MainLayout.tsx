@@ -1,6 +1,6 @@
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
-import { Outlet, useLocation } from "@tanstack/react-router";
+import { Outlet, useRouterState } from "@tanstack/react-router";
 import { TriangleAlert } from "lucide-react";
 import { useCallback, useState } from "react";
 
@@ -20,7 +20,14 @@ import Sidebar from "./Sidebar";
 import Titlebar from "./Titlebar";
 
 export default function MainLayout() {
-  const { pathname } = useLocation();
+  // Read the leaf match rather than `location`: during a navigation the
+  // location flips immediately while the Outlet still renders the old page
+  // until its loaders resolve. Deriving the scroll wrapper from anything but
+  // the rendered match re-parents the old page mid-flight, and a virtualized
+  // list then measures every row of its unbounded viewport.
+  const pathname = useRouterState({
+    select: (s) => s.matches[s.matches.length - 1]?.pathname ?? s.location.pathname,
+  });
   const queryClient = useQueryClient();
   const selectedPackage = useModStore((s) => s.selectedPackage);
   const setSelectedPackage = useModStore((s) => s.setSelectedPackage);
