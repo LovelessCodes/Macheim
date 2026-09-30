@@ -1,19 +1,20 @@
+import { useLocation } from "@tanstack/react-router";
 import { RefreshCw, TriangleAlert } from "lucide-react";
 
-import { useAppStore } from "../../store/appStore";
+import { PAGE_PATHS } from "../../lib/routes";
 import { useDiagnosticsStore } from "../../store/diagnosticsStore";
 import { Button } from "../ui/button";
 
 const pageTitles: Record<string, string> = {
-  browse: "Browse Mods",
-  installed: "Installed Mods",
-  modpacks: "Modpacks",
-  config: "Config Editor",
-  compatibility: "Mac Compatibility",
-  profiles: "Profiles",
-  saves: "Save Snapshots",
-  settings: "Settings",
-  setup: "Setup",
+  [PAGE_PATHS.browse]: "Browse Mods",
+  [PAGE_PATHS.installed]: "Installed Mods",
+  [PAGE_PATHS.modpacks]: "Modpacks",
+  [PAGE_PATHS.config]: "Config Editor",
+  [PAGE_PATHS.compatibility]: "Mac Compatibility",
+  [PAGE_PATHS.profiles]: "Profiles",
+  [PAGE_PATHS.saves]: "Save Snapshots",
+  [PAGE_PATHS.logs]: "Logs",
+  [PAGE_PATHS.settings]: "Settings",
 };
 
 interface HeaderProps {
@@ -22,7 +23,7 @@ interface HeaderProps {
 }
 
 export default function Header({ onRefresh, isRefreshing }: HeaderProps) {
-  const currentPage = useAppStore((s) => s.currentPage);
+  const { pathname } = useLocation();
 
   const crashReport = useDiagnosticsStore((s) => s.report);
   const openCrashReport = useDiagnosticsStore((s) => s.setReportOpen);
@@ -30,7 +31,7 @@ export default function Header({ onRefresh, isRefreshing }: HeaderProps) {
   return (
     <header className="flex h-10 shrink-0 items-center gap-2 border-b px-4" data-tauri-drag-region>
       <h2 className="text-foreground text-base font-semibold whitespace-nowrap">
-        {pageTitles[currentPage] ?? "Macheim"}
+        {pageTitles[pathname] ?? "Macheim"}
       </h2>
 
       <div className="flex-1" />

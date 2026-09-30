@@ -1,23 +1,25 @@
+import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
 
-import CrashReportSheet from "./components/diagnostics/CrashReportSheet";
-import DownloadQueuePanel from "./components/downloads/DownloadQueuePanel";
-import InstallDropZone from "./components/downloads/InstallDropZone";
-import MainLayout from "./components/layout/MainLayout";
-import SetupWizard from "./components/setup/SetupWizard";
-import { notify, Toaster } from "./components/ui/toast";
-import { useDiagnosticsSync } from "./hooks/use-diagnostics";
-import { useDownloadQueueSync } from "./hooks/use-download-queue";
-import { useGameStatus } from "./hooks/use-game-status";
-import { useUpdaterStartup } from "./hooks/use-updater";
+import CrashReportSheet from "../components/diagnostics/CrashReportSheet";
+import DownloadQueuePanel from "../components/downloads/DownloadQueuePanel";
+import InstallDropZone from "../components/downloads/InstallDropZone";
+import SetupWizard from "../components/setup/SetupWizard";
+import { notify, Toaster } from "../components/ui/toast";
+import { useDiagnosticsSync } from "../hooks/use-diagnostics";
+import { useDownloadQueueSync } from "../hooks/use-download-queue";
+import { useGameStatus } from "../hooks/use-game-status";
+import { useUpdaterStartup } from "../hooks/use-updater";
 
 interface CdnFallbackEvent {
   from: string;
   to: string;
 }
 
-export default function App() {
+export const Route = createRootRoute({ component: RootComponent });
+
+function RootComponent() {
   const { data: gameStatus, isPending: booting } = useGameStatus();
   useUpdaterStartup();
   useDownloadQueueSync();
@@ -44,7 +46,7 @@ export default function App() {
 
   return (
     <>
-      {booting ? null : needsSetup ? <SetupWizard /> : <MainLayout />}
+      {booting ? null : needsSetup ? <SetupWizard /> : <Outlet />}
       <Toaster />
       <DownloadQueuePanel />
       <CrashReportSheet />

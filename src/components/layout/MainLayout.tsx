@@ -1,37 +1,26 @@
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
+import { Outlet, useLocation } from "@tanstack/react-router";
 import { TriangleAlert } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { useRestoreSafeMode } from "../../hooks/use-diagnostics";
-import { useProfiles } from "../../hooks/use-profiles";
 import { installedModsQueryKey, packagesQueryKey } from "../../lib/query-keys";
-import { useAppStore } from "../../store/appStore";
+import { PAGE_PATHS } from "../../lib/routes";
 import { useDiagnosticsStore } from "../../store/diagnosticsStore";
 import { useModStore } from "../../store/modStore";
 import CommandPalette from "../command-palette";
 import { CommandRuntimeProvider } from "../command-runtime";
-import CompatibilityPage from "../compatibility/CompatibilityPage";
-import ConfigEditor from "../config/ConfigEditor";
-import LogsPage from "../logs/LogsPage";
-import InstalledModList from "../mods/InstalledModList";
 import ModDetail from "../mods/ModDetail";
-import ModGrid from "../mods/ModGrid";
-import ModpackBrowser from "../mods/ModpackBrowser";
-import ProfileManager from "../profiles/ProfileManager";
-import SavesPage from "../saves/SavesPage";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
 import { SidebarInset, SidebarProvider } from "../ui/sidebar";
 import Header from "./Header";
-import SettingsPage from "./SettingsPage";
 import Sidebar from "./Sidebar";
 import Titlebar from "./Titlebar";
 
 export default function MainLayout() {
-  const { data: profileData } = useProfiles();
-  const activeProfile = profileData?.activeProfile ?? "Default";
-  const currentPage = useAppStore((s) => s.currentPage);
+  const { pathname } = useLocation();
   const queryClient = useQueryClient();
   const selectedPackage = useModStore((s) => s.selectedPackage);
   const setSelectedPackage = useModStore((s) => s.setSelectedPackage);
@@ -45,50 +34,26 @@ export default function MainLayout() {
   const fetchingInstalled = useIsFetching({ queryKey: installedModsQueryKey });
 
   const handleRefresh = useCallback(async () => {
-    if (currentPage === "browse" || currentPage === "modpacks") {
+    if (pathname === PAGE_PATHS.browse || pathname === PAGE_PATHS.modpacks) {
       await queryClient.refetchQueries({ queryKey: packagesQueryKey });
-    } else if (currentPage === "installed") {
+    } else if (pathname === PAGE_PATHS.installed) {
       await queryClient.refetchQueries({ queryKey: installedModsQueryKey });
     }
-  }, [currentPage, queryClient]);
+  }, [pathname, queryClient]);
 
   const showRefresh =
-    currentPage === "browse" || currentPage === "installed" || currentPage === "modpacks";
+    pathname === PAGE_PATHS.browse ||
+    pathname === PAGE_PATHS.installed ||
+    pathname === PAGE_PATHS.modpacks;
 
   const isRefreshing = fetchingPackages > 0 || fetchingInstalled > 0;
 
-  const renderPage = () => {
-    switch (currentPage) {
-      case "browse":
-        return <ModGrid />;
-      case "installed":
-        return <InstalledModList key={activeProfile} />;
-      case "modpacks":
-        return <ModpackBrowser />;
-      case "config":
-        return <ConfigEditor key={activeProfile} />;
-      case "compatibility":
-        return <CompatibilityPage key={activeProfile} />;
-      case "profiles":
-        return <ProfileManager />;
-      case "saves":
-        return <SavesPage />;
-      case "logs":
-        return <LogsPage />;
-      case "settings":
-        return <SettingsPage />;
-      default:
-        return <ModGrid />;
-    }
-  };
-
-  const page = renderPage();
   const managesOwnScroll =
-    currentPage === "browse" ||
-    currentPage === "modpacks" ||
-    currentPage === "installed" ||
-    currentPage === "logs" ||
-    currentPage === "config";
+    pathname === PAGE_PATHS.browse ||
+    pathname === PAGE_PATHS.modpacks ||
+    pathname === PAGE_PATHS.installed ||
+    pathname === PAGE_PATHS.logs ||
+    pathname === PAGE_PATHS.config;
 
   return (
     <SidebarProvider className="h-svh overflow-hidden">
@@ -115,10 +80,14 @@ export default function MainLayout() {
             </div>
           )}
           {managesOwnScroll ? (
-            <div className="min-h-0 flex-1 p-6">{page}</div>
+            <div className="min-h-0 flex-1 p-6">
+              <Outlet />
+            </div>
           ) : (
             <ScrollArea scrollFade className="min-h-0 flex-1">
-              <div className="p-6">{page}</div>
+              <div className="p-6">
+                <Outlet />
+              </div>
             </ScrollArea>
           )}
         </SidebarInset>

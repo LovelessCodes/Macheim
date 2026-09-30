@@ -341,18 +341,6 @@ export interface CompatibilityStatus {
   recent_log: string[];
 }
 
-export type Page =
-  | "setup"
-  | "browse"
-  | "installed"
-  | "modpacks"
-  | "config"
-  | "profiles"
-  | "compatibility"
-  | "saves"
-  | "logs"
-  | "settings";
-
 export type SortOption = "downloads" | "rating" | "updated" | "name";
 export type SortDirection = "asc" | "desc";
 
